@@ -1,0 +1,90 @@
+(* Ocamllex scanner for TEAM *)
+
+{ 
+  open Parser 
+  let unescape s =
+    Scanf.sscanf ("\"" ^ s ^ "\"") "%S%!" (fun x -> x)
+}
+
+let digit = ['0' - '9']
+let digits = digit+
+let float = digits '.' digit*
+let ascii = ([' '-'!' '#'-'[' ']'-'~'])
+let char = ''' (ascii | digit) '''
+let escaped_char = '\\' ['\\' ''' '"' 'n' 'r' 't']
+let string = '"' ( (ascii | escaped_char)* as s) '"'
+
+rule token = parse
+  [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
+| "/*"     { comment lexbuf }    (* Blocky Comments *)
+| "//"     { slcomment lexbuf }    (* Single line Comments *)
+| '('      { LPAREN }
+| ')'      { RPAREN }
+| '['      { LSQUARE }
+| ']'      { RSQUARE } 
+| ';'      { SEMI }
+| ','      { COMMA }
+| '+'      { PLUS }
+| '-'      { MINUS }
+| '*'      { TIMES }
+| '/'      { DIVIDE }
+| '%'      { MODULUS }
+| "+="     { ADDASN }
+| "-="     { SUBASN }
+| "*="     { MULASN }
+| "/="     { DIVASN }
+| "%="     { MODASN }
+| '='      { ASSIGN }
+| "=="     { EQ }
+| "!="     { NEQ }
+| '<'      { LT }
+| "<="     { LEQ }
+| ">"      { GT }
+| ">="     { GEQ }
+| ".."     { RANGE }
+| "and"    { AND }
+| "or"     { OR }
+| "!"      { NOT }
+| "if"     { IF }
+| "elif"   { ELSEIF }
+| "else"   { ELSE }
+| "for"    { FOR }
+| "in"     { IN }
+| "do"     { DO }
+| "while"  { WHILE }
+| "break"  { BREAK }
+| "continue" { CONTINUE }
+| "return" { RETURN }
+| "end"    { END }
+| "int"    { INT }
+| "float"  { FLOAT }
+| "bool"   { BOOL }
+| "string" { STRING }
+| "char"   { CHAR }
+| "void"   { VOID }
+| "true"   { BLIT(true) }
+| "false"  { BLIT(false) }
+| "list"   { LIST }
+| "hash"   { HASH }
+| digits as lxm { LITERAL(int_of_string lxm) }
+| float as lxm { FLIT(float_of_string lxm) }
+| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
+| char as lxm  { CLIT( String.get lxm 1 ) }
+| string    { STRING_LITERAL(unescape s) }
+| eof { EOF }
+| _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
+
+
+and comment = parse
+  "*/" { token lexbuf }
+| _    { comment lexbuf }
+
+and slcomment = parse
+  '\n' { token lexbuf }
+| _    { comment lexbuf }
+
+(* TODO:
+1. should we have break / continue
+2. do we allow escape chars
+3. ! or not syntax
+ *)
