@@ -1,7 +1,9 @@
 (* Ocamllex scanner for TEAM *)
 
 { 
-  open Parser 
+  (* open Parser *)
+  type token = LPAREN | RPAREN | LSQUARE | RSQUARE | SEMI | COMMA | PLUS | MINUS | TIMES | DIVIDE | MODULUS | ADDASN | SUBASN | MULASN | DIVASN | MODASN | ASSIGN | EQ | NEQ | LT | LEQ | GT | GEQ | RANGE | AND | OR | NOT | IF | ELSEIF | ELSE | FOR | IN | DO | WHILE | BREAK | CONTINUE | RETURN | END | INT | FLOAT | BOOL | STRING | CHAR | VOID | BLIT of bool | LIST | HASH | LITERAL of int | FLIT of float | ID of string | CLIT of char | STRING_LITERAL of string | EOF
+
   let unescape s =
     Scanf.sscanf ("\"" ^ s ^ "\"") "%S%!" (fun x -> x)
 }
@@ -81,7 +83,7 @@ and comment = parse
 
 and slcomment = parse
   '\n' { token lexbuf }
-| _    { comment lexbuf }
+| _    { slcomment lexbuf }
 
 (* TODO:
 1. should we have break / continue
