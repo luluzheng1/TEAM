@@ -1,9 +1,7 @@
 (* Ocamllex scanner for TEAM *)
 
 { 
-  (* open Parser *)
-  type token = LPAREN | RPAREN | LSQUARE | RSQUARE | SEMI | COMMA | PLUS | MINUS | TIMES | DIVIDE | MODULUS | ADDASN | SUBASN | MULASN | DIVASN | MODASN | ASSIGN | EQ | NEQ | LT | LEQ | GT | GEQ | RANGE | AND | OR | NOT | IF | ELSEIF | ELSE | FOR | IN | DO | WHILE | BREAK | CONTINUE | RETURN | END | INT | FLOAT | BOOL | STRING | CHAR | VOID | BLIT of bool | LIST | HASH | LITERAL of int | FLIT of float | ID of string | CLIT of char | STRING_LITERAL of string | EOF
-
+  open Parser
   let unescape s =
     Scanf.sscanf ("\"" ^ s ^ "\"") "%S%!" (fun x -> x)
 }
@@ -46,7 +44,7 @@ rule token = parse
 | ".."     { RANGE }
 | "and"    { AND }
 | "or"     { OR }
-| "!"      { NOT }
+| "not"      { NOT }
 | "if"     { IF }
 | "elif"   { ELSEIF }
 | "else"   { ELSE }
@@ -66,8 +64,9 @@ rule token = parse
 | "void"   { VOID }
 | "true"   { BLIT(true) }
 | "false"  { BLIT(false) }
-| "list"   { LIST }
-| "hash"   { HASH }
+| "list "   { LIST }
+| "import" { IMPORT }
+| "as"     { AS }
 | digits as lxm { LITERAL(int_of_string lxm) }
 | float as lxm { FLIT(float_of_string lxm) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
