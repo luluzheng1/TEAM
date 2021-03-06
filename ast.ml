@@ -1,31 +1,29 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
-          And | Or  | Exp 
+          And | Or  | Exp  | Range
 
 type uop = Neg | Not
 
-type listTypes = StringList | IntList | FloatList | BoolList
-
-type typ = Int | Bool | Float | Void | String | List of listTypes
+type typ = Int | Bool | Float | Void | String | List of typ | Func of typ list * typ
 
 type bind = typ * string
 
-type literal = 
+type expr =
     IntLit of int
-  | Fliteral of string
+  | FloatLit of string
   | BoolLit of bool
   | StringLit of string
-    
-type expr =
-    Lit of literal
-  | ListLit of literal list
+  | ListLit of expr list
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
   | Assign of string * expr
   | Call of string * expr list
+  | SliceExpr of expr * slce
   | Noexpr
+
+and slce = Index of expr | Slice of expr * expr
 
 type stmt =
     Block of stmt list
@@ -39,7 +37,6 @@ type func_decl = {
     typ : typ;
     fname : string;
     formals : bind list;
-    locals : bind list;
     body : stmt list;
   }
 
@@ -60,16 +57,23 @@ let string_of_op = function
   | Geq -> ">="
   | And -> "&&"
   | Or -> "||"
+  | Exp -> "^"
+  | Range -> ".."
 
 let string_of_uop = function
     Neg -> "-"
   | Not -> "!"
 
 let rec string_of_expr = function
-    Literal(l) -> string_of_int l
-  | Fliteral(l) -> l
+    IntLit(l) -> string_of_int l
+  | FloatLit(l) -> l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
+  | StringLit(s) -> s
+  | ListLit(l) -> "[" ^ (String.concat "," (List.map string_of_expr l)) ^ "]"
+  | SliceExpr(e, s) -> match s with
+      Index(i) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ "]"
+    | Slice(i,j) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ ":" ^ (string_of_expr i) ^ "]"
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
@@ -104,7 +108,6 @@ let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
