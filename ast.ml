@@ -5,14 +5,11 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Float | Void | String | List of typ | Func of typ list * typ
-
-type bind = typ * string
-
 type expr =
     IntLit of int
   | FloatLit of string
   | BoolLit of bool
+  | CharLit of char
   | StringLit of string
   | ListLit of expr list
   | Id of string
@@ -25,22 +22,38 @@ type expr =
 
 and slce = Index of expr | Slice of expr * expr
 
+type typ = Int | Bool | Float | Void | Char | String | List of typ | Func of typ list * typ
+
+type bind = typ * string
+
+type var_decl = typ * string * expr
+
 type stmt =
     Block of stmt list
   | Expr of expr
   | Return of expr
-  | If of expr * stmt * stmt
+  | If of expr * stmt * stmt * stmt
+  | Elif of expr * stmt
   | For of expr * expr * stmt
   | While of expr * stmt
+  | Declaration of var_decl
+  | Break
+  | Continue
+  | Nostmt
+
+type func_body = {
+  vdecls : var_decl list;
+  stmts : stmt list;
+}
 
 type func_decl = {
     typ : typ;
     fname : string;
     formals : bind list;
-    body : stmt list;
+    body : func_body;
   }
 
-type program = bind list * func_decl list
+type program = var_decl list * func_decl list * stmt list
 
 (* Pretty-printing functions *)
 
@@ -71,9 +84,9 @@ let rec string_of_expr = function
   | BoolLit(false) -> "false"
   | StringLit(s) -> s
   | ListLit(l) -> "[" ^ (String.concat "," (List.map string_of_expr l)) ^ "]"
-  | SliceExpr(e, s) -> match s with
+  | SliceExpr(e, s) -> (match s with
       Index(i) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ "]"
-    | Slice(i,j) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ ":" ^ (string_of_expr i) ^ "]"
+    | Slice(i,j) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ ":" ^ (string_of_expr i) ^ "]")
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
@@ -91,16 +104,19 @@ let rec string_of_stmt = function
   | If(e, s, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
   | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
       string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
-  | For(e1, e2, e3, s) ->
-      "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
-      string_of_expr e3  ^ ") " ^ string_of_stmt s
+  | For(e1, e2, s) ->
+      "for (" ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ " :\n " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
-let string_of_typ = function
+and string_of_typ = function
     Int -> "int"
   | Bool -> "bool"
   | Float -> "float"
   | Void -> "void"
+  | Char -> "char"
+  | String -> "string"
+  | List t -> "list<" ^ string_of_typ t ^ ">"
+  | Func (_, t) -> "function<" ^ string_of_typ t ^ ">"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
