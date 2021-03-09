@@ -1,3 +1,6 @@
+parser.output
+parser.ml
+parser.mli
 *.annot
 *.cmo
 *.cma

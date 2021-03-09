@@ -7,7 +7,7 @@ let snd  (_, a, _) = a;;
 let thrd (_, _, a) = a;;
 %} 
 
-%token LPAREN RPAREN LSQUARE RSQUARE SEMI COMMA ARROW COLON
+%token LPAREN RPAREN LSQUARE RSQUARE COMMA ARROW COLON
 %token PLUS MINUS TIMES DIVIDE MOD EXP
 %token ADDASN SUBASN MULASN DIVASN MODASN ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ RANGE AND OR 
@@ -91,7 +91,7 @@ stmt_list:
 stmt:
 	EOL { Nostmt }
   | expr EOL { Expr $1 }
-	| RETURN expr EOL { Return $2 }
+	| RETURN expr_opt EOL { Return $2 }
 	| IF internal_if EOL { $2 } 
 	| FOR expr IN expr DO stmt_list END EOL { For($2, $4, Block(List.rev $6)) }
 	| WHILE expr DO stmt_list END EOL  { While($2, Block(List.rev $4)) }
@@ -137,6 +137,8 @@ expr:
   | expr GEQ    expr { Binop($1, Geq,   $3)   }
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
+  | expr MOD    expr { Binop($1, Mod,   $3)   }
+  | expr RANGE  expr { Binop($1, Range, $3)   }
   | MINUS expr %prec NOT { Unop(Neg, $2)      }
   | NOT   expr           { Unop(Not, $2)      }
   | LPAREN expr RPAREN   { $2                 }
@@ -145,7 +147,7 @@ expr:
   | ID SUBASN expr { AssignOp($1, Sub, $3) }
   | ID MULASN expr { AssignOp($1, Mult, $3) }
   | ID DIVASN expr { AssignOp($1, Div, $3) }
-  | ID DIVASN expr { AssignOp($1, Mod, $3) }
+  | ID MODASN expr { AssignOp($1, Mod, $3) }
 	| ID LPAREN args_opt RPAREN { Call($1, $3) }
 	| expr LSQUARE expr RSQUARE { SliceExpr($1, Index($3)) }
 	| expr LSQUARE expr COLON expr RSQUARE { SliceExpr($1, Slice($3, $5)) }
