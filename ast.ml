@@ -38,7 +38,6 @@ type stmt =
   | Elif of expr * stmt
   | For of expr * expr * stmt
   | While of expr * stmt
-  | Declaration of var_decl
   | Break
   | Continue
   | Nostmt
