@@ -66,8 +66,13 @@ rule token = parse
 | "false"  { BLIT(false) }
 | "list "   { LIST }
 | "->" { ARROW }
-(* | "import" { IMPORT }
-| "as"     { AS } *)
+(* | "import" { IMPORT } 
+^^^
+I am looking at 2mfg and i think if we also prepend all the standard library to any TEAM file then we might not need import
+| "as"     { AS } 
+^^^ 
+what is this for?
+*)
 | digits as lxm { LITERAL(int_of_string lxm) }
 | float as lxm { FLIT(float_of_string lxm) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }

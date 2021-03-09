@@ -136,6 +136,8 @@ expr:
   | expr GEQ    expr { Binop($1, Geq,   $3)   }
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
+  | expr MOD    expr { Binop($1, Mod,   $3)   }
+  | expr RANGE  expr { Binop($1, Range, $3)   }
   | MINUS expr %prec NOT { Unop(Neg, $2)      }
   | NOT   expr           { Unop(Not, $2)      }
   | LPAREN expr RPAREN   { $2                 }
