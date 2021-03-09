@@ -13,7 +13,6 @@ let ascii = ([' '-'!' '#'-'[' ']'-'~'])
 let char = ''' (ascii | digit) '''
 let escaped_char = '\\' ['\\' ''' '"' 'n' 'r' 't']
 let string = '"' ( (ascii | escaped_char)* as s) '"'
-
 rule token = parse
   [' ' '\t' '\r'] { token lexbuf } (* Whitespace *)
 | "\n"     { EOL }
@@ -36,13 +35,13 @@ rule token = parse
 | "/="     { DIVASN }
 | "%="     { MODASN }
 | '='      { ASSIGN }
+| ".."     { RANGE }
 | "=="     { EQ }
 | "!="     { NEQ }
 | '<'      { LT }
 | "<="     { LEQ }
 | ">"      { GT }
 | ">="     { GEQ }
-| ".."     { RANGE }
 | "and"    { AND }
 | "or"     { OR }
 | "not"      { NOT }
@@ -67,6 +66,7 @@ rule token = parse
 | "false"  { BLIT(false) }
 | "list "   { LIST }
 | "->" { ARROW }
+| "file"   { FILE }
 (* | "import" { IMPORT } 
 ^^^
 I am looking at 2mfg and i think if we also prepend all the standard library to any TEAM file then we might not need import

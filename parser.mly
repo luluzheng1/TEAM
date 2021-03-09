@@ -13,7 +13,7 @@ let thrd (_, _, a) = a;;
 %token EQ NEQ LT LEQ GT GEQ RANGE AND OR 
 %token IF ELSEIF ELSE FOR IN DO WHILE BREAK CONTINUE RETURN END 
 %token INT FLOAT BOOL STRING CHAR VOID
-%token LIST
+%token LIST FILE
 %token <bool> BLIT
 %token <int> LITERAL
 %token <float> FLIT
@@ -139,7 +139,7 @@ expr:
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
   | expr MOD    expr { Binop($1, Mod,   $3)   }
-  | expr RANGE  expr { Binop($1, Range, $3)   }
+  | expr RANGE  expr { Binop($1, Range, $3) }
   | MINUS expr %prec NOT { Unop(Neg, $2)      }
   | NOT   expr           { Unop(Not, $2)      }
   | LPAREN expr RPAREN   { $2                 }

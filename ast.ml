@@ -89,7 +89,7 @@ let rec string_of_expr = function
   | ListLit(l) -> "[" ^ (String.concat "," (List.map string_of_expr l)) ^ "]"
   | SliceExpr(e, s) -> (match s with
       Index(i) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ "]"
-    | Slice(i,j) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ ":" ^ (string_of_expr i) ^ "]")
+    | Slice(i,j) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ ":" ^ (string_of_expr j) ^ "]")
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
@@ -101,14 +101,14 @@ let rec string_of_expr = function
   | Noexpr -> ""
 
 let rec string_of_stmt = function
-    Block(stmts) -> String.concat "" (List.map string_of_stmt stmts) ^ "end\n"
+    Block(stmts) -> String.concat "" (List.map string_of_stmt stmts)
   | Expr(expr) -> string_of_expr expr ^ "\n";
   | Return(expr) -> "return " ^ string_of_expr expr ^ "\n";
-  | If (e, s1, s2, s3) -> "if " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s1 ^ string_of_stmt s2 ^ "else\n" ^ string_of_stmt s3
+  | If (e, s1, s2, s3) -> "if " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s1 ^ string_of_stmt s2 ^ "else\n" ^ string_of_stmt s3 ^ "end\n"
   | Elif(e, s) -> "elif " ^ string_of_expr e ^ "\n" ^ string_of_stmt s   
   | For(e1, e2, s) ->
-      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ " do\n " ^ string_of_stmt s
-  | While(e, s) -> "while " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s
+      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ " do\n " ^ string_of_stmt s ^ "end\n"
+  | While(e, s) -> "while " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s ^ "end\n"
   | Break -> "break"
   | Continue -> "continue"
   | Nostmt -> ""
