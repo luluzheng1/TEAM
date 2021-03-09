@@ -109,9 +109,6 @@ let rec string_of_stmt = function
   | For(e1, e2, s) ->
       "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ " do\n " ^ string_of_stmt s
   | While(e, s) -> "while " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s
-  | Declaration(t, id, e) ->  (match e with
-      Noexpr -> string_of_typ t ^ " " ^ id
-    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e)
   | Break -> "break"
   | Continue -> "continue"
   | Nostmt -> ""
