@@ -1,13 +1,13 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
-          And | Or  | Exp  | Range
+type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq | And | Or  | Exp  | Range
 
 type uop = Neg | Not
 
+(* TODO: need listaccess? *)
 type expr =
     IntLit of int
-  | FloatLit of string
+  | FloatLit of float
   | BoolLit of bool
   | CharLit of char
   | StringLit of string
@@ -16,18 +16,20 @@ type expr =
   | Binop of expr * op * expr
   | Unop of uop * expr
   | Assign of string * expr
+  | AssignOp of string * op * expr
   | Call of string * expr list
   | SliceExpr of expr * slce
   | Noexpr
 
 and slce = Index of expr | Slice of expr * expr
 
-type typ = Int | Bool | Float | Void | Char | String | List of typ | Func of typ list * typ
+type typ = Int | Bool | Float | Void | Char | String | List of typ | Func of typ * typ
 
 type bind = typ * string
 
 type var_decl = typ * string * expr
 
+(* Need append? *)
 type stmt =
     Block of stmt list
   | Expr of expr
@@ -62,14 +64,15 @@ let string_of_op = function
   | Sub -> "-"
   | Mult -> "*"
   | Div -> "/"
+  | Mod -> "%"
   | Equal -> "=="
   | Neq -> "!="
   | Less -> "<"
   | Leq -> "<="
   | Greater -> ">"
   | Geq -> ">="
-  | And -> "&&"
-  | Or -> "||"
+  | And -> "and"
+  | Or -> "or"
   | Exp -> "^"
   | Range -> ".."
 
@@ -79,10 +82,11 @@ let string_of_uop = function
 
 let rec string_of_expr = function
     IntLit(l) -> string_of_int l
-  | FloatLit(l) -> l
+  | FloatLit(l) -> string_of_float l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
-  | StringLit(s) -> s
+  | CharLit(c) -> String.make 1 c
+  | StringLit(s) -> "\"" ^ s ^ "\""
   | ListLit(l) -> "[" ^ (String.concat "," (List.map string_of_expr l)) ^ "]"
   | SliceExpr(e, s) -> (match s with
       Index(i) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ "]"
@@ -92,21 +96,26 @@ let rec string_of_expr = function
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ " " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
 
 let rec string_of_stmt = function
-    Block(stmts) ->
-      "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
-  | Expr(expr) -> string_of_expr expr ^ ";\n";
-  | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
-  | If(e, s, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
-  | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
-      string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
+    Block(stmts) -> String.concat "" (List.map string_of_stmt stmts) ^ "end\n"
+  | Expr(expr) -> string_of_expr expr ^ "\n";
+  | Return(expr) -> "return " ^ string_of_expr expr ^ "\n";
+  | If (e, s1, s2, s3) -> "if " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s1 ^ string_of_stmt s2 ^ "else\n" ^ string_of_stmt s3
+  | Elif(e, s) -> "elif " ^ string_of_expr e ^ "\n" ^ string_of_stmt s   
   | For(e1, e2, s) ->
-      "for (" ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ " :\n " ^ string_of_stmt s
-  | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ " do\n " ^ string_of_stmt s
+  | While(e, s) -> "while " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s
+  | Declaration(t, id, e) ->  (match e with
+      Noexpr -> string_of_typ t ^ " " ^ id
+    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e)
+  | Break -> "break"
+  | Continue -> "continue"
+  | Nostmt -> ""
 
 and string_of_typ = function
     Int -> "int"
@@ -116,17 +125,19 @@ and string_of_typ = function
   | Char -> "char"
   | String -> "string"
   | List t -> "list<" ^ string_of_typ t ^ ">"
-  | Func (_, t) -> "function<" ^ string_of_typ t ^ ">"
+  | Func (a, r) -> "(" ^ string_of_typ a ^ "->" ^ string_of_typ r ^ ")"
 
-let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_vdecl (t, id, e) = string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
-  ")\n{\n" ^
-  String.concat "" (List.map string_of_stmt fdecl.body) ^
-  "}\n"
+  ")\n" ^
+  String.concat "" (List.map string_of_vdecl fdecl.body.vdecls) ^
+  String.concat "" (List.map string_of_stmt fdecl.body.stmts) ^
+  "end\n"
 
-let string_of_program (vars, funcs) =
-  String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+let string_of_program (vars, funcs, stmts) =
+  String.concat "\n" (List.map string_of_vdecl vars) ^ "\n" ^
+  String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
+  String.concat "\n" (List.map string_of_stmt stmts)
