@@ -7,7 +7,7 @@ let snd  (_, a, _) = a;;
 let thrd (_, _, a) = a;;
 %} 
 
-%token LPAREN RPAREN LSQUARE RSQUARE SEMI COMMA ARROW COLON
+%token LPAREN RPAREN LSQUARE RSQUARE COMMA ARROW COLON
 %token PLUS MINUS TIMES DIVIDE MOD EXP
 %token ADDASN SUBASN MULASN DIVASN MODASN ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ RANGE AND OR 
@@ -25,17 +25,17 @@ let thrd (_, _, a) = a;;
 %start program
 %type <Ast.program> program
 
-
-%right ASSIGN
+%left ARROW
+%right ASSIGN ADDASN SUBASN MULASN DIVASN MODASN
 %left OR
 %left AND
-%right ADDASN SUBASN MULASN DIVASN MODASN
 %left EQ NEQ
 %left LT GT LEQ GEQ
 %left PLUS MINUS
 %left TIMES DIVIDE MOD
 %left EXP
 %right NOT
+%nonassoc LSQUARE RSQUARE
 
 %%
 
@@ -91,13 +91,12 @@ stmt_list:
 stmt:
 	EOL { Nostmt }
   | expr EOL { Expr $1 }
-	| RETURN expr EOL { Return $2 }
+	| RETURN expr_opt EOL { Return $2 }
 	| IF internal_if EOL { $2 } 
 	| FOR expr IN expr DO stmt_list END EOL { For($2, $4, Block(List.rev $6)) }
 	| WHILE expr DO stmt_list END EOL  { While($2, Block(List.rev $4)) }
 	| BREAK EOL { Break }
 	| CONTINUE EOL { Continue }
-	| vdecl EOL { Declaration($1) }
 
 internal_if:
 	expr DO EOL stmt_list elif_list else_list END { If($1, Block(List.rev $4), Block(List.rev $5), Block(List.rev $6))}
@@ -145,7 +144,7 @@ expr:
   | ID SUBASN expr { AssignOp($1, Sub, $3) }
   | ID MULASN expr { AssignOp($1, Mult, $3) }
   | ID DIVASN expr { AssignOp($1, Div, $3) }
-  | ID DIVASN expr { AssignOp($1, Mod, $3) }
+  | ID MODASN expr { AssignOp($1, Mod, $3) }
 	| ID LPAREN args_opt RPAREN { Call($1, $3) }
 	| expr LSQUARE expr RSQUARE { SliceExpr($1, Index($3)) }
 	| expr LSQUARE expr COLON expr RSQUARE { SliceExpr($1, Slice($3, $5)) }
