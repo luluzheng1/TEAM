@@ -15,7 +15,8 @@ let escaped_char = '\\' ['\\' ''' '"' 'n' 'r' 't']
 let string = '"' ( (ascii | escaped_char)* as s) '"'
 
 rule token = parse
-  [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
+  [' ' '\t' '\r'] { token lexbuf } (* Whitespace *)
+| "\n"     { EOL }
 | "/*"     { comment lexbuf }    (* Blocky Comments *)
 | "//"     { slcomment lexbuf }    (* Single line Comments *)
 | '('      { LPAREN }

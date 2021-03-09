@@ -36,7 +36,7 @@ let thrd (_, _, a) = a;;
 %left TIMES DIVIDE MOD
 %left EXP
 %right NOT
-%nonassoc LSQUARE RSQUARE
+%nonassoc LSQUARE
 
 %%
 
