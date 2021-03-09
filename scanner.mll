@@ -23,12 +23,13 @@ rule token = parse
 | '['      { LSQUARE }
 | ']'      { RSQUARE } 
 | ';'      { SEMI }
+| ":"      { COLON }
 | ','      { COMMA }
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '*'      { TIMES }
 | '/'      { DIVIDE }
-| '%'      { MODULUS }
+| '%'      { MOD }
 | "+="     { ADDASN }
 | "-="     { SUBASN }
 | "*="     { MULASN }
@@ -65,13 +66,14 @@ rule token = parse
 | "true"   { BLIT(true) }
 | "false"  { BLIT(false) }
 | "list "   { LIST }
-| "import" { IMPORT }
-| "as"     { AS }
+| "arrow" { ARROW }
+(* | "import" { IMPORT }
+| "as"     { AS } *)
 | digits as lxm { LITERAL(int_of_string lxm) }
 | float as lxm { FLIT(float_of_string lxm) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | char as lxm  { CLIT( String.get lxm 1 ) }
-| string    { STRING_LITERAL(unescape s) }
+| string    { SLIT(unescape s) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 
@@ -83,9 +85,3 @@ and comment = parse
 and slcomment = parse
   '\n' { token lexbuf }
 | _    { slcomment lexbuf }
-
-(* TODO:
-1. should we have break / continue
-2. do we allow escape chars
-3. ! or not syntax
- *)
