@@ -66,7 +66,7 @@ rule token = parse
 | "true"   { BLIT(true) }
 | "false"  { BLIT(false) }
 | "list "   { LIST }
-| "arrow" { ARROW }
+| "->" { ARROW }
 (* | "import" { IMPORT }
 | "as"     { AS } *)
 | digits as lxm { LITERAL(int_of_string lxm) }
