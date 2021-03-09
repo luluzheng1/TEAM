@@ -22,7 +22,6 @@ rule token = parse
 | ')'      { RPAREN }
 | '['      { LSQUARE }
 | ']'      { RSQUARE } 
-| ';'      { SEMI }
 | ":"      { COLON }
 | ','      { COMMA }
 | '+'      { PLUS }
