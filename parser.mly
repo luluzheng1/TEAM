@@ -2,6 +2,8 @@
 
 %{
 open Ast
+let fst  (a, _, _) = a;;
+let snd  (_, a, _) = a;;
 let thrd (_, _, a) = a;;
 %} 
 
