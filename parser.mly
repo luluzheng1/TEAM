@@ -31,6 +31,7 @@ let thrd (_, _, a) = a;;
 %left AND
 %left EQ NEQ
 %left LT GT LEQ GEQ
+%nonassoc RANGE
 %left PLUS MINUS
 %left TIMES DIVIDE MOD
 %left EXP
@@ -89,7 +90,7 @@ stmt_list:
 	| stmt_list stmt { $2 :: $1 }
 
 stmt:
-	EOL { Nostmt }
+	  EOL { Nostmt }
   | expr EOL { Expr $1 }
 	| RETURN expr_opt EOL { Return $2 }
 	| IF internal_if EOL { $2 } 
