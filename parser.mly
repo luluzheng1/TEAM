@@ -123,6 +123,7 @@ expr:
   | BLIT    { BoolLit($1) }
   | CLIT    { CharLit($1) }
   | SLIT    {StringLit($1)}
+	| ID { Id($1) }
   | LSQUARE list_literal RSQUARE { ListLit(List.rev $2) }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
