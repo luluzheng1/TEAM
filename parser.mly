@@ -144,6 +144,7 @@ expr:
   | NOT   expr           { Unop(Not, $2)      }
   | LPAREN expr RPAREN   { $2                 }
   | ID ASSIGN expr { Assign($1, $3) }
+  | ID LSQUARE expr RSQUARE ASSIGN expr { ListAssign($1, $3, $6)}
   | ID ADDASN expr { AssignOp($1, Add, $3) }
   | ID SUBASN expr { AssignOp($1, Sub, $3) }
   | ID MULASN expr { AssignOp($1, Mult, $3) }
