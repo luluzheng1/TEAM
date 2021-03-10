@@ -8,7 +8,7 @@
 
 let digit = ['0' - '9']
 let digits = digit+
-let float = digits '.' digit*
+let float = digits '.' digits
 let ascii = ([' '-'!' '#'-'[' ']'-'~'])
 let char = ''' (ascii | digit) '''
 let escaped_char = '\\' ['\\' ''' '"' 'n' 'r' 't']
