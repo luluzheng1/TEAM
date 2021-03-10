@@ -16,6 +16,7 @@ type expr =
   | Binop of expr * op * expr
   | Unop of uop * expr
   | Assign of string * expr
+  | ListAssign of string * expr * expr
   | AssignOp of string * op * expr
   | Call of string * expr list
   | SliceExpr of expr * slce
@@ -38,6 +39,7 @@ type stmt =
   | Elif of expr * stmt
   | For of expr * expr * stmt
   | While of expr * stmt
+  | Declaration of var_decl
   | Break
   | Continue
   | Nostmt
@@ -95,6 +97,7 @@ let rec string_of_expr = function
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | ListAssign(v, i, e) -> v ^ " [ " ^ string_of_expr i ^ " ] = " ^ string_of_expr e
   | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ " " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
@@ -109,6 +112,9 @@ let rec string_of_stmt = function
   | For(e1, e2, s) ->
       "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ " do\n " ^ string_of_stmt s ^ "end\n"
   | While(e, s) -> "while " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s ^ "end\n"
+  | Declaration(t, id, e) ->  (match e with
+      Noexpr -> string_of_typ t ^ " " ^ id
+    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e)
   | Break -> "break"
   | Continue -> "continue"
   | Nostmt -> ""
