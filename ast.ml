@@ -19,7 +19,8 @@ type expr =
   | ListAssign of string * expr * expr
   | AssignOp of string * op * expr
   | Call of string * expr list
-  | SliceExpr of expr * slce
+  | SliceExpr of string * slce
+  | End
   | Noexpr
 
 and slce = Index of expr | Slice of expr * expr
@@ -90,18 +91,19 @@ let rec string_of_expr = function
   | StringLit(s) -> "\"" ^ s ^ "\""
   | ListLit(l) -> "[" ^ (String.concat "," (List.map string_of_expr l)) ^ "]"
   | SliceExpr(e, s) -> (match s with
-      Index(i) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ "]"
-    | Slice(i,j) -> (string_of_expr e) ^ "[" ^ (string_of_expr i) ^ ":" ^ (string_of_expr j) ^ "]")
+      Index(i) -> e ^ "[" ^ (string_of_expr i) ^ "]"
+    | Slice(i,j) -> e ^ "[" ^ (string_of_expr i) ^ ":" ^ (string_of_expr j) ^ "]")
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  | ListAssign(v, i, e) -> v ^ " [ " ^ string_of_expr i ^ " ] = " ^ string_of_expr e
+  (* | ListAssign(v, i, e) -> v ^ " [ " ^ string_of_expr i ^ " ] = " ^ string_of_expr e *)
   | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ " " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
+  | _ -> ""
 
 let rec string_of_stmt = function
     Block(stmts) -> String.concat "" (List.map string_of_stmt stmts)
