@@ -55,7 +55,7 @@ fdecl:
 	} }
 
 formals_opt:
-  /* nothing */  { [] }
+	/* nothing */  { [] }
 	| formals_list { List.rev $1 }
 
 formals_list:
@@ -82,7 +82,7 @@ stmt_list:
 
 stmt:
 	| vdecl SEMI { $1 } 
-  	| expr SEMI { Expr $1 }
+  | expr SEMI { Expr $1 }
 	| RETURN expr_opt SEMI { Return $2 }
 	| IF internal_if { $2 } 
 	| FOR expr IN expr COLON stmt_list END { For($2, $4, Block(List.rev $6)) }
@@ -111,9 +111,10 @@ expr_opt:
 expr:
 	  LITERAL { IntLit($1) }
   | BLIT    { BoolLit($1) }
+	| FLIT    { FloatLit($1) }
   | CLIT    { CharLit($1) }
-  | SLIT    {StringLit($1)}
-	| ID { Id($1) }
+  | SLIT    { StringLit($1) }
+	| ID      { Id($1) }
   | LSQUARE list_literal RSQUARE { ListLit(List.rev $2) }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
@@ -130,7 +131,6 @@ expr:
   | expr OR     expr { Binop($1, Or,    $3)   }
   | expr MOD    expr { Binop($1, Mod,   $3)   }
   | expr RANGE  expr { Binop($1, Range, $3) }
-	| FLIT    { FloatLit($1) }
   | MINUS expr %prec NOT { Unop(Neg, $2)      }
   | NOT   expr           { Unop(Not, $2)      }
   | LPAREN expr RPAREN   { $2                 }
