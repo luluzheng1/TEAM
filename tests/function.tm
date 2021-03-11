@@ -1,3 +1,5 @@
+// Tests functions
+
 int add(int x, int y)
     print(x);
     int z = x + y;

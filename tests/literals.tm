@@ -1,3 +1,5 @@
+// Tests literals
+
 1234;
 "test";
 'a';

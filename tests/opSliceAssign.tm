@@ -1,3 +1,6 @@
+/* Tests arithmetic operators, slice operations,
+   and assignment operators */
+
 1 + 2;
 a + b;
 1-2;
