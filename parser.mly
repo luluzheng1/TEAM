@@ -2,8 +2,6 @@
 
 %{
 open Ast
-let fst  (a, _) = a;;
-let snd  (_, a) = a;;
 %} 
 
 %token LPAREN RPAREN LSQUARE RSQUARE COMMA ARROW COLON
@@ -56,7 +54,7 @@ fdecl:
 		body = List.rev $7;
 		
 	} }
-	
+
 formals_opt:
   /* nothing */  { [] }
 	| formals_list { List.rev $1 }
