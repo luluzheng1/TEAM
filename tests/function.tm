@@ -1,4 +1,7 @@
 int add(int x, int y)
-    return x
+    print(x)
+    int z = x + y
+    print(z)
+    return z
 end
 
