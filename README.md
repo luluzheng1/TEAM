@@ -10,7 +10,7 @@ To execute a TEAM file (file.tm), do
 	  ./team.native file.tm 
 
 ## Testing
-All files used for testing are located in the tests directory. To run all tests, do 
+All files used for testing are located in the tests/ directory. To run all tests, do 
 	
 	  python runtests.py
 
