@@ -1,10 +1,16 @@
 /* Ocamlyacc parser for TEAM */
 
+// %{
+// open Ast
+// let fst  (a, _, _) = a;;
+// let snd  (_, a, _) = a;;
+// let thrd (_, _, a) = a;;
+// %} 
+
 %{
 open Ast
-let fst  (a, _, _) = a;;
-let snd  (_, a, _) = a;;
-let thrd (_, _, a) = a;;
+let fst  (a, _) = a;;
+let snd  (_, a) = a;;
 %} 
 
 %token LPAREN RPAREN LSQUARE RSQUARE COMMA ARROW COLON
@@ -44,24 +50,31 @@ program:
   decls EOF { $1 }
 
 decls:
-	/* nothing */ { ([], [], []) }
-	| decls vdecl { (($2 :: fst $1), snd $1, thrd $1) }
-	| decls fdecl { (fst $1, ($2 :: snd $1), thrd $1) }
-	| decls stmt  { (fst $1, snd $1, ($2 :: thrd $1)) }
+	// /* nothing */ { ([], [], []) }
+	// | decls vdecl { (($2 :: fst $1), snd $1, thrd $1) }
+	// | decls fdecl { (fst $1, ($2 :: snd $1), thrd $1) }
+	// | decls stmt  { (fst $1, snd $1, ($2 :: thrd $1)) }
+
+	// /* nothing */ { ([], []) }
+	| decls fdecl { (($2 :: fst $1), snd $1) }
+	| decls stmt  { (fst $1, ($2 :: snd $1)) }
 
 fdecl:
-	typ ID LPAREN formals_opt RPAREN EOL fbody END EOL
+	typ ID LPAREN formals_opt RPAREN EOL stmt_list END EOL
 	{ {
 		typ = $1;
 		fname = $2;
 		formals = $4;
-		body = { vdecls = List.rev $7.vdecls; stmts = List.rev $7.stmts }
+		body = List.rev $7;
+		
 	} }
 
-fbody:
-  /* nothing */ { { vdecls = []; stmts = [] } }
-	| fbody vdecl { { vdecls = $2 :: $1.vdecls; stmts = $1.stmts; } }
-	| fbody stmt  { { vdecls = $1.vdecls; stmts = $2 :: $1.stmts; } }
+	// body = { vdecls = List.rev $7.vdecls; stmts = List.rev $7.stmts }
+
+// fbody:
+//   /* nothing */ { { vdecls = []; stmts = [] } }
+//   | fbody vdecl { { vdecls = $2 :: $1.vdecls; stmts = $1.stmts; } }
+// 	| fbody stmt  { { vdecls = $1.vdecls; stmts = $2 :: $1.stmts; } }
 
 formals_opt:
   /* nothing */  { [] }
@@ -83,7 +96,7 @@ typ:
 	| typ ARROW typ { Func($1, $3) }
 
 vdecl:
-	typ ID ASSIGN expr EOL { $1, $2, $4 }
+	typ ID ASSIGN expr EOL { Declaration($1, $2, $4) }
 
 stmt_list: 
 	/* nothing */ { [] }
@@ -91,6 +104,7 @@ stmt_list:
 
 stmt:
 	  EOL { Nostmt }
+	| vdecl { $1 } 
   | expr EOL { Expr $1 }
 	| RETURN expr_opt EOL { Return $2 }
 	| IF internal_if EOL { $2 } 

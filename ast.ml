@@ -29,7 +29,7 @@ type typ = Int | Bool | Float | Void | Char | String | List of typ | Func of typ
 
 type bind = typ * string
 
-type var_decl = typ * string * expr
+(* type var_decl = typ * strcling * expr *)
 
 (* Need append? *)
 type stmt =
@@ -40,24 +40,27 @@ type stmt =
   | Elif of expr * stmt
   | For of expr * expr * stmt
   | While of expr * stmt
-  | Declaration of var_decl
+  | Declaration of typ * string * expr
   | Break
   | Continue
   | Nostmt
 
-type func_body = {
+(* type func_body = {
   vdecls : var_decl list;
   stmts : stmt list;
-}
+} *)
 
 type func_decl = {
     typ : typ;
     fname : string;
     formals : bind list;
-    body : func_body;
+    body : stmt list;
+    (* body : func_body; *)
   }
 
-type program = var_decl list * func_decl list * stmt list
+(* type program = var_decl list * func_decl list * stmt list *)
+
+type program = func_decl list * stmt list
 
 (* Pretty-printing functions *)
 
@@ -137,11 +140,16 @@ let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
   ")\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.body.vdecls) ^
-  String.concat "" (List.map string_of_stmt fdecl.body.stmts) ^
+  (* String.concat "" (List.map string_of_vdecl fdecl.body.vdecls) ^ *)
+  String.concat "" (List.map string_of_stmt fdecl.body) ^
   "end\n"
-
+(* 
 let string_of_program (vars, funcs, stmts) =
   String.concat "\n" (List.map string_of_vdecl vars) ^ "\n" ^
+  String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
+  String.concat "\n" (List.map string_of_stmt stmts) *)
+
+let string_of_program (funcs, stmts) =
+  (* String.concat "\n" (List.map string_of_vdecl vars) ^ "\n" ^ *)
   String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
   String.concat "\n" (List.map string_of_stmt stmts)
