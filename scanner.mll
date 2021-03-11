@@ -14,8 +14,8 @@ let char = ''' (ascii | digit) '''
 let escaped_char = '\\' ['\\' ''' '"' 'n' 'r' 't']
 let string = '"' ( (ascii | escaped_char)* as s) '"'
 rule token = parse
-  [' ' '\t' '\r'] { token lexbuf } (* Whitespace *)
-| "\n"     { EOL }
+  [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
+| ';'      { SEMI }
 | "/*"     { comment lexbuf }    (* Blocky Comments *)
 | "//"     { slcomment lexbuf }    (* Single line Comments *)
 | '('      { LPAREN }
@@ -51,7 +51,6 @@ rule token = parse
 | "else"   { ELSE }
 | "for"    { FOR }
 | "in"     { IN }
-| "do"     { DO }
 | "while"  { WHILE }
 | "break"  { BREAK }
 | "continue" { CONTINUE }

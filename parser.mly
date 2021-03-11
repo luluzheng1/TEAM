@@ -4,11 +4,11 @@
 open Ast
 %} 
 
-%token LPAREN RPAREN LSQUARE RSQUARE COMMA ARROW COLON
+%token LPAREN RPAREN LSQUARE RSQUARE COMMA ARROW COLON SEMI
 %token PLUS MINUS TIMES DIVIDE MOD EXP
 %token ADDASN SUBASN MULASN DIVASN MODASN ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ RANGE AND OR 
-%token IF ELSEIF ELSE FOR IN DO WHILE BREAK CONTINUE RETURN END 
+%token IF ELSEIF ELSE FOR IN WHILE BREAK CONTINUE RETURN END 
 %token INT FLOAT BOOL STRING CHAR VOID
 %token LIST FILE
 %token <bool> BLIT
@@ -17,7 +17,7 @@ open Ast
 %token <string> ID
 %token <char> CLIT
 %token <string> SLIT
-%token EOL EOF
+%token EOF
 
 %start program
 %type <Ast.program> program
@@ -33,7 +33,6 @@ open Ast
 %left TIMES DIVIDE MOD
 %left EXP
 %right NOT
-%nonassoc LSQUARE
 
 %%
 
@@ -46,12 +45,12 @@ decls:
 	| decls stmt  { (fst $1, ($2 :: snd $1)) }
 
 fdecl:
-	typ ID LPAREN formals_opt RPAREN EOL stmt_list END EOL
+	typ ID LPAREN formals_opt RPAREN stmt_list END
 	{ {
 		typ = $1;
 		fname = $2;
 		formals = $4;
-		body = List.rev $7;
+		body = List.rev $6;
 		
 	} }
 
@@ -64,7 +63,7 @@ formals_list:
 	| formals_list COMMA typ ID { ($3, $4) :: $1 }
 
 typ: 
-		INT    { Int }
+	  INT    { Int }
 	| FLOAT  { Float }
 	| BOOL   { Bool }
 	| CHAR   { Char }
@@ -75,36 +74,35 @@ typ:
 	| typ ARROW typ { Func($1, $3) }
 
 vdecl:
-	typ ID ASSIGN expr EOL { Declaration($1, $2, $4) }
+	typ ID ASSIGN expr { Declaration($1, $2, $4) }
 
 stmt_list: 
 	/* nothing */ { [] }
 	| stmt_list stmt { $2 :: $1 }
 
 stmt:
-	  EOL { Nostmt }
-	| vdecl { $1 } 
-  | expr EOL { Expr $1 }
-	| RETURN expr_opt EOL { Return $2 }
-	| IF internal_if EOL { $2 } 
-	| FOR expr IN expr DO stmt_list END EOL { For($2, $4, Block(List.rev $6)) }
-	| WHILE expr DO stmt_list END EOL  { While($2, Block(List.rev $4)) }
-	| BREAK EOL { Break }
-	| CONTINUE EOL { Continue }
+	| vdecl SEMI { $1 } 
+  	| expr SEMI { Expr $1 }
+	| RETURN expr_opt SEMI { Return $2 }
+	| IF internal_if { $2 } 
+	| FOR expr IN expr COLON stmt_list END { For($2, $4, Block(List.rev $6)) }
+	| WHILE expr COLON stmt_list END  { While($2, Block(List.rev $4)) }
+	| BREAK SEMI { Break }
+	| CONTINUE SEMI { Continue }
 
 internal_if:
-	expr DO EOL stmt_list elif_list else_list END { If($1, Block(List.rev $4), Block(List.rev $5), Block(List.rev $6))}
+	expr COLON stmt_list elif_list else_list END { If($1, Block(List.rev $3), Block(List.rev $4), Block(List.rev $5))}
 
 elif_list:
 	/* nothing */ { [] }
 	| elif elif_list { $1 :: $2 }
 
 elif:
-	ELSEIF expr EOL stmt_list { Elif($2, Block(List.rev $4)) }
+	ELSEIF expr COLON stmt_list { Elif($2, Block(List.rev $4)) }
 
 else_list:
 	/* nothing */ { [] }
-	| ELSE EOL stmt_list { $3 }
+	| ELSE COLON stmt_list { $3 }
 
 expr_opt:
 	/* nothing */ { Noexpr }

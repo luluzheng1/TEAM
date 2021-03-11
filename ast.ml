@@ -40,7 +40,6 @@ type stmt =
   | Declaration of typ * string * expr
   | Break
   | Continue
-  | Nostmt
 
 type func_decl = {
     typ : typ;
@@ -110,7 +109,6 @@ let rec string_of_stmt = function
     | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n")
   | Break -> "break\n"
   | Continue -> "continue\n"
-  | Nostmt -> ""
 
 and string_of_typ = function
     Int -> "int"
