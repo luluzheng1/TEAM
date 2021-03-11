@@ -5,3 +5,5 @@ int add(int x, int y)
     return z
 end
 
+add(1, 3)
+test("hello",[1,2,4],1.5)
