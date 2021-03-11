@@ -72,7 +72,7 @@ let string_of_op = function
 
 let string_of_uop = function
     Neg -> "-"
-  | Not -> "!"
+  | Not -> "not "
 
 let rec string_of_expr = function
     IntLit(l) -> string_of_int l
@@ -90,7 +90,7 @@ let rec string_of_expr = function
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ " " ^ string_of_expr e
+  | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ "= " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
@@ -108,8 +108,8 @@ let rec string_of_stmt = function
   | Declaration(t, id, e) ->  (match e with
       Noexpr -> string_of_typ t ^ " " ^ id ^ "\n"
     | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n")
-  | Break -> "break"
-  | Continue -> "continue"
+  | Break -> "break\n"
+  | Continue -> "continue\n"
   | Nostmt -> ""
 
 and string_of_typ = function
@@ -130,5 +130,5 @@ let string_of_fdecl fdecl =
   "end\n"
 
 let string_of_program (funcs, stmts) =
-  String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
-  String.concat "\n" (List.map string_of_stmt stmts)
+  String.concat "" (List.map string_of_fdecl funcs) ^ "\n" ^
+  String.concat "" (List.map string_of_stmt stmts)
