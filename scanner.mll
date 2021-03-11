@@ -29,6 +29,7 @@ rule token = parse
 | '*'      { TIMES }
 | '/'      { DIVIDE }
 | '%'      { MOD }
+| '^'      { EXP }
 | "+="     { ADDASN }
 | "-="     { SUBASN }
 | "*="     { MULASN }
