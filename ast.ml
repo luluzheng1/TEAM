@@ -4,7 +4,6 @@ type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Ge
 
 type uop = Neg | Not
 
-(* TODO: need listaccess? *)
 type expr =
     IntLit of int
   | FloatLit of float
@@ -29,8 +28,6 @@ type typ = Int | Bool | Float | Void | Char | String | List of typ | Func of typ
 
 type bind = typ * string
 
-(* type var_decl = typ * strcling * expr *)
-
 (* Need append? *)
 type stmt =
     Block of stmt list
@@ -45,20 +42,12 @@ type stmt =
   | Continue
   | Nostmt
 
-(* type func_body = {
-  vdecls : var_decl list;
-  stmts : stmt list;
-} *)
-
 type func_decl = {
     typ : typ;
     fname : string;
     formals : bind list;
     body : stmt list;
-    (* body : func_body; *)
   }
-
-(* type program = var_decl list * func_decl list * stmt list *)
 
 type program = func_decl list * stmt list
 
@@ -101,7 +90,6 @@ let rec string_of_expr = function
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  (* | ListAssign(v, i, e) -> v ^ " [ " ^ string_of_expr i ^ " ] = " ^ string_of_expr e *)
   | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ " " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
@@ -134,23 +122,13 @@ and string_of_typ = function
   | List t -> "list<" ^ string_of_typ t ^ ">"
   | Func (a, r) -> "(" ^ string_of_typ a ^ "->" ^ string_of_typ r ^ ")"
 
-(* let string_of_vdecl (t, id, e) = string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n" *)
-
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
   ")\n" ^
-  (* String.concat "" (List.map string_of_vdecl fdecl.body.vdecls) ^ *)
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "end\n"
 
-(* 
-let string_of_program (vars, funcs, stmts) =
-  String.concat "\n" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
-  String.concat "\n" (List.map string_of_stmt stmts) *)
-
 let string_of_program (funcs, stmts) =
-  (* String.concat "\n" (List.map string_of_vdecl vars) ^ "\n" ^ *)
   String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
   String.concat "\n" (List.map string_of_stmt stmts)
