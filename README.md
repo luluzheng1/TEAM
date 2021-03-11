@@ -7,12 +7,14 @@ To compile the TEAM, do
       ocamlbuild team.native
 
 To execute a TEAM file (file.tm), do
-./team.native file.tm
+
+      ./team.native file.tm
 
 ## Testing
 
 All files used for testing are located in the tests/ directory. To run all tests, do
-python runtests.py
+
+      python runtests.py
 
 To run a single tests, do
 
@@ -20,7 +22,7 @@ To run a single tests, do
 
 ## Future Work
 
-We are working on adding a "file" type to the ast and adding an "import" statement to the parser.
+We are working on adding a "file" type to the ast and an "import" statement to the parser.
 
 ## Names and Email Addresses of Group Members
 
