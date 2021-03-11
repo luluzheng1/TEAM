@@ -1,6 +1,5 @@
 import os
 import subprocess
-import sys
 
 # Color printing purposes
 class bcolors:
@@ -29,7 +28,7 @@ for test_file in test_suite:
     neg_tests.append(test_file)
   else:
     pos_tests.append(test_file)
-  
+
 test_suite = pos_tests + neg_tests
 
 for test_file in test_suite:
