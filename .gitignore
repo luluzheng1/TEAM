@@ -9,7 +9,9 @@
 *.cmxa
 *.out
 
-
+*.mli
+parser.ml
+*.output
 # ocamlbuild working directory
 _build/
 
