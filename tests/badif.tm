@@ -1,5 +1,5 @@
 if x == 5
-  print(x)
+  print(x);
 else
-  print(x)
+  print(x);
 end
