@@ -118,8 +118,8 @@ let rec string_of_stmt = function
       "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ " do\n " ^ string_of_stmt s ^ "end\n"
   | While(e, s) -> "while " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s ^ "end\n"
   | Declaration(t, id, e) ->  (match e with
-      Noexpr -> string_of_typ t ^ " " ^ id
-    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e)
+      Noexpr -> string_of_typ t ^ " " ^ id ^ "\n"
+    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n")
   | Break -> "break"
   | Continue -> "continue"
   | Nostmt -> ""
@@ -134,7 +134,7 @@ and string_of_typ = function
   | List t -> "list<" ^ string_of_typ t ^ ">"
   | Func (a, r) -> "(" ^ string_of_typ a ^ "->" ^ string_of_typ r ^ ")"
 
-let string_of_vdecl (t, id, e) = string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n"
+(* let string_of_vdecl (t, id, e) = string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n" *)
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
@@ -143,6 +143,7 @@ let string_of_fdecl fdecl =
   (* String.concat "" (List.map string_of_vdecl fdecl.body.vdecls) ^ *)
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "end\n"
+
 (* 
 let string_of_program (vars, funcs, stmts) =
   String.concat "\n" (List.map string_of_vdecl vars) ^ "\n" ^

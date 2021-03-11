@@ -55,7 +55,7 @@ decls:
 	// | decls fdecl { (fst $1, ($2 :: snd $1), thrd $1) }
 	// | decls stmt  { (fst $1, snd $1, ($2 :: thrd $1)) }
 
-	// /* nothing */ { ([], []) }
+	/* nothing */ { ([], []) }
 	| decls fdecl { (($2 :: fst $1), snd $1) }
 	| decls stmt  { (fst $1, ($2 :: snd $1)) }
 
