@@ -1,4 +1,4 @@
-for x in [1,2,3] do
+for x in 1..2
   print(x)
   int t = 4
 end
