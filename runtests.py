@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
+import sys
 import os
 import subprocess
 
 VALID_FILE_DIR = 'tests/valid'
 INVALID_FILE_DIR = 'tests/invalid'
 failedFlag = True
+
+test_suite = []
+for dirName, subdirName, fileNames in os.walk("tests"):
+    for file in fileNames:
+        if "tm" not in file:
+            continue
+        test_suite.append(os.path.join(dirName, file))
+
+neg_tests = []
+pos_tests = []
 
 # Color printing purposes
 class bcolors:
@@ -22,17 +33,14 @@ def run(command):
     stdout, stderr = proc.communicate()
     return proc.returncode, stdout, stderr
 
-for test in os.listdir(VALID_FILE_DIR):
-    code, out, err = run(['./team.native', os.path.join(VALID_FILE_DIR, test)])
-    if (code != 0):
-        print(bcolors.FAIL + test + " Expected to pass but it failed" + bcolors.ENDC)
-        failedFlag = False
-
-for test in os.listdir(INVALID_FILE_DIR):
-    code, out, err = run(['./team.native', os.path.join(INVALID_FILE_DIR, test)])
-    if code == 0:
-        print(bcolors.FAIL + test + " Expected to fail but it passed" + + bcolors.ENDC)
-        failedFlag = False
+for test_file in test_suite:
+        code, out, err = run(['./team.native', '{}'.format(test_file)])
+        filename = test_file.split("/")[-1]
+        if code == 0:
+            print(bcolors.PASS + "{:25}==> Passed!".format(filename) + bcolors.ENDC)
+        else:
+            print(bcolors.FAIL + "{:25}==> {}".format(filename, err.decode('utf-8').rstrip()) + bcolors.ENDC)
+            failedFlag = False
 
 if failedFlag:
     print(bcolors.PASS + "All tests passed" + bcolors.ENDC)
