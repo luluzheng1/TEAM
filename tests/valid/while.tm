@@ -1,4 +1,6 @@
-while i < 10 do
-  i = i + 2
-  print("yes")
+// Tests while loop
+
+while i < 10:
+  i = i + 2;
+  print("yes");
 end

@@ -1,6 +1,6 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq | And | Or  | Exp  | Range
+type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq | And | Or | Exp | Range
 
 type uop = Neg | Not
 
@@ -24,11 +24,10 @@ type expr =
 
 and slce = Index of expr | Slice of expr * expr
 
-type typ = Int | Bool | Float | Void | Char | String | List of typ | Func of typ * typ
+type typ = Int | Bool | Float | Void | Char | String | List of typ | Func of typ * typ | File
 
 type bind = typ * string
 
-(* Need append? *)
 type stmt =
     Block of stmt list
   | Expr of expr
@@ -40,7 +39,6 @@ type stmt =
   | Declaration of typ * string * expr
   | Break
   | Continue
-  | Nostmt
 
 type func_decl = {
     typ : typ;
@@ -86,31 +84,32 @@ let rec string_of_expr = function
       Index(i) -> e ^ "[" ^ (string_of_expr i) ^ "]"
     | Slice(i,j) -> e ^ "[" ^ (string_of_expr i) ^ ":" ^ (string_of_expr j) ^ "]")
   | Id(s) -> s
-  | Binop(e1, o, e2) ->
-      string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
+  | Binop(e1, o, e2) -> (match o with
+      Range -> string_of_expr e1 ^ string_of_op o ^ string_of_expr e2
+    | _ -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2)
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ "= " ^ string_of_expr e
+  | ListAssign(s, e1, e2) -> s ^ " [ " ^ string_of_expr e1 ^ " ] = " ^ string_of_expr e2
+  | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+  | End -> ""
   | Noexpr -> ""
-  | _ -> ""
 
 let rec string_of_stmt = function
     Block(stmts) -> String.concat "" (List.map string_of_stmt stmts)
   | Expr(expr) -> string_of_expr expr ^ "\n";
   | Return(expr) -> "return " ^ string_of_expr expr ^ "\n";
-  | If (e, s1, s2, s3) -> "if " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s1 ^ string_of_stmt s2 ^ "else\n" ^ string_of_stmt s3 ^ "end\n"
-  | Elif(e, s) -> "elif " ^ string_of_expr e ^ "\n" ^ string_of_stmt s   
+  | If (e, s1, s2, s3) -> "if " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s1 ^ string_of_stmt s2 ^ "else:\n" ^ string_of_stmt s3 ^ "end\n"
+  | Elif(e, s) -> "elif " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s   
   | For(e1, e2, s) ->
-      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ " do\n " ^ string_of_stmt s ^ "end\n"
-  | While(e, s) -> "while " ^ string_of_expr e ^ " do\n" ^ string_of_stmt s ^ "end\n"
+      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ ":\n " ^ string_of_stmt s ^ "end\n"
+  | While(e, s) -> "while " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s ^ "end\n"
   | Declaration(t, id, e) ->  (match e with
       Noexpr -> string_of_typ t ^ " " ^ id ^ "\n"
     | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n")
   | Break -> "break\n"
   | Continue -> "continue\n"
-  | Nostmt -> ""
 
 and string_of_typ = function
     Int -> "int"
@@ -121,6 +120,7 @@ and string_of_typ = function
   | String -> "string"
   | List t -> "list<" ^ string_of_typ t ^ ">"
   | Func (a, r) -> "(" ^ string_of_typ a ^ "->" ^ string_of_typ r ^ ")"
+  | File -> "file"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
