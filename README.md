@@ -22,7 +22,7 @@ To run a single tests, do
 
 ## Future Work
 
-We are working on adding an "import" statement to the parser.
+We think our scanner and parser are complete.
 
 ## Names and Email Addresses of Group Members
 

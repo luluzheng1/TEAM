@@ -84,6 +84,7 @@ stmt_list:
 stmt:
   | vdecl SEMI { $1 } 
   | expr SEMI { Expr $1 }
+  | IMPORT ID SEMI { Import $2 }
   | RETURN expr_opt SEMI { Return $2 }
   | IF internal_if { $2 } 
   | FOR expr IN expr COLON stmt_list END { For($2, $4, Block(List.rev $6)) }
