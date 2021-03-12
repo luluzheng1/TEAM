@@ -69,6 +69,7 @@ typ:
   | CHAR   { Char }
   | STRING { String }
   | VOID   { Void }
+  | FILE   { File }
   | LIST LT typ GT { List $3 }
   | LPAREN typ RPAREN { $2 }
   | typ ARROW typ { Func($1, $3) }

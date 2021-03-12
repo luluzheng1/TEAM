@@ -17,7 +17,7 @@ rule token = parse
   	[' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
 	| ';'      { SEMI }
 	| "/*"     { comment lexbuf }    (* Blocky Comments *)
-	| "//"     { slcomment lexbuf }    (* Single line Comments *)
+	| "//"     { slcomment lexbuf }  (* Single line Comments *)
 	| '('      { LPAREN }
 	| ')'      { RPAREN }
 	| '['      { LSQUARE }
@@ -62,11 +62,11 @@ rule token = parse
 	| "string" { STRING }
 	| "char"   { CHAR }
 	| "void"   { VOID }
+	| "file"   { FILE }
 	| "true"   { BLIT(true) }
 	| "false"  { BLIT(false) }
 	| "list "   { LIST }
 	| "->" { ARROW }
-	| "file"   { FILE }
 	| digits as lxm { LITERAL(int_of_string lxm) }
 	| float as lxm { FLIT(float_of_string lxm) }
 	| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
