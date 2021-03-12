@@ -22,7 +22,7 @@ To run a single tests, do
 
 ## Future Work
 
-We are working on adding a "file" type to the ast and an "import" statement to the parser.
+We are working on adding an "import" statement to the parser.
 
 ## Names and Email Addresses of Group Members
 
