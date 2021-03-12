@@ -14,9 +14,6 @@ for dirName, subdirName, fileNames in os.walk("tests"):
             continue
         test_suite.append(os.path.join(dirName, file))
 
-neg_tests = []
-pos_tests = []
-
 # Color printing purposes
 class bcolors:
     PASS = '\033[92m'
