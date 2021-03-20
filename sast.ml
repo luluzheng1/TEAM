@@ -44,7 +44,8 @@ type program = sfunc_decl list * sstmt list
 
 (* Pretty-printing functions *)
 
-let rec string_of_sexpr = function
+let rec string_of_sexpr (t, e) =
+  "(" ^ string_of_typ t ^ " : " ^ (match e with
     SIntLit(l) -> string_of_int l
   | SFloatLit(l) -> string_of_float l
   | SBoolLit(true) -> "true"
@@ -66,7 +67,7 @@ let rec string_of_sexpr = function
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SEnd -> ""
-  | SNoexpr -> ""
+  | SNoexpr -> "" ) ^ ")"
 
 let rec string_of_sstmt = function
     SBlock(stmts) -> String.concat "" (List.map string_of_sstmt stmts)
@@ -77,9 +78,9 @@ let rec string_of_sstmt = function
   | SFor(e1, e2, s) ->
       "for " ^ string_of_sexpr e1  ^ " in " ^ string_of_sexpr e2 ^ ":\n " ^ string_of_sstmt s ^ "end\n"
   | SWhile(e, s) -> "while " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s ^ "end\n"
-  | SDeclaration(t, id, e) ->  (match e with
+  | SDeclaration(t, id, (tp, e)) ->  (match e with
       SNoexpr -> string_of_typ t ^ " " ^ id ^ "\n"
-    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_sexpr e ^ "\n")
+    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_sexpr (tp, e) ^ "\n")
   | SBreak -> "break\n"
   | SContinue -> "continue\n"
 
