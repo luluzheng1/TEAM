@@ -67,3 +67,29 @@ let rec string_of_sexpr = function
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SEnd -> ""
   | SNoexpr -> ""
+
+let rec string_of_sstmt = function
+    SBlock(stmts) -> String.concat "" (List.map string_of_sstmt stmts)
+  | SExpr(expr) -> string_of_sexpr expr ^ "\n";
+  | SReturn(expr) -> "return " ^ string_of_sexpr expr ^ "\n";
+  | SIf (e, s1, s2, s3) -> "if " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s1 ^ string_of_sstmt s2 ^ "else:\n" ^ string_of_sstmt s3 ^ "end\n"
+  | SElif(e, s) -> "elif " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s
+  | SFor(e1, e2, s) ->
+      "for " ^ string_of_sexpr e1  ^ " in " ^ string_of_sexpr e2 ^ ":\n " ^ string_of_sstmt s ^ "end\n"
+  | SWhile(e, s) -> "while " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s ^ "end\n"
+  | SDeclaration(t, id, e) ->  (match e with
+      SNoexpr -> string_of_typ t ^ " " ^ id ^ "\n"
+    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_sexpr e ^ "\n")
+  | SBreak -> "break\n"
+  | SContinue -> "continue\n"
+
+let string_of_sfdecl fdecl =
+  string_of_typ fdecl.typ ^ " " ^
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
+  ")\n" ^
+  String.concat "" (List.map string_of_sstmt fdecl.body) ^
+  "end\n"
+
+let string_of_sprogram (funcs, stmts) =
+  String.concat "" (List.map string_of_sfdecl funcs) ^ "\n" ^
+  String.concat "" (List.map string_of_sstmt stmts)
