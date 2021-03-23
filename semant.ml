@@ -2,8 +2,10 @@
 
 open Ast
 open Sast
+open Exceptions
 
 module StringMap = Map.Make(String)
+
 
 let check (functions, statements) =
   let rec expr = function
@@ -12,7 +14,17 @@ let check (functions, statements) =
     | BoolLit l -> (Bool, SBoolLit l)
     | CharLit l -> (Char, SCharLit l)
     | StringLit l -> (String, SStringLit l)
-    | _ -> (Void, SNoexpr)
+    | ListLit es -> 
+      let ts = List.map (fun x -> fst (expr x)) es in
+      let list_type x xs = List.fold_left 
+      (fun acc t -> if acc = t then acc else 
+      raise (NonUniformTypeContainer(acc, t)))
+      x xs
+      in
+      (match ts with
+      | [] -> (Unknown, SListLit [])
+      | x::xs -> (list_type x xs, SListLit (List.map expr es)))
+    | _ -> raise (Failure "Not Yet Implemented")
   in
 
   let check_bool_expr e = 
@@ -35,4 +47,4 @@ let check (functions, statements) =
         in SBlock(check_stmt_list sl)
     | _ -> SExpr((Void, SNoexpr))
 
-in ([], List.map check_stmt statements)
+in ([], try List.map check_stmt statements with e -> handle_error e)
