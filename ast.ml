@@ -24,7 +24,7 @@ type expr =
 
 and slce = Index of expr | Slice of expr * expr
 
-type typ = Int | Bool | Float | Void | Char | String | List of typ | Func of typ * typ | File
+type typ = Int | Bool | Float | Void | Char | String | List of typ | Func of typ * typ | File | Unknown (* An empty list has an unknown type *)
 
 type bind = typ * string
 
@@ -121,6 +121,7 @@ and string_of_typ = function
   | List t -> "list<" ^ string_of_typ t ^ ">"
   | Func (a, r) -> "(" ^ string_of_typ a ^ "->" ^ string_of_typ r ^ ")"
   | File -> "file"
+  | Unknown -> "?"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
