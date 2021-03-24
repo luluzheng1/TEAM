@@ -57,6 +57,7 @@ let check (functions, statements) =
         let same = t1 = t2 in
         let ty = match op with
           Add | Sub | Mult | Div | Mod when same && t1 = Int -> Int
+          (* TODO: Does Add operate on strings? *)
         | Add | Sub | Mult | Div when same && t1 = Float     -> Float
         | Add | Sub | Mult | Div when t1 = Int && t2 = Float -> Float
         | Add | Sub | Mult | Div when t1 = Float && t2 = Int -> Float
@@ -81,7 +82,7 @@ let check (functions, statements) =
     | Assign(s, e) as ex -> 
         let lt = type_of_identifier scope s
         and (rt, e') = expr scope e in
-        (check_assign lt rt (IllegalAssignment(lt, rt, ex)), SAssign(s, (rt, e')))
+        (check_assign lt rt (IllegalAssignment(lt, None, rt, ex)), SAssign(s, (rt, e')))
     | ListAssign(s, e1, e2) as ex -> 
         let lt = type_of_identifier scope s
         and (t1, e1') = expr scope e1
@@ -97,6 +98,16 @@ let check (functions, statements) =
         if is_index && inner_ty = t2 then 
         (List(inner_ty), SListAssign(s, (t1, e1'), (t2, e2'))) else 
         raise (MismatchedTypes(inner_ty, t2, ex))
+    | AssignOp(s, op, e) as ex-> 
+        let lt = type_of_identifier scope s
+        and (rt, e') = expr scope e in
+        let same = lt = rt in
+        let ty = match op with
+          Add | Sub | Mult | Div when same && (lt = Int || lt = Float) -> lt
+        | Mod when same && lt = Int -> Int
+        | _ -> raise (IllegalAssignment(lt, Some op, rt, ex))
+        in (ty, SAssignOp(s, op, (rt, e')))
+        
     | _ -> raise (Failure "Not Yet Implemented")
   in
 
