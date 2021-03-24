@@ -64,7 +64,13 @@ let check (functions, statements) =
         | Range when same && t1 = Int -> List Int
         | _ -> raise (InvalidBinaryOperation(t1, op, t2, e))
         in (ty, SBinop((t1, e1'), op, (t2, e2')))
-
+    | Unop(op, e) as ex ->
+        let (t, e') = expr scope e in
+        let ty = match op with
+          Neg when t = Int || t = Float -> t
+        | Not when t = Bool -> Bool
+        | _ -> raise (InvalidUnaryOperation(t, op, ex))
+        in (ty, SUnop(op, (t, e')))
     | _ -> raise (Failure "Not Yet Implemented")
   in
 
