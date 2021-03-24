@@ -44,6 +44,27 @@ let check (functions, statements) =
       | [] -> (Unknown, SListLit [])
       | x::xs -> (ty, SListLit(List.map check_type es)))
     | Id s -> (find_variable scope s, SId s)
+    | Binop(e1, op, e2) as e -> 
+        let (t1, e1') = expr scope e1
+        and (t2, e2') = expr scope e2 in
+        let same = t1 = t2 in
+        let ty = match op with
+          Add | Sub | Mult | Div | Mod when same && t1 = Int -> Int
+        | Add | Sub | Mult | Div when same && t1 = Float     -> Float
+        | Add | Sub | Mult | Div when t1 = Int && t2 = Float -> Float
+        | Add | Sub | Mult | Div when t1 = Float && t2 = Int -> Float
+        | Exp when same && t1 = Int -> Int
+        | Exp when same && t1 = Float -> Float
+        | Exp when t1 = Int && t2 = Float -> Float
+        | Exp when t2 = Float && t2 = Int -> Float
+        | Equal | Neq when same -> Bool
+        | Less | Leq | Greater | Geq 
+            when same && (t1 = Int || t1 = Float) -> Bool 
+        | And | Or when same && t1 = Bool -> Bool
+        | Range when same && t1 = Int -> List Int
+        | _ -> raise (InvalidBinaryOperation(t1, op, t2, e))
+        in (ty, SBinop((t1, e1'), op, (t2, e2')))
+
     | _ -> raise (Failure "Not Yet Implemented")
   in
 
