@@ -10,7 +10,7 @@ let () =
     ("-a", Arg.Unit (set_action Ast), "Print the AST");
     ("-s", Arg.Unit (set_action Sast), "Print the SAST");
   ] in  
-  let usage_msg = "usage: ./microc.native [-a|-s|-l|-c] [file.mc]" in
+  let usage_msg = "usage: ./team.native [-a|-s|-l|-c] [file.mc]" in
   let channel = ref stdin in
   Arg.parse speclist (fun filename -> channel := open_in filename) usage_msg;
   
