@@ -3,9 +3,12 @@ open Ast
 
 exception NonUniformTypeContainer of typ * typ
 exception UndefinedId of string
-exception MismatchedTypes of typ * typ
+exception MismatchedTypes of typ * typ * expr
 exception InvalidBinaryOperation of typ * op * typ * expr
 exception InvalidUnaryOperation of typ * uop * expr
+exception IllegalAssignment of typ * typ * expr
+exception NonListAccess of typ * typ * expr
+exception InvalidIndex of typ * expr
 exception TypeError of string
 
 let handle_error (e:exn) =
@@ -14,13 +17,22 @@ let handle_error (e:exn) =
     let s1 = string_of_typ t1 and s2 = string_of_typ t2 in
     raise (TypeError (Printf.sprintf "Type error: Lists can only contain one type. Expected '%s', but got '%s'" s1 s2))
   | UndefinedId(n) -> raise (TypeError (Printf.sprintf "Error: variable '%s' was used before it was defined" n))
-  | MismatchedTypes(t1, t2) -> 
-    let s1 = string_of_typ t1 and s2 = string_of_typ t2 in
-    raise (TypeError (Printf.sprintf "Type error: Expected value of type '%s', got a value of type '%s' instead" s1 s2))
+  | MismatchedTypes(t1, t2, e) -> 
+    let s1 = string_of_typ t1 and s2 = string_of_typ t2 and s3 = string_of_expr e in
+    raise (TypeError (Printf.sprintf "Type error: Expected value of type '%s', but got a value of type '%s' in '%s'" s1 s2 s3))
   | InvalidBinaryOperation(t1, op, t2, e) -> 
     let s1 = string_of_typ t1 and s2 = string_of_op op and s3 = string_of_typ t2 and s4 = string_of_expr e in
-    raise (TypeError (Printf.sprintf "Type error: Illegal binary operator " ^ s1 ^ " " ^ s2 ^ " " ^ s3 ^ " in " ^ s4))
+    raise (TypeError (Printf.sprintf "Type error: Illegal binary operator '%s' '%s' '%s' in '%s'" s1 s2 s3 s4))
   | InvalidUnaryOperation(t, op, e) ->
     let s1 = string_of_typ t and s2 = string_of_uop op and s3 = string_of_expr e in
-    raise (TypeError (Printf.sprintf "Illegal unary operator " ^ s2 ^ " " ^ s1 ^ " in " ^ s3))
+    raise (TypeError (Printf.sprintf "Error: Illegal unary operator '%s' '%s' in '%s'" s2 s1 s3))
+  | IllegalAssignment(t1, t2, e) ->
+    let s1 = string_of_typ t1 and s2 = string_of_typ t2 and s3 = string_of_expr e in
+    raise (TypeError (Printf.sprintf "Error: Illegal assignment '%s' = '%s' in '%s'" s1 s2 s3))
+  | NonListAccess(t1, t2, e) -> 
+    let s1 = string_of_typ t1 and s2 = string_of_typ t2 and s3 = string_of_expr e in 
+    raise (TypeError (Printf.sprintf "Type Error: Expected a lvalue of type List('%s'), but got lvalue of type '%s' in '%s'" s1 s2 s3))
+  | InvalidIndex(t1, e) ->
+    let s1 = string_of_typ t1 and s2 = string_of_expr e in
+    raise (TypeError (Printf.sprintf "Expected index of type Int, but got type '%s' in '%s'" s1 s2))
   | e -> raise (TypeError (Printexc.to_string e))

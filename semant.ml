@@ -20,13 +20,20 @@ let check (functions, statements) =
   in
   (* Finding a variable, beginning in a given scope 
   and searching upwards *)
-  let rec find_variable (scope : symbol_table ref) name = 
+  let rec type_of_identifier (scope : symbol_table ref) name = 
     try StringMap.find name !scope.variables
     with Not_found -> 
       match !scope.parent with
-        Some(parent) -> find_variable (ref parent) name
+        Some(parent) -> type_of_identifier (ref parent) name
       | _ -> raise (UndefinedId(name))
   in
+  
+  (* Raise an exception if the given rvalue type cannot be assigned to
+       the given lvalue type *)
+  let check_assign lvaluet rvaluet err =
+    if lvaluet = rvaluet then lvaluet else raise err
+  in
+
   let rec expr scope exp = match exp with
       IntLit l -> (Int, SIntLit l)
     | FloatLit l -> (Float, SFloatLit l)
@@ -43,7 +50,7 @@ let check (functions, statements) =
       (match ts with
       | [] -> (Unknown, SListLit [])
       | x::xs -> (ty, SListLit(List.map check_type es)))
-    | Id s -> (find_variable scope s, SId s)
+    | Id s -> (type_of_identifier scope s, SId s)
     | Binop(e1, op, e2) as e -> 
         let (t1, e1') = expr scope e1
         and (t2, e2') = expr scope e2 in
@@ -61,7 +68,7 @@ let check (functions, statements) =
         | Less | Leq | Greater | Geq 
             when same && (t1 = Int || t1 = Float) -> Bool 
         | And | Or when same && t1 = Bool -> Bool
-        | Range when same && t1 = Int -> List Int
+        | Range when same && t1 = Int -> List(Int)
         | _ -> raise (InvalidBinaryOperation(t1, op, t2, e))
         in (ty, SBinop((t1, e1'), op, (t2, e2')))
     | Unop(op, e) as ex ->
@@ -71,12 +78,31 @@ let check (functions, statements) =
         | Not when t = Bool -> Bool
         | _ -> raise (InvalidUnaryOperation(t, op, ex))
         in (ty, SUnop(op, (t, e')))
+    | Assign(s, e) as ex -> 
+        let lt = type_of_identifier scope s
+        and (rt, e') = expr scope e in
+        (check_assign lt rt (IllegalAssignment(lt, rt, ex)), SAssign(s, (rt, e')))
+    | ListAssign(s, e1, e2) as ex -> 
+        let lt = type_of_identifier scope s
+        and (t1, e1') = expr scope e1
+        and (t2, e2') = expr scope e2 in
+        let inner_ty = match lt with 
+          List(ty) -> ty
+        | other -> raise (NonListAccess(t1, other, ex))
+        in
+        let is_index = match t1 with
+          Int -> true
+        | other -> raise (InvalidIndex(other, ex))
+        in
+        if is_index && inner_ty = t2 then 
+        (List(inner_ty), SListAssign(s, (t1, e1'), (t2, e2'))) else 
+        raise (MismatchedTypes(inner_ty, t2, ex))
     | _ -> raise (Failure "Not Yet Implemented")
   in
 
   let check_bool_expr scope e = 
     let (t', e') = expr scope e
-    in if t' != Bool then raise (MismatchedTypes(t', Bool)) else (t', e') 
+    in if t' != Bool then raise (MismatchedTypes(t', Bool, e)) else (t', e') 
   in
 
   let rec check_stmt scope stmt = match stmt with
