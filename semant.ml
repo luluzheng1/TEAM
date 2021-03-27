@@ -20,7 +20,7 @@ let check (functions, statements) =
   in
   (* Finding a variable, beginning in a given scope 
   and searching upwards *)
-  let rec type_of_identifier (scope : symbol_table ref) name = 
+  let rec type_of_identifier (scope: symbol_table ref) name = 
     try StringMap.find name !scope.variables
     with Not_found -> 
       match !scope.parent with
@@ -105,6 +105,20 @@ let check (functions, statements) =
     in if t' != Bool then raise (MismatchedTypes(t', Bool, e)) else (t', e') 
   in
 
+  (* check duplicate var declaration *)
+  let check_var_duplicate scope name = 
+    match name with 
+      _ when StringMap.mem name !scope.variables -> raise (Duplicate(name))
+    | _ -> name
+  in
+
+  (* check void type variable *)
+  let check_void_type ty name = 
+    match ty with 
+      Void -> raise (VoidType(name))
+    | _ -> ty
+  in
+
   let rec check_stmt scope stmt = match stmt with
       Expr e -> SExpr (expr scope e)
     | If(p, b1, b2, b3) -> SIf(check_bool_expr scope p, check_stmt scope b1, check_stmt scope b2, check_stmt scope b3)
@@ -117,6 +131,7 @@ let check (functions, statements) =
           | s :: ss         -> check_stmt scope s :: check_stmt_list ss
           | []              -> []
         in SBlock(check_stmt_list sl)
+    | Declaration(ty, s, e) -> raise (Failure "Not Yet Implemented")
     | _ -> SExpr((Void, SNoexpr))
   in 
 

@@ -35,4 +35,6 @@ let handle_error (e:exn) =
   | InvalidIndex(t1, e) ->
     let s1 = string_of_typ t1 and s2 = string_of_expr e in
     raise (TypeError (Printf.sprintf "Expected index of type Int, but got type '%s' in '%s'" s1 s2))
+  | VoidType(n) -> raise (TypeError (Printf.sprintf "Error: variable '%s' cannot have type Void" n))
+  | Duplicate(n) -> raise (TypeError (Printf.sprintf "Error: variable name '%s' has already used" n))
   | e -> raise (TypeError (Printexc.to_string e))
