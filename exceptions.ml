@@ -10,7 +10,8 @@ exception IllegalAssignment of typ * op option * typ * expr
 exception NonListAccess of typ * typ * expr
 exception InvalidIndex of typ * expr
 exception TypeError of string
-
+exception CannotRedefineBuiltIn of string
+exception AlreadyDefined of string
 let handle_error (e:exn) =
   match e with
   | NonUniformTypeContainer(t1, t2) -> 
@@ -39,4 +40,8 @@ let handle_error (e:exn) =
   | InvalidIndex(t1, e) ->
     let s1 = string_of_typ t1 and s2 = string_of_expr e in
     raise (TypeError (Printf.sprintf "Expected index of type Int, but got type '%s' in '%s'" s1 s2))
+  | CannotRedefineBuiltIn(s) ->
+    raise (TypeError (Printf.sprintf "Error: Function '%s' may not be defined as it exists as a built in function" s))
+  | AlreadyDefined(s) -> 
+    raise (TypeError (Printf.sprintf "Error: '%s' cannot be redefined in the current scope" s))
   | e -> raise (TypeError (Printexc.to_string e))

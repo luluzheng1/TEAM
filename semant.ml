@@ -8,6 +8,16 @@ module StringMap = Map.Make(String)
 
 
 let check (functions, statements) =
+  (* TODO: Need to work on built_in_decls *)
+  let built_in_decls = StringMap.empty in
+  let add_func map fd = 
+    let n = fd.fname in
+    match fd with 
+      _ when StringMap.mem n built_in_decls -> 
+        raise (CannotRedefineBuiltIn(fd.fname))
+    | _ when StringMap.mem n map -> raise (AlreadyDefined(fd.fname))
+    | _ -> StringMap.add n fd map
+  in
   let variable_table = {
     variables = StringMap.empty;
     parent = None;
@@ -82,7 +92,8 @@ let check (functions, statements) =
     | Assign(s, e) as ex -> 
         let lt = type_of_identifier scope s
         and (rt, e') = expr scope e in
-        (check_assign lt rt (IllegalAssignment(lt, None, rt, ex)), SAssign(s, (rt, e')))
+        (check_assign lt rt (IllegalAssignment(lt, None, rt, ex)), 
+        SAssign(s, (rt, e')))
     | ListAssign(s, e1, e2) as ex -> 
         let lt = type_of_identifier scope s
         and (t1, e1') = expr scope e1
@@ -107,6 +118,8 @@ let check (functions, statements) =
         | Mod when same && lt = Int -> Int
         | _ -> raise (IllegalAssignment(lt, Some op, rt, ex))
         in (ty, SAssignOp(s, op, (rt, e')))
+    | Call(fname, args) ->
+        let fd = 
         
     | _ -> raise (Failure "Not Yet Implemented")
   in
