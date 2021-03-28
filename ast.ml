@@ -125,8 +125,8 @@ and string_of_typ = function
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
-  ")\n" ^
-  String.concat "" (List.map string_of_stmt fdecl.body) ^
+  "):\n" ^
+  String.concat "" (List.map (fun stmt_as_string -> "\t" ^ stmt_as_string) (List.map string_of_stmt fdecl.body)) ^
   "end\n"
 
 let string_of_program (funcs, stmts) =

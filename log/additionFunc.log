@@ -1,10 +1,10 @@
-int subtract(x, y)
-int z = x - y
-return z
+int subtract(x, y):
+	int z = x - y
+	return z
 end
-int add(x, y)
-int z = x + y
-return z
+int add(x, y):
+	int z = x + y
+	return z
 end
 
 int c = a + b

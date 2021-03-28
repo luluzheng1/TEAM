@@ -33,7 +33,7 @@ def runFile(fileName, verbose):
             os.makedirs('log')
         with open('log/{}.log'.format(fileName.split('/')[-1].split('.')[0]), 'w+') as fo:
             toWrite = stdout if stdout else stderr
-            fo.write(toWrite)
+            fo.write(toWrite.decode('utf-8'))
                 
 
 def interpretCommand(command):
@@ -44,7 +44,7 @@ def compile(topLevel):
                                stdout=subprocess.PIPE, 
                                stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    if 'failed' in stdout:
+    if 'failed' in stdout.decode('utf-8'):
         print("Error detected when compiling {}. See message below.".format(topLevel))
         print(stdout.decode('utf-8'))
         sys.exit()

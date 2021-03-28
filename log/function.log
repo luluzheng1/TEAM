@@ -1,8 +1,8 @@
-int add(x, y)
-print(x)
-int z = x + y
-print(z)
-return z
+int add(x, y):
+	print(x)
+	int z = x + y
+	print(z)
+	return z
 end
 
 test("hello", [1,2,4], 1.5)
