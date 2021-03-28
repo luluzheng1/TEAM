@@ -78,9 +78,6 @@ if __name__ == "__main__":
     testFile = options.testFile
     topLevel = options.topLevel
 
-    while topLevel == '':
-        topLevel = input("Please enter the name of your top level ending in .native")
-
     if recompile or topLevel not in os.listdir('/'):
         compile(topLevel)
     
