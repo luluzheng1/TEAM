@@ -1,0 +1,5 @@
+
+for i in 0..2:
+ dorms [ i ] = "Halligan"
+end
+list<string> dorms = ["Carm","Sogo","Carpenter"]

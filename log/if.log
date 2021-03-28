@@ -1,0 +1,22 @@
+
+if x == 5:
+print(x)
+else:
+print("not five")
+end
+if x == 5:
+print(x)
+if x == 4:
+print(x)
+else:
+end
+elif x == 6:
+print(x)
+else:
+print("not five")
+end
+if x == 5:
+print(x)
+else:
+print("not five")
+end
