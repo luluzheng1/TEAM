@@ -1,5 +1,5 @@
 
-int f = not true
-int t = true
-int b = 2 ^ 1000
-int x = 5
+int f = not true;
+int t = true;
+int b = 2 ^ 1000;
+int x = 5;

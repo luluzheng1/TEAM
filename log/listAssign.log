@@ -1,5 +1,5 @@
 
 for i in 0..2:
- dorms [ i ] = "Halligan"
+	dorms [ i ] = "Halligan";
 end
-list<string> dorms = ["Carm","Sogo","Carpenter"]
+list<string> dorms = ["Carm","Sogo","Carpenter"];

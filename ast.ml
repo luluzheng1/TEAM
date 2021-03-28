@@ -96,20 +96,29 @@ let rec string_of_expr = function
   | End -> ""
   | Noexpr -> ""
 
+let indent_stmts (stmts_as_string : string) : string = 
+  let rec get_all_but_last (stmts_as_list : string list) : string list = 
+    match stmts_as_list with
+    | [] -> []
+    | a :: [] -> []
+    | a :: rest -> a :: get_all_but_last rest 
+  in
+  let indent_stmt (stmts_as_list : string list) : string list = List.map (fun stmt_as_string -> "\t" ^ stmt_as_string) stmts_as_list in 
+    String.concat "\n" (indent_stmt (get_all_but_last (String.split_on_char '\n' stmts_as_string))) ^ "\n"
 let rec string_of_stmt = function
     Block(stmts) -> String.concat "" (List.map string_of_stmt stmts)
-  | Expr(expr) -> string_of_expr expr ^ "\n";
-  | Return(expr) -> "return " ^ string_of_expr expr ^ "\n";
+  | Expr(expr) -> string_of_expr expr ^ ";\n";
+  | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
   | If (e, s1, s2, s3) -> "if " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s1 ^ string_of_stmt s2 ^ "else:\n" ^ string_of_stmt s3 ^ "end\n"
   | Elif(e, s) -> "elif " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s   
   | For(e1, e2, s) ->
-      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ ":\n " ^ string_of_stmt s ^ "end\n"
-  | While(e, s) -> "while " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s ^ "end\n"
+      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ ":\n" ^ (indent_stmts (string_of_stmt s)) ^ "end\n"
+  | While(e, s) -> "while " ^ string_of_expr e ^ ":\n" ^ (indent_stmts (string_of_stmt s)) ^ "end\n"
   | Declaration(t, id, e) ->  (match e with
-      Noexpr -> string_of_typ t ^ " " ^ id ^ "\n"
-    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n")
-  | Break -> "break\n"
-  | Continue -> "continue\n"
+      Noexpr -> string_of_typ t ^ " " ^ id ^ ";\n"
+    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ ";\n")
+  | Break -> "break;\n"
+  | Continue -> "continue;\n"
 
 and string_of_typ = function
     Int -> "int"
