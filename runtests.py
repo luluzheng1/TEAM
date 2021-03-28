@@ -44,7 +44,7 @@ def compile(topLevel):
                                stdout=subprocess.PIPE, 
                                stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    if 'failed' in stdout.decode('utf-8'):
+    if 'failed' in stdout.decode('utf-8') or "Error" in stdout.decode('utf-8'):
         print("Error detected when compiling {}. See message below.".format(topLevel))
         print(stdout.decode('utf-8'))
         sys.exit()
@@ -56,6 +56,18 @@ def clean(target):
         process = subprocess.Popen(['ocamlbuild', '-clean'], 
                                 stdout=subprocess.PIPE, 
                                 stderr=subprocess.PIPE)
+
+def moveLog():
+    if not os.path.exists("log/valid"):
+        os.makedirs("log/valid")
+    if not os.path.exists("log/invalid"):
+        os.makedirs("log/invalid")
+    for file in [f for f in os.listdir("log") if "log" in f]:
+        if "bad" not in file:
+            os.replace("log/{}".format(file), "log/valid/{}".format(file))
+        else:
+            os.replace("log/{}".format(file), "log/invalid/{}".format(file))
+
 
 if __name__ == "__main__":
     parser = optparse.OptionParser()
@@ -92,7 +104,9 @@ if __name__ == "__main__":
         print("\t2. AST are printed to log/fileName.log")
         print("\n!!!Error Found So Far!!!")
         print("\t1. The order of evaluation is reversed.")
+        moveLog()
         if not verbose and os.path.exists('log'):
             clean('log')
+        
 
     clean('ocaml')
