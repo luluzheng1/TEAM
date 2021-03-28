@@ -96,24 +96,28 @@ let rec string_of_expr = function
   | End -> ""
   | Noexpr -> ""
 
-let indent_stmts (stmts_as_string : string) : string = 
-  let rec get_all_but_last (stmts_as_list : string list) : string list = 
-    match stmts_as_list with
-    | [] -> []
-    | a :: [] -> []
-    | a :: rest -> a :: get_all_but_last rest 
+let indent stmts_as_string = 
+  let rec take k xs = match k with
+    | 0 -> []
+    | k -> match xs with
+           | [] -> failwith "take"
+           | y::ys -> y :: (take (k - 1) ys)
   in
-  let indent_stmt (stmts_as_list : string list) : string list = List.map (fun stmt_as_string -> "\t" ^ stmt_as_string) stmts_as_list in 
-    String.concat "\n" (indent_stmt (get_all_but_last (String.split_on_char '\n' stmts_as_string))) ^ "\n"
+  let l = String.split_on_char '\n' stmts_as_string in 
+  let indent_stmt stmts_as_list = List.map (fun stmt_as_string -> "\t" ^ stmt_as_string) stmts_as_list in
+    String.concat "\n" (indent_stmt (take (List.length l -1) l)) ^ "\n"
+
 let rec string_of_stmt = function
     Block(stmts) -> String.concat "" (List.map string_of_stmt stmts)
   | Expr(expr) -> string_of_expr expr ^ ";\n";
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
-  | If (e, s1, s2, s3) -> "if " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s1 ^ string_of_stmt s2 ^ "else:\n" ^ string_of_stmt s3 ^ "end\n"
-  | Elif(e, s) -> "elif " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s   
+  | If (e, s1, s2, s3) -> (match s3 with 
+    Block([]) -> "if " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s1) ^ string_of_stmt s2 ^ "end\n"
+    | _ -> "if " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s1) ^ string_of_stmt s2 ^ "else:\n" ^ indent (string_of_stmt s3) ^ "end\n")
+  | Elif(e, s) -> "elif " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s)   
   | For(e1, e2, s) ->
-      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ ":\n" ^ (indent_stmts (string_of_stmt s)) ^ "end\n"
-  | While(e, s) -> "while " ^ string_of_expr e ^ ":\n" ^ (indent_stmts (string_of_stmt s)) ^ "end\n"
+      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ ":\n" ^ indent (string_of_stmt s) ^ "end\n"
+  | While(e, s) -> "while " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s) ^ "end\n"
   | Declaration(t, id, e) ->  (match e with
       Noexpr -> string_of_typ t ^ " " ^ id ^ ";\n"
     | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ ";\n")
@@ -139,5 +143,5 @@ let string_of_fdecl fdecl =
   "end\n"
 
 let string_of_program (funcs, stmts) =
-  String.concat "" (List.map string_of_fdecl funcs) ^ "\n" ^
+  String.concat "\n" (List.map string_of_fdecl funcs)  ^
   String.concat "" (List.map string_of_stmt stmts)
