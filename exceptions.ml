@@ -44,4 +44,6 @@ let handle_error (e:exn) =
     raise (TypeError (Printf.sprintf "Error: Function '%s' may not be defined as it exists as a built in function" s))
   | AlreadyDefined(s) -> 
     raise (TypeError (Printf.sprintf "Error: '%s' cannot be redefined in the current scope" s))
+  | VoidType(n) -> raise (TypeError (Printf.sprintf "Error: variable '%s' cannot have type Void" n))
+  | Duplicate(n) -> raise (TypeError (Printf.sprintf "Error: variable name '%s' has already used" n))
   | e -> raise (TypeError (Printexc.to_string e))
