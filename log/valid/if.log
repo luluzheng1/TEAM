@@ -1,22 +1,20 @@
-
 if x == 5:
-print(x);
+	print(x);
 else:
-print("not five");
+	print("not five");
 end
 if x == 5:
-print(x);
-if x == 4:
-print(x);
-else:
-end
+	print(x);
+	if x == 4:
+		print(x);
+	end
 elif x == 6:
-print(x);
+	print(x);
 else:
-print("not five");
+	print("not five");
 end
 if x == 5:
-print(x);
+	print(x);
 else:
-print("not five");
+	print("not five");
 end
