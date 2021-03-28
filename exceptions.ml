@@ -22,6 +22,10 @@ exception CannotRedefineBuiltIn of string
 
 exception AlreadyDefined of string
 
+exception VoidType of string
+
+exception Duplicate of string
+
 let handle_error (e : exn) =
   match e with
   | NonUniformTypeContainer (t1, t2) ->
