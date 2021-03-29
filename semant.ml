@@ -76,7 +76,7 @@ let check (functions, statements) =
           | Exp when same && t1 = Int -> Int
           | Exp when same && t1 = Float -> Float
           | Exp when t1 = Int && t2 = Float -> Float
-          | Exp when t2 = Float && t2 = Int -> Float
+          | Exp when t1 = Float && t2 = Int -> Float
           | (Equal | Neq) when same -> Bool
           | (Less | Leq | Greater | Geq) when same && (t1 = Int || t1 = Float)
             ->
