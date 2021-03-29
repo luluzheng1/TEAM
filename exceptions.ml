@@ -26,6 +26,12 @@ exception VoidType of string
 
 exception Duplicate of string
 
+exception UndefinedFunction of string
+
+exception WrongNumberOfArgs of int * int * expr
+
+exception IllegalArgument of typ * typ * expr
+
 let handle_error (e : exn) =
   match e with
   | NonUniformTypeContainer (t1, t2) ->
@@ -116,4 +122,28 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf "Error: variable name '%s' has already used" n) )
+  | UndefinedFunction n ->
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Error: function '%s' was called, but it is undefined" n ) )
+  | WrongNumberOfArgs (exp, act, e) ->
+      let s1 = string_of_int exp
+      and s2 = string_of_int act
+      and s3 = string_of_expr e in
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Error: expected '%s' arguments but got '%s' in '%s'" s1 s2 s3 )
+        )
+  | IllegalArgument (t1, t2, e) ->
+      let s1 = string_of_typ t1
+      and s2 = string_of_typ t2
+      and s3 = string_of_expr e in
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Error: Illegal argument found in '%s'. Expected argument of \
+               type '%s' but got '%s'"
+              s3 s1 s2 ) )
   | e -> raise (TypeError (Printexc.to_string e))

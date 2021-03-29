@@ -16,6 +16,12 @@ let check (functions, statements) =
     | _ when StringMap.mem n map -> raise (AlreadyDefined fd.fname)
     | _ -> StringMap.add n fd map
   in
+  (* TODO: need to work on function_decls *)
+  let function_decls = StringMap.empty in
+  let find_func s =
+    try StringMap.find s function_decls
+    with Not_found -> raise (UndefinedFunction s)
+  in
   let variable_table = {variables= StringMap.empty; parent= None} in
   (* Create a reference to the global table. The scope will be passed through
      recurisve calls and be mutated when we need to add a new variable *)
@@ -116,7 +122,18 @@ let check (functions, statements) =
           | _ -> raise (IllegalAssignment (lt, Some op, rt, ex))
         in
         (ty, SAssignOp (s, op, (rt, e')))
-    | Call(fname, args) ->
+    | Call (fname, args) as call ->
+        let fd = find_func fname in
+        let param_length = List.length fd.formals in
+        if List.length args != param_length then
+          raise (WrongNumberOfArgs (param_length, List.length args, call))
+        else
+          let check_call (ft, _) e =
+            let et, e' = expr scope e in
+            (check_assign ft et (IllegalArgument (et, ft, e)), e')
+          in
+          let args' = List.map2 check_call fd.formals args in
+          (fd.typ, SCall (fname, args'))
     | _ -> raise (Failure "Not Yet Implemented")
   in
   let check_bool_expr scope e =
