@@ -134,6 +134,35 @@ let check (functions, statements) =
           in
           let args' = List.map2 check_call fd.formals args in
           (fd.typ, SCall (fname, args'))
+    | SliceExpr (id, slce) as slice ->
+        let lt = type_of_identifier scope id in
+        let check_slice_expr =
+          match slce with
+          | Index e ->
+              let t, e' = expr scope e in
+              let id_type =
+                match lt with
+                | List ty -> ty
+                | String -> Char
+                | _ -> raise (IllegalSlice (slice, lt))
+              in
+              if t = Int then (id_type, SSliceExpr (id, SIndex (t, e')))
+              else raise (WrongIndex (t, e))
+          | Slice (e1, e2) ->
+              let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
+              let id_type =
+                match lt with
+                | List _ -> lt
+                | String -> lt
+                | _ -> raise (IllegalSlice (slice, lt))
+              in
+              if t1 = Int && t1 = t2 then
+                (id_type, SSliceExpr (id, SSlice ((t1, e1'), (t2, e2'))))
+              else raise (WrongSliceIndex (t1, t2, e1, e2))
+        in
+        check_slice_expr
+    | End -> (Int, SEnd)
+    | Noexpr -> (Void, SNoexpr)
     | _ -> raise (Failure "Not Yet Implemented")
   in
   let check_bool_expr scope e =

@@ -32,6 +32,12 @@ exception WrongNumberOfArgs of int * int * expr
 
 exception IllegalArgument of typ * typ * expr
 
+exception IllegalSlice of expr * typ
+
+exception WrongIndex of typ * expr
+
+exception WrongSliceIndex of typ * typ * expr * expr
+
 let handle_error (e : exn) =
   match e with
   | NonUniformTypeContainer (t1, t2) ->
@@ -143,7 +149,33 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Error: Illegal argument found in '%s'. Expected argument of \
-               type '%s' but got '%s'"
+              "Type Error: Illegal argument found in '%s'. Expected \
+               argument of type '%s' but got '%s'"
               s3 s1 s2 ) )
+  | IllegalSlice (e, t) ->
+      let s1 = string_of_expr e and s2 = string_of_typ t in
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Type Error: Illegal Slice expression, expected '%s' to be \
+               either a list or array, but got a '%s'"
+              s1 s2 ) )
+  | WrongIndex (t, e) ->
+      let s1 = string_of_typ t and s2 = string_of_expr e in
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Type Error: Expected index to be an int, but got '%s' in '%s'"
+              s1 s2 ) )
+  | WrongSliceIndex (t1, t2, e1, e2) ->
+      let s1 = string_of_typ t1
+      and s2 = string_of_typ t2
+      and s3 = string_of_expr e1
+      and s4 = string_of_expr e2 in
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Expected left and right values of slice expression to be of \
+               type int, but got type '%s' and '%s' in '%s' and '%s'"
+              s1 s2 s3 s4 ) )
   | e -> raise (TypeError (Printexc.to_string e))
