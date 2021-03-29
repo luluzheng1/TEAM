@@ -1,3 +1,5 @@
+(* Semantically-checked Abstract Syntax Tree and functions for printing it *)
+
 open Ast
 module StringMap = Map.Make (String)
 
