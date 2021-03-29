@@ -1,9 +1,9 @@
-int add(x, y):
+int add(int x, int y):
 	int z = x + y;
 	return z;
 end
 
-int subtract(x, y):
+int subtract(int x, int y):
 	int z = x - y;
 	return z;
 end

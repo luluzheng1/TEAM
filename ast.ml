@@ -135,9 +135,12 @@ and string_of_typ = function
   | Func (a, r) -> "(" ^ string_of_typ a ^ "->" ^ string_of_typ r ^ ")"
   | File -> "file"
 
+let string_of_formals (formals : bind list) : string = 
+  String.concat ", " (List.map (fun (formal : bind) -> (string_of_typ (fst formal)) ^ " " ^ (snd formal)) formals)
+  
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
+  fdecl.fname ^ "(" ^ string_of_formals fdecl.formals ^
   "):\n" ^
   indent (String.concat "" (List.map string_of_stmt fdecl.body)) ^
   "end\n"
