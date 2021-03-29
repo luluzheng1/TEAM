@@ -103,7 +103,7 @@ if __name__ == "__main__":
         print("\t1. checkResults is not implemented yet")
         print("\t2. AST are printed to log/fileName.log")
         print("\n!!!Error Found So Far!!!")
-        print("\t1. The order of evaluation is reversed.")
+        print("\t None :D")
         moveLog()
         if not verbose and os.path.exists('log'):
             clean('log')

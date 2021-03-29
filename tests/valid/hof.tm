@@ -1,8 +1,8 @@
-int addOne(int x)
+int addOne(int x):
     return x + 1;
 end
 
-list <int> map (int->int function, list <int> arr)
+list <int> map (int->int function, list <int> arr):
     for i in 0..length(arr):
         arr[i] = function(arr[i]);
     end

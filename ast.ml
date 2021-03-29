@@ -89,7 +89,7 @@ let rec string_of_expr = function
     | _ -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2)
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  | ListAssign(s, e1, e2) -> s ^ " [ " ^ string_of_expr e1 ^ " ] = " ^ string_of_expr e2
+  | ListAssign(s, e1, e2) -> s ^ "[" ^ string_of_expr e1 ^ "] = " ^ string_of_expr e2
   | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
@@ -139,7 +139,7 @@ let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
   "):\n" ^
-  String.concat "" (List.map (fun stmt_as_string -> "\t" ^ stmt_as_string) (List.map string_of_stmt fdecl.body)) ^
+  indent (String.concat "" (List.map string_of_stmt fdecl.body)) ^
   "end\n"
 
 let string_of_program (funcs, stmts) =

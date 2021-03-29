@@ -4,8 +4,8 @@ end
 
 list<int> map(function, arr):
 	for i in 0..length(arr):
-	arr [ i ] = function(arr[i]);
-end
+		arr[i] = function(arr[i]);
+	end
 	return arr;
 end
 list<int> arr = [1,2,3,4];
