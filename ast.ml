@@ -89,27 +89,40 @@ let rec string_of_expr = function
     | _ -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2)
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  | ListAssign(s, e1, e2) -> s ^ " [ " ^ string_of_expr e1 ^ " ] = " ^ string_of_expr e2
+  | ListAssign(s, e1, e2) -> s ^ "[" ^ string_of_expr e1 ^ "] = " ^ string_of_expr e2
   | AssignOp(s, o, e) -> s ^ " " ^ string_of_op o ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | End -> ""
   | Noexpr -> ""
 
+let indent stmts_as_string = 
+  let rec take k xs = match k with
+    | 0 -> []
+    | k -> match xs with
+           | [] -> failwith "take"
+           | y::ys -> y :: (take (k - 1) ys)
+  in
+  let l = String.split_on_char '\n' stmts_as_string in 
+  let indent_stmt stmts_as_list = List.map (fun stmt_as_string -> "\t" ^ stmt_as_string) stmts_as_list in
+    String.concat "\n" (indent_stmt (take (List.length l -1) l)) ^ "\n"
+
 let rec string_of_stmt = function
     Block(stmts) -> String.concat "" (List.map string_of_stmt stmts)
-  | Expr(expr) -> string_of_expr expr ^ "\n";
-  | Return(expr) -> "return " ^ string_of_expr expr ^ "\n";
-  | If (e, s1, s2, s3) -> "if " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s1 ^ string_of_stmt s2 ^ "else:\n" ^ string_of_stmt s3 ^ "end\n"
-  | Elif(e, s) -> "elif " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s   
+  | Expr(expr) -> string_of_expr expr ^ ";\n";
+  | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
+  | If (e, s1, s2, s3) -> (match s3 with 
+    Block([]) -> "if " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s1) ^ string_of_stmt s2 ^ "end\n"
+    | _ -> "if " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s1) ^ string_of_stmt s2 ^ "else:\n" ^ indent (string_of_stmt s3) ^ "end\n")
+  | Elif(e, s) -> "elif " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s)   
   | For(e1, e2, s) ->
-      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ ":\n " ^ string_of_stmt s ^ "end\n"
-  | While(e, s) -> "while " ^ string_of_expr e ^ ":\n" ^ string_of_stmt s ^ "end\n"
+      "for " ^ string_of_expr e1  ^ " in " ^ string_of_expr e2 ^ ":\n" ^ indent (string_of_stmt s) ^ "end\n"
+  | While(e, s) -> "while " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s) ^ "end\n"
   | Declaration(t, id, e) ->  (match e with
-      Noexpr -> string_of_typ t ^ " " ^ id ^ "\n"
-    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ "\n")
-  | Break -> "break\n"
-  | Continue -> "continue\n"
+      Noexpr -> string_of_typ t ^ " " ^ id ^ ";\n"
+    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr e ^ ";\n")
+  | Break -> "break;\n"
+  | Continue -> "continue;\n"
 
 and string_of_typ = function
     Int -> "int"
@@ -122,13 +135,16 @@ and string_of_typ = function
   | Func (a, r) -> "(" ^ string_of_typ a ^ "->" ^ string_of_typ r ^ ")"
   | File -> "file"
 
+let string_of_formals (formals : bind list) : string = 
+  String.concat ", " (List.map (fun (formal : bind) -> (string_of_typ (fst formal)) ^ " " ^ (snd formal)) formals)
+  
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
-  ")\n" ^
-  String.concat "" (List.map string_of_stmt fdecl.body) ^
+  fdecl.fname ^ "(" ^ string_of_formals fdecl.formals ^
+  "):\n" ^
+  indent (String.concat "" (List.map string_of_stmt fdecl.body)) ^
   "end\n"
 
 let string_of_program (funcs, stmts) =
-  String.concat "" (List.map string_of_fdecl funcs) ^ "\n" ^
+  String.concat "\n" (List.map string_of_fdecl funcs)  ^
   String.concat "" (List.map string_of_stmt stmts)

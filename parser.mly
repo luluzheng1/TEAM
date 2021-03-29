@@ -37,7 +37,7 @@ open Ast
 %%
 
 program:
-  decls EOF { $1 }
+  decls EOF { (List.rev (fst $1), List.rev (snd $1)) }
 
 decls:
   /* nothing */ { ([], []) }
@@ -45,13 +45,12 @@ decls:
   | decls stmt  { (fst $1, ($2 :: snd $1)) }
 
 fdecl:
-  typ ID LPAREN formals_opt RPAREN stmt_list END
+  typ ID LPAREN formals_opt RPAREN COLON stmt_list END
   { {
     typ = $1;
     fname = $2;
     formals = $4;
-    body = List.rev $6;
-    
+    body = List.rev $7;
   } }
 
 formals_opt:
