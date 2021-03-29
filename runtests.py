@@ -2,42 +2,111 @@
 import sys
 import os
 import subprocess
+import optparse
+
 
 VALID_FILE_DIR = 'tests/valid'
 INVALID_FILE_DIR = 'tests/invalid'
-failedFlag = True
 
-test_suite = []
-for dirName, subdirName, fileNames in os.walk("tests"):
-    for file in fileNames:
-        if "tm" not in file:
-            continue
-        test_suite.append(os.path.join(dirName, file))
 
-# Color printing purposes
-class bcolors:
-    PASS = '\033[92m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
+def runValidTests():
+    print("\nRunning Valid Tests...\n")
+    for file in map(lambda x: "/".join((VALID_FILE_DIR, x)), filter(lambda x: "tm" in x, os.listdir(VALID_FILE_DIR))):
+        runFile(file, True)
 
-# Source: https://code-maven.com/python-capture-stdout-stderr-exit
-def run(command):
-    proc = subprocess.Popen(command,
-        stdout = subprocess.PIPE,
-        stderr = subprocess.PIPE,
-    )
-    stdout, stderr = proc.communicate()
-    return proc.returncode, stdout, stderr
+def runInValidTests():
+    print("\nRunning Invalid Tests...\n")
+    for file in map(lambda x: "/".join((INVALID_FILE_DIR, x)), filter(lambda x: "tm" in x, os.listdir(INVALID_FILE_DIR))):
+        runFile(file, True)
 
-for test_file in test_suite:
-        code, out, err = run(['./team.native', '{}'.format(test_file)])
-        filename = test_file.split("/")[-1]
-        if code == 0:
-            print(bcolors.PASS + "{:25}==> Passed!".format(filename) + bcolors.ENDC)
+def checkResults():
+    pass
+
+def runFile(fileName, verbose):
+    process = subprocess.Popen(['./team.native', fileName], 
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    
+    if verbose:
+        if not os.path.exists('log'):
+            os.makedirs('log')
+        with open('log/{}.log'.format(fileName.split('/')[-1].split('.')[0]), 'w+') as fo:
+            toWrite = stdout if stdout else stderr
+            fo.write(toWrite.decode('utf-8'))
+                
+
+def interpretCommand(command):
+    return True if command[0].upper() == "T" else False
+
+def compile(topLevel):
+    process = subprocess.Popen(['ocamlbuild', topLevel], 
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    if 'failed' in stdout.decode('utf-8') or "Error" in stdout.decode('utf-8'):
+        print("Error detected when compiling {}. See message below.".format(topLevel))
+        print(stdout.decode('utf-8'))
+        sys.exit()
+
+def clean(target):
+    if target == "log":
+        os.system("rm -r log")
+    elif target == "ocaml":
+        process = subprocess.Popen(['ocamlbuild', '-clean'], 
+                                stdout=subprocess.PIPE, 
+                                stderr=subprocess.PIPE)
+
+def moveLog():
+    if not os.path.exists("log/valid"):
+        os.makedirs("log/valid")
+    if not os.path.exists("log/invalid"):
+        os.makedirs("log/invalid")
+    for file in [f for f in os.listdir("log") if "log" in f]:
+        if "bad" not in file:
+            os.replace("log/{}".format(file), "log/valid/{}".format(file))
         else:
-            print(bcolors.FAIL + "{:25}==> {}".format(filename, err.decode('utf-8').rstrip()) + bcolors.ENDC)
-            failedFlag = False
+            os.replace("log/{}".format(file), "log/invalid/{}".format(file))
 
-if failedFlag:
-    print(bcolors.PASS + "All tests passed" + bcolors.ENDC)
+
+if __name__ == "__main__":
+    parser = optparse.OptionParser()
+    parser.add_option('-v', '--verbose', 
+                      dest='verbose', default='True', 
+                      help='True to write AST.')
+    parser.add_option('-r', '--recompile', 
+                      dest='recompile', default='False', 
+                      help='True to recompile top level.')
+    parser.add_option('-t', '--testFile', 
+                      dest='testFile', default='', 
+                      help='Specify one test file. AST is written.')
+    parser.add_option('-l', '--topLevel', 
+                      dest='topLevel', default='team.native', 
+                      help='Name of the top level')
+
+    options, args = parser.parse_args()
+    verbose = interpretCommand(options.verbose)
+    recompile = interpretCommand(options.recompile)
+    testFile = options.testFile
+    topLevel = options.topLevel
+
+    if recompile or topLevel not in os.listdir('/'):
+        compile(topLevel)
+    
+    if testFile != '':
+        runFile(testFile, True)
+    else:
+        runValidTests()
+        runInValidTests()
+        checkResults()
+        print("\n!!!NOTE!!!")
+        print("\t1. checkResults is not implemented yet")
+        print("\t2. AST are printed to log/fileName.log")
+        print("\n!!!Error Found So Far!!!")
+        print("\t None :D")
+        moveLog()
+        if not verbose and os.path.exists('log'):
+            clean('log')
+        
+
+    clean('ocaml')
