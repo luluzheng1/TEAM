@@ -38,14 +38,14 @@ let check (functions, statements) =
       | Some parent -> type_of_identifier (ref parent) name
       | _ -> raise (E.UndefinedId name) )
   in
-  let add_var_to_scope (scope: symbol_table ref) id ty =
-    try let _ = StringMap.find id !scope.variables in
-        raise (E.Duplicate id)
+  let add_var_to_scope (scope : symbol_table ref) id ty =
+    try
+      let _ = StringMap.find id !scope.variables in
+      raise (E.Duplicate id)
     with Not_found ->
-      scope := {
-        variables = StringMap.add id ty !scope.variables;
-        parent = !scope.parent;
-      }
+      scope :=
+        { variables= StringMap.add id ty !scope.variables
+        ; parent= !scope.parent }
   in
   (* Raise an exception if the given rvalue type cannot be assigned to the
      given lvalue type *)
@@ -60,17 +60,18 @@ let check (functions, statements) =
     | BoolLit l -> (Bool, SBoolLit l)
     | CharLit l -> (Char, SCharLit l)
     | StringLit l -> (String, SStringLit l)
-    | ListLit es ->
-        (let ts = List.map (fun x -> fst (expr scope x)) es in
+    | ListLit es -> (
+        let ts = List.map (fun x -> fst (expr scope x)) es in
         match ts with
-            [] -> (List Unknown, SListLit [])
-          | x::xs -> let ty = List.hd ts in
-              let check_type e =
+        | [] -> (List Unknown, SListLit [])
+        | x :: xs ->
+            let ty = List.hd ts in
+            let check_type e =
               let ty', e' = expr scope e in
-                if ty' = ty then (ty', e')
-                else raise (E.NonUniformTypeContainer (ty, ty'))
-              in (List x, SListLit (List.map check_type es)))
-
+              if ty' = ty then (ty', e')
+              else raise (E.NonUniformTypeContainer (ty, ty'))
+            in
+            (List x, SListLit (List.map check_type es)) )
     | Id s -> (type_of_identifier scope s, SId s)
     | Binop (e1, op, e2) as e ->
         let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
@@ -132,6 +133,7 @@ let check (functions, statements) =
           match op with
           | (Add | Sub | Mult | Div) when same && (lt = Int || lt = Float) ->
               lt
+          | (Add | Sub | Mult | Div) when lt = Float && rt = Int -> Float
           | Mod when same && lt = Int -> Int
           | _ -> raise (E.IllegalAssignment (lt, Some op, rt, ex))
         in
@@ -186,41 +188,42 @@ let check (functions, statements) =
   let check_void_type ty name =
     match ty with Void -> raise (E.VoidType name) | _ -> ty
   in
+  let dummy = {typ= Int; fname= "toplevel"; formals= []; body= []} in
   (* Return a semantically-checked statement containing exprs *)
-  let rec check_stmt scope stmt =
+  let rec check_stmt scope stmt fdecl =
     match stmt with
     | Expr e -> SExpr (expr scope e)
-    | If (p, b1, b2, b3) ->
-        SIf
-          ( check_bool_expr scope p
-          , check_stmt scope b1
-          , check_stmt scope b2
-          , check_stmt scope b3 )
-    | For (e1, e2, st) ->
-        SFor (expr scope e1, expr scope e2, check_stmt scope st)
-    | While (p, s) -> SWhile (check_bool_expr scope p, check_stmt scope s)
     | Block sl ->
+        let new_scope = {variables= StringMap.empty; parent= Some !scope} in
+        let new_scope_ref = ref new_scope in
         let rec check_stmt_list = function
+          | [(Return _ as s)] -> [check_stmt new_scope_ref s fdecl]
+          | Return _ :: _ -> raise E.ReturnNotLast
           | Block sl :: ss -> check_stmt_list (sl @ ss)
-          | s :: ss -> check_stmt scope s :: check_stmt_list ss
+          | s :: ss -> check_stmt new_scope_ref s fdecl :: check_stmt_list ss
           | [] -> []
         in
         SBlock (check_stmt_list sl)
-    | Declaration (ty, s, e) as decl->
-        let (expr_ty, e') = expr scope e in
-        let _ = check_void_type ty s in
-        let same = expr_ty = ty in
-        if same then
-          let _ = add_var_to_scope scope s ty
-          in SDeclaration(ty, s, (expr_ty, e'))
-        else
-          let _ = match expr_ty with
-              List(Unknown) -> add_var_to_scope scope s ty
-            | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
-          in SDeclaration(ty, s, (expr_ty, e'))
-    | _ -> SExpr (Void, SNoexpr)
+    | Return e as return -> (
+      match fdecl.fname with
+      | "toplevel" -> raise E.ReturnOutsideFunction
+      | _ ->
+          let t, e' = expr scope e in
+          if t = fdecl.typ then SReturn (t, e')
+          else raise (E.ReturnMismatchedTypes (fdecl.typ, t, return))
+      (* | If (p, b1, b2, b3) -> SIf ( check_bool_expr scope p , check_stmt
+         scope b1 , check_stmt scope b2 , check_stmt scope b3 ) | For (e1,
+         e2, st) -> SFor (expr scope e1, expr scope e2, check_stmt scope st)
+         | While (p, s) -> SWhile (check_bool_expr scope p, check_stmt scope
+         s) | Declaration (ty, s, e) as decl -> let expr_ty, e' = expr scope
+         e in let _ = check_void_type ty s in let same = expr_ty = ty in if
+         same then let _ = add_var_to_scope scope s ty in SDeclaration (ty,
+         s, (expr_ty, e')) else let _ = match expr_ty with | List Unknown ->
+         add_var_to_scope scope s ty | _ -> raise (E.IllegalDeclaration (ty,
+         expr_ty, decl)) in SDeclaration (ty, s, (expr_ty, e')) *)
+      | _ -> SExpr (Void, SNoexpr) )
   in
-  let check_stmts stmt = check_stmt global_scope stmt in
+  let check_stmts stmt = check_stmt global_scope stmt dummy in
   let statements' =
     try List.map check_stmts statements with e -> E.handle_error e
   in
