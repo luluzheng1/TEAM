@@ -2,7 +2,7 @@
 
 open Ast
 open Sast
-open Exceptions
+module Exceptions
 module StringMap = Map.Make (String)
 
 let check (functions, statements) =
@@ -33,6 +33,15 @@ let check (functions, statements) =
       match !scope.parent with
       | Some parent -> type_of_identifier (ref parent) name
       | _ -> raise (UndefinedId name) )
+  in
+  let add_var_to_scope (scope: symbol_table ref) id ty =
+    try let _ = StringMap.find id !scope.variables in
+        raise (E.Duplicate id)
+    with Not_found ->
+      scope := {
+        variables = StringMap.add id ty !scope.variables;
+        parent = !scope.parent;
+      }
   in
   (* Raise an exception if the given rvalue type cannot be assigned to the
      given lvalue type *)
@@ -198,7 +207,17 @@ let check (functions, statements) =
           | [] -> []
         in
         SBlock (check_stmt_list sl)
-    | Declaration (ty, s, e) -> raise (Failure "Not Yet Implemented")
+    | Declaration (ty, s, e) as decl-> 
+        let (expr_ty, e') = expr s e in
+        let same = expr_ty = ty in
+        if same then
+          let _ = add_var_to_scope scope s ty
+          in SDeclaration(ty, s, (expr_ty, e'))
+        else
+          let _ = match expr_ty with
+              List(Unknown) -> add_var_to_scope scope s ty
+            | _ -> raise E.IllegalAssignment(ty, None, expr_ty, decl) 
+          in SDeclaration(ty, s, (expr_ty, e'))
     | _ -> SExpr (Void, SNoexpr)
   in
   let check_stmts stmt = check_stmt global_scope stmt in
