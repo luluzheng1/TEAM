@@ -5,9 +5,12 @@ open Sast
 module Exceptions
 module StringMap = Map.Make (String)
 
+(* Semantic checking of the AST. Returns an SAST if successful, throws an
+   exception if something is wrong. *)
 let check (functions, statements) =
   (* TODO: Need to work on built_in_decls *)
   let built_in_decls = StringMap.empty in
+  (* Add function name to symbol table *)
   let add_func map fd =
     let n = fd.fname in
     match fd with
@@ -18,6 +21,7 @@ let check (functions, statements) =
   in
   (* TODO: need to work on function_decls *)
   let function_decls = StringMap.empty in
+  (* Return a function from our symbol table *)
   let find_func s =
     try StringMap.find s function_decls
     with Not_found -> raise (UndefinedFunction s)
@@ -48,6 +52,7 @@ let check (functions, statements) =
   let check_assign lvaluet rvaluet err =
     if lvaluet = rvaluet then lvaluet else raise err
   in
+  (* Return a semantically-checked expression with a type *)
   let rec expr scope exp =
     match exp with
     | IntLit l -> (Int, SIntLit l)
@@ -64,8 +69,8 @@ let check (functions, statements) =
           else raise (NonUniformTypeContainer (ty, ty'))
         in
         match ts with
-        | [] -> (Unknown, SListLit [])
-        | x :: xs -> (ty, SListLit (List.map check_type es)) )
+        | [] -> (List Unknown, SListLit [])
+        | x :: xs -> (List x, SListLit (List.map check_type es)) )
     | Id s -> (type_of_identifier scope s, SId s)
     | Binop (e1, op, e2) as e ->
         let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
@@ -80,7 +85,7 @@ let check (functions, statements) =
           | Exp when same && t1 = Int -> Int
           | Exp when same && t1 = Float -> Float
           | Exp when t1 = Int && t2 = Float -> Float
-          | Exp when t2 = Float && t2 = Int -> Float
+          | Exp when t1 = Float && t2 = Int -> Float
           | (Equal | Neq) when same -> Bool
           | (Less | Leq | Greater | Geq) when same && (t1 = Int || t1 = Float)
             ->
@@ -172,7 +177,6 @@ let check (functions, statements) =
         check_slice_expr
     | End -> (Int, SEnd)
     | Noexpr -> (Void, SNoexpr)
-    | _ -> raise (Failure "Not Yet Implemented")
   in
   let check_bool_expr scope e =
     let t', e' = expr scope e in
@@ -188,6 +192,7 @@ let check (functions, statements) =
   let check_void_type ty name =
     match ty with Void -> raise (VoidType name) | _ -> ty
   in
+  (* Return a semantically-checked statement containing exprs *)
   let rec check_stmt scope stmt =
     match stmt with
     | Expr e -> SExpr (expr scope e)
