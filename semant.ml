@@ -2,8 +2,12 @@
 
 open Ast
 open Sast
+<<<<<<< HEAD
 module Exceptions
+=======
+>>>>>>> f1059253ec7f0faeb9afae3eb8ac5ce85b76658a
 module StringMap = Map.Make (String)
+module E = Exceptions
 
 (* Semantic checking of the AST. Returns an SAST if successful, throws an
    exception if something is wrong. *)
@@ -15,8 +19,8 @@ let check (functions, statements) =
     let n = fd.fname in
     match fd with
     | _ when StringMap.mem n built_in_decls ->
-        raise (CannotRedefineBuiltIn fd.fname)
-    | _ when StringMap.mem n map -> raise (AlreadyDefined fd.fname)
+        raise (E.CannotRedefineBuiltIn fd.fname)
+    | _ when StringMap.mem n map -> raise (E.AlreadyDefined fd.fname)
     | _ -> StringMap.add n fd map
   in
   (* TODO: need to work on function_decls *)
@@ -24,7 +28,7 @@ let check (functions, statements) =
   (* Return a function from our symbol table *)
   let find_func s =
     try StringMap.find s function_decls
-    with Not_found -> raise (UndefinedFunction s)
+    with Not_found -> raise (E.UndefinedFunction s)
   in
   let variable_table = {variables= StringMap.empty; parent= None} in
   (* Create a reference to the global table. The scope will be passed through
@@ -36,7 +40,7 @@ let check (functions, statements) =
     with Not_found -> (
       match !scope.parent with
       | Some parent -> type_of_identifier (ref parent) name
-      | _ -> raise (UndefinedId name) )
+      | _ -> raise (E.UndefinedId name) )
   in
   let add_var_to_scope (scope: symbol_table ref) id ty =
     try let _ = StringMap.find id !scope.variables in
@@ -66,7 +70,7 @@ let check (functions, statements) =
         let check_type e =
           let ty', e' = expr scope e in
           if ty' = ty then (ty', e')
-          else raise (NonUniformTypeContainer (ty, ty'))
+          else raise (E.NonUniformTypeContainer (ty, ty'))
         in
         match ts with
         | [] -> (List Unknown, SListLit [])
@@ -92,7 +96,7 @@ let check (functions, statements) =
               Bool
           | (And | Or) when same && t1 = Bool -> Bool
           | Range when same && t1 = Int -> List Int
-          | _ -> raise (InvalidBinaryOperation (t1, op, t2, e))
+          | _ -> raise (E.InvalidBinaryOperation (t1, op, t2, e))
         in
         (ty, SBinop ((t1, e1'), op, (t2, e2')))
     | Unop (op, e) as ex ->
@@ -101,12 +105,12 @@ let check (functions, statements) =
           match op with
           | Neg when t = Int || t = Float -> t
           | Not when t = Bool -> Bool
-          | _ -> raise (InvalidUnaryOperation (t, op, ex))
+          | _ -> raise (E.InvalidUnaryOperation (t, op, ex))
         in
         (ty, SUnop (op, (t, e')))
     | Assign (s, e) as ex ->
         let lt = type_of_identifier scope s and rt, e' = expr scope e in
-        ( check_assign lt rt (IllegalAssignment (lt, None, rt, ex))
+        ( check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex))
         , SAssign (s, (rt, e')) )
     | ListAssign (s, e1, e2) as ex ->
         let lt = type_of_identifier scope s
@@ -115,16 +119,16 @@ let check (functions, statements) =
         let inner_ty =
           match lt with
           | List ty -> ty
-          | other -> raise (NonListAccess (t1, other, ex))
+          | other -> raise (E.NonListAccess (t1, other, ex))
         in
         let is_index =
           match t1 with
           | Int -> true
-          | other -> raise (InvalidIndex (other, ex))
+          | other -> raise (E.InvalidIndex (other, ex))
         in
         if is_index && inner_ty = t2 then
           (List inner_ty, SListAssign (s, (t1, e1'), (t2, e2')))
-        else raise (MismatchedTypes (inner_ty, t2, ex))
+        else raise (E.MismatchedTypes (inner_ty, t2, ex))
     | AssignOp (s, op, e) as ex ->
         let lt = type_of_identifier scope s and rt, e' = expr scope e in
         let same = lt = rt in
@@ -133,18 +137,18 @@ let check (functions, statements) =
           | (Add | Sub | Mult | Div) when same && (lt = Int || lt = Float) ->
               lt
           | Mod when same && lt = Int -> Int
-          | _ -> raise (IllegalAssignment (lt, Some op, rt, ex))
+          | _ -> raise (E.IllegalAssignment (lt, Some op, rt, ex))
         in
         (ty, SAssignOp (s, op, (rt, e')))
     | Call (fname, args) as call ->
         let fd = find_func fname in
         let param_length = List.length fd.formals in
         if List.length args != param_length then
-          raise (WrongNumberOfArgs (param_length, List.length args, call))
+          raise (E.WrongNumberOfArgs (param_length, List.length args, call))
         else
           let check_call (ft, _) e =
             let et, e' = expr scope e in
-            (check_assign ft et (IllegalArgument (et, ft, e)), e')
+            (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
           in
           let args' = List.map2 check_call fd.formals args in
           (fd.typ, SCall (fname, args'))
@@ -158,21 +162,21 @@ let check (functions, statements) =
                 match lt with
                 | List ty -> ty
                 | String -> Char
-                | _ -> raise (IllegalSlice (slice, lt))
+                | _ -> raise (E.IllegalSlice (slice, lt))
               in
               if t = Int then (id_type, SSliceExpr (id, SIndex (t, e')))
-              else raise (WrongIndex (t, e))
+              else raise (E.WrongIndex (t, e))
           | Slice (e1, e2) ->
               let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
               let id_type =
                 match lt with
                 | List _ -> lt
                 | String -> lt
-                | _ -> raise (IllegalSlice (slice, lt))
+                | _ -> raise (E.IllegalSlice (slice, lt))
               in
               if t1 = Int && t1 = t2 then
                 (id_type, SSliceExpr (id, SSlice ((t1, e1'), (t2, e2'))))
-              else raise (WrongSliceIndex (t1, t2, e1, e2))
+              else raise (E.WrongSliceIndex (t1, t2, e1, e2))
         in
         check_slice_expr
     | End -> (Int, SEnd)
@@ -180,17 +184,17 @@ let check (functions, statements) =
   in
   let check_bool_expr scope e =
     let t', e' = expr scope e in
-    if t' != Bool then raise (MismatchedTypes (t', Bool, e)) else (t', e')
+    if t' != Bool then raise (E.MismatchedTypes (t', Bool, e)) else (t', e')
   in
   (* check duplicate var declaration *)
   let check_var_duplicate scope name =
     match name with
-    | _ when StringMap.mem name !scope.variables -> raise (Duplicate name)
+    | _ when StringMap.mem name !scope.variables -> raise (E.Duplicate name)
     | _ -> name
   in
   (* check void type variable *)
   let check_void_type ty name =
-    match ty with Void -> raise (VoidType name) | _ -> ty
+    match ty with Void -> raise (E.VoidType name) | _ -> ty
   in
   (* Return a semantically-checked statement containing exprs *)
   let rec check_stmt scope stmt =
@@ -227,6 +231,6 @@ let check (functions, statements) =
   in
   let check_stmts stmt = check_stmt global_scope stmt in
   let statements' =
-    try List.map check_stmts statements with e -> handle_error e
+    try List.map check_stmts statements with e -> E.handle_error e
   in
   ([], statements')
