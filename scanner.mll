@@ -45,7 +45,7 @@ rule token = parse
 	| ">="     { GEQ }
 	| "and"    { AND }
 	| "or"     { OR }
-	| "not"      { NOT }
+	| "not"    { NOT }
 	| "if"     { IF }
 	| "elif"   { ELSEIF }
 	| "else"   { ELSE }
@@ -65,7 +65,7 @@ rule token = parse
 	| "file"   { FILE }
 	| "true"   { BLIT(true) }
 	| "false"  { BLIT(false) }
-	| "list "  { LIST }
+	| "list"  { LIST }
 	| "->"     { ARROW }
 	| digits as lxm { LITERAL(int_of_string lxm) }
 	| float as lxm { FLIT(float_of_string lxm) }

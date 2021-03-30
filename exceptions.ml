@@ -12,6 +12,8 @@ exception InvalidUnaryOperation of typ * uop * expr
 
 exception IllegalAssignment of typ * op option * typ * expr
 
+exception IllegalDeclaration of typ * typ * stmt
+
 exception NonListAccess of typ * typ * expr
 
 exception InvalidIndex of typ * expr
@@ -37,6 +39,12 @@ exception IllegalSlice of expr * typ
 exception WrongIndex of typ * expr
 
 exception WrongSliceIndex of typ * typ * expr * expr
+
+exception ReturnNotLast
+
+exception ReturnOutsideFunction
+
+exception ReturnMismatchedTypes of typ * typ * stmt
 
 let handle_error (e : exn) =
   match e with
@@ -91,6 +99,14 @@ let handle_error (e : exn) =
            (Printf.sprintf
               "Error: Illegal assignment '%s' '%s'= '%s' in '%s'" s1 s2 s3 s4 )
         )
+  | IllegalDeclaration (t1, t2, s) ->
+      let s1 = string_of_typ t1
+      and s2 = string_of_typ t2
+      and s3 = string_of_stmt s in
+      raise
+        (TypeError
+           (Printf.sprintf "Error: Illegal assignment '%s' '%s' in '%s'" s1
+              s2 s3 ) )
   | NonListAccess (t1, t2, e) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
@@ -175,7 +191,28 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Expected left and right values of slice expression to be of \
-               type int, but got type '%s' and '%s' in '%s' and '%s'"
+              "Type Error: Expected left and right values of slice \
+               expression to be of type int, but got type '%s' and '%s' in \
+               '%s' and '%s'"
               s1 s2 s3 s4 ) )
+  | ReturnNotLast ->
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Error: There are unreacheable statements after return" ) )
+  | ReturnOutsideFunction ->
+      raise
+        (TypeError
+           (Printf.sprintf "Error: Return statement is outside of a function")
+        )
+  | ReturnMismatchedTypes (t1, t2, s) ->
+      let s1 = string_of_typ t1
+      and s2 = string_of_typ t2
+      and s3 = string_of_stmt s in
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Type error: Expected value of type '%s', but got a value of \
+               type '%s' in '%s'"
+              s1 s2 s3 ) )
   | e -> raise (TypeError (Printexc.to_string e))
