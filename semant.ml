@@ -2,10 +2,6 @@
 
 open Ast
 open Sast
-<<<<<<< HEAD
-module Exceptions
-=======
->>>>>>> f1059253ec7f0faeb9afae3eb8ac5ce85b76658a
 module StringMap = Map.Make (String)
 module E = Exceptions
 
@@ -64,17 +60,17 @@ let check (functions, statements) =
     | BoolLit l -> (Bool, SBoolLit l)
     | CharLit l -> (Char, SCharLit l)
     | StringLit l -> (String, SStringLit l)
-    | ListLit es -> (
-        let ts = List.map (fun x -> fst (expr scope x)) es in
-        let ty = List.hd ts in
-        let check_type e =
-          let ty', e' = expr scope e in
-          if ty' = ty then (ty', e')
-          else raise (E.NonUniformTypeContainer (ty, ty'))
-        in
+    | ListLit es ->
+        (let ts = List.map (fun x -> fst (expr scope x)) es in
         match ts with
-        | [] -> (List Unknown, SListLit [])
-        | x :: xs -> (List x, SListLit (List.map check_type es)) )
+            [] -> (List Unknown, SListLit [])
+          | x::xs -> let ty = List.hd ts in
+              let check_type e =
+              let ty', e' = expr scope e in
+                if ty' = ty then (ty', e')
+                else raise (E.NonUniformTypeContainer (ty, ty'))
+              in (List x, SListLit (List.map check_type es)))
+
     | Id s -> (type_of_identifier scope s, SId s)
     | Binop (e1, op, e2) as e ->
         let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
@@ -186,12 +182,6 @@ let check (functions, statements) =
     let t', e' = expr scope e in
     if t' != Bool then raise (E.MismatchedTypes (t', Bool, e)) else (t', e')
   in
-  (* check duplicate var declaration *)
-  let check_var_duplicate scope name =
-    match name with
-    | _ when StringMap.mem name !scope.variables -> raise (E.Duplicate name)
-    | _ -> name
-  in
   (* check void type variable *)
   let check_void_type ty name =
     match ty with Void -> raise (E.VoidType name) | _ -> ty
@@ -216,8 +206,9 @@ let check (functions, statements) =
           | [] -> []
         in
         SBlock (check_stmt_list sl)
-    | Declaration (ty, s, e) as decl-> 
-        let (expr_ty, e') = expr s e in
+    | Declaration (ty, s, e) as decl->
+        let (expr_ty, e') = expr scope e in
+        let _ = check_void_type ty s in
         let same = expr_ty = ty in
         if same then
           let _ = add_var_to_scope scope s ty
@@ -225,7 +216,7 @@ let check (functions, statements) =
         else
           let _ = match expr_ty with
               List(Unknown) -> add_var_to_scope scope s ty
-            | _ -> raise E.IllegalAssignment(ty, None, expr_ty, decl) 
+            | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
           in SDeclaration(ty, s, (expr_ty, e'))
     | _ -> SExpr (Void, SNoexpr)
   in

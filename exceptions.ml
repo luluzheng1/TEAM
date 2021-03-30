@@ -12,6 +12,8 @@ exception InvalidUnaryOperation of typ * uop * expr
 
 exception IllegalAssignment of typ * op option * typ * expr
 
+exception IllegalDeclaration of typ * typ * stmt
+
 exception NonListAccess of typ * typ * expr
 
 exception InvalidIndex of typ * expr
@@ -91,6 +93,16 @@ let handle_error (e : exn) =
            (Printf.sprintf
               "Error: Illegal assignment '%s' '%s'= '%s' in '%s'" s1 s2 s3 s4 )
         )
+  | IllegalDeclaration (t1, t2, s) ->
+      let s1 = string_of_typ t1
+      and s2 = string_of_typ t2
+      and s3 = string_of_stmt s in
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Error: Illegal assignment '%s' '%s' in '%s'" s1 s2 s3 )
+        )
+
   | NonListAccess (t1, t2, e) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
