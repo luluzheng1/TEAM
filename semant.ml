@@ -10,14 +10,17 @@ let check (functions, statements) =
     let add_bind map (name, formalTypes, returnType) = StringMap.add name {
         typ = returnType; fname = name; 
         formals = formalTypes; body = [] } map
-      in List.fold_left add_bind StringMap.empty [("print", [(String, "x")], Void);
+      in List.fold_left add_bind StringMap.empty [
+                                ("print", [(String, "x")], Void);
                                 ("open", [(String, "file_name"); (String, "mode")], File);
                                 ("readline", [(File, "file_handle")], String);
                                 ("write", [(File, "file_handle"); (String, "content")], Void);
                                 ("close", [(File, "file_handle")], Void);
                                 ("length", [(Unknown, "input_list")], Int);
-                                ("append", [(List of Unknown, "input_list"), List of Unknown])]
+                                ("append", [(List of Unknown, "input_list"), List of Unknown])
+                              ]
   in
+
   let add_func map fd =
     let n = fd.fname in (* Name of the function *)
     match fd with
@@ -27,7 +30,6 @@ let check (functions, statements) =
     | _ -> StringMap.add n fd map
   in
 
-  (* TODO: need to work on function_decls *)
   let function_decls = List.fold_left add_func built_in_decls functions
   in
   
@@ -36,12 +38,57 @@ let check (functions, statements) =
     with Not_found -> raise (UndefinedFunction s)
   in
 
-  (* TODO function_check *)
-
   let variable_table = {variables= StringMap.empty; parent= None} in
   (* Create a reference to the global table. The scope will be passed through
      recurisve calls and be mutated when we need to add a new variable *)
   let global_scope = ref variable_table in
+  
+
+
+  (* check duplicate var declaration *)
+  let check_var_duplicate scope name =
+    match name with
+    | _ when StringMap.mem name !scope.variables -> raise (Duplicate name)
+    | _ -> name
+  in
+  
+  (* check void type variable *)
+  let check_void_type (ty, name) =
+    match ty with Void -> raise (VoidType name) | _ -> ty
+  in
+
+
+  let check_binds (to_check : bind list) = 
+    let name_compare (_, n1) (_, n2) = compare n1 n2 in
+    let check_it checked binding = 
+      in match binding with
+        (* No void bindings *)
+        (Void, name) -> raise (VoidType name)
+      | (_, n1) -> match checked with
+                    (* No duplicate bindings *)
+                      ((_, n2) :: _) when n1 = n2 -> raise (Duplicate n2)
+                    | _ -> binding :: checked
+
+    in let _ = List.fold_left check_it [] (List.sort name_compare to_check) 
+       in to_check
+  in 
+
+  let check_func func = 
+    
+    let formals' = check_binds func.formals in
+
+    let add_formal map (ty, name) = StringMap.add name ty map in 
+
+    let func_variable_table = {variables = List.fold_left add_formal StringMap.empty formals'; parent= global_scope} in
+    
+    let func_scope = ref func_variable_table in 
+
+    let sbody = check_stmt func_scope (Block of func.body) in
+
+    { typ = func.typ; fname = func.fname; formals = formals'; body = sbody}
+    
+  in 
+
   (* Finding a variable, beginning in a given scope and searching upwards *)
   let rec type_of_identifier (scope : symbol_table ref) name =
     try StringMap.find name !scope.variables
@@ -55,6 +102,7 @@ let check (functions, statements) =
   let check_assign lvaluet rvaluet err =
     if lvaluet = rvaluet then lvaluet else raise err
   in
+
   let rec expr scope exp =
     match exp with
     | IntLit l -> (Int, SIntLit l)
@@ -181,20 +229,12 @@ let check (functions, statements) =
     | Noexpr -> (Void, SNoexpr)
     | _ -> raise (Failure "Not Yet Implemented")
   in
+
   let check_bool_expr scope e =
     let t', e' = expr scope e in
     if t' != Bool then raise (MismatchedTypes (t', Bool, e)) else (t', e')
   in
-  (* check duplicate var declaration *)
-  let check_var_duplicate scope name =
-    match name with
-    | _ when StringMap.mem name !scope.variables -> raise (Duplicate name)
-    | _ -> name
-  in
-  (* check void type variable *)
-  let check_void_type ty name =
-    match ty with Void -> raise (VoidType name) | _ -> ty
-  in
+
   let rec check_stmt scope stmt =
     match stmt with
     | Expr e -> SExpr (expr scope e)
@@ -221,76 +261,4 @@ let check_stmts stmt = check_stmt global_scope stmt in
 let statements' =
   try List.map check_stmts statements with e -> handle_error e
 in
-([], statements')
-
-
-
-
-
-
-
-
-
-
-
-  (* Collect function declarations for built-in functions: no bodies *)
-  let built_in_decls = 
-    let add_bind map (name, ty) = StringMap.add name {
-      typ = Void; fname = name; 
-      formals = [(ty, "x")];
-      locals = []; body = [] } map
-    in List.fold_left add_bind StringMap.empty [ ("print", String);
-			                         ("open", String);
-			                         ("close", String);
-			                         ("len", String)]
-  in
-
-  (* Add function name to symbol table *)
-  let add_func map fd = 
-    let built_in_err = "function " ^ fd.fname ^ " may not be defined"
-    and dup_err = "duplicate function " ^ fd.fname
-    and make_err er = raise (Failure er)
-    and n = fd.fname (* Name of the function *)
-    in match fd with (* No duplicate functions or redefinitions of built-ins *)
-         _ when StringMap.mem n built_in_decls -> make_err built_in_err
-       | _ when StringMap.mem n map -> make_err dup_err  
-       | _ ->  StringMap.add n fd map 
-  in
-
-  (* Collect all other function names into one symbol table *)
-  let function_decls = List.fold_left add_func built_in_decls functions
-  in
-  
-  (* Return a function from our symbol table *)
-  let find_func s = 
-    try StringMap.find s function_decls
-    with Not_found -> raise (Failure ("unrecognized function " ^ s))
-  in
-
-  let check_function func =
-    (* Make sure no formals or locals are void or duplicates *)
-    let formals' = check_binds "formal" func.formals in
-
-    (* Raise an exception if the given rvalue type cannot be assigned to
-       the given lvalue type *)
-    let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
-    in   
-
-    (* Build local symbol table of variables for this function *)
-    let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
-                  StringMap.empty (globals' @ formals' )
-    in
-
-    let type_of_identifier s =
-      try StringMap.find s symbols
-      with Not_found -> raise (Failure ("undeclared identifier " ^ s))
-    in
-  
-
-in ([], List.map check_stmt statements)
-
-
-
-
-          
+(Llist.Map check_func functions, statements')
