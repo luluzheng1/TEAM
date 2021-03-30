@@ -77,9 +77,9 @@ rule token = parse
 
 
 and comment = parse
-  	"*/" { token lexbuf }
+  	"*/"   { token lexbuf }
 	| _    { comment lexbuf }
 
 and slcomment = parse
-		'\n' { token lexbuf }
+	'\n'   { token lexbuf }
 	| _    { slcomment lexbuf }

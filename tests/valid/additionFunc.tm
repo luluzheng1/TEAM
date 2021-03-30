@@ -1,12 +1,12 @@
 /* Tests functions, formal parameters, 
    and statements within functions */
 
-int add(int x, int y)
+int add(int x, int y):
   int z = x + y; 
   return z;
 end
 
-int subtract(int x, int y)
+int subtract(int x, int y):
   int z = x - y; 
   return z;
 end
