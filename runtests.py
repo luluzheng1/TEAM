@@ -4,6 +4,10 @@ import os
 import subprocess
 import optparse
 
+class bcolors:
+    OKGREEN = '\033[92m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
 
 VALID_FILE_DIR = 'tests/valid'
 INVALID_FILE_DIR = 'tests/invalid'
@@ -19,8 +23,26 @@ def runInValidTests():
     for file in map(lambda x: "/".join((INVALID_FILE_DIR, x)), filter(lambda x: "tm" in x, os.listdir(INVALID_FILE_DIR))):
         runFile(file, True)
 
-def checkResults():
-    pass
+def printFailedTestMessage(logFile):
+    tmFile = logFile.split("/")[-1].split(".")[0]
+    print(bcolors.FAIL +"{:15s} -- FAILED!\n".format(tmFile + ".tm") + bcolors.ENDC)
+
+def printSuccessTestMessage(logFile):
+    tmFile = logFile.split("/")[-1].split(".")[0]
+    print(bcolors.OKGREEN +"{:15s} -- OK!\n".format(tmFile + ".tm") + bcolors.ENDC)
+
+def checkResults(f_astGenerated, f_astReference):
+    astGenerated = [line for line in open(f_astGenerated)]
+    astReference = [line for line in open(f_astReference)]
+
+    if len(astGenerated) != len(astReference):
+        printFailedTestMessage(f_astGenerated)
+        return 
+    for index, astGenerateLine in enumerate(astGenerated):
+        if astGenerateLine != astReference[index]:
+            printFailedTestMessage(f_astGenerated)
+            return
+    printSuccessTestMessage(f_astGenerated)
 
 def runFile(fileName, verbose):
     process = subprocess.Popen(['./team.native', fileName], 
@@ -74,12 +96,15 @@ if __name__ == "__main__":
     parser.add_option('-v', '--verbose', 
                       dest='verbose', default='True', 
                       help='True to write AST.')
-    parser.add_option('-r', '--recompile', 
+    parser.add_option('-c', '--recompile', 
                       dest='recompile', default='False', 
                       help='True to recompile top level.')
     parser.add_option('-t', '--testFile', 
                       dest='testFile', default='', 
                       help='Specify one test file. AST is written.')
+    parser.add_option('-r', '--reference',
+                      dest='reference', default='',
+                      help='The reference to compare generated AST.')
     parser.add_option('-l', '--topLevel', 
                       dest='topLevel', default='team.native', 
                       help='Name of the top level')
@@ -89,19 +114,26 @@ if __name__ == "__main__":
     recompile = interpretCommand(options.recompile)
     testFile = options.testFile
     topLevel = options.topLevel
+    reference = options.reference
 
+    if reference != '' and testFile == '':
+        key = input("Error detected!\nReference specified with no test file specified.\nExiting...\n")
+        sys.exit()
+        
     if recompile or topLevel not in os.listdir('/'):
         compile(topLevel)
     
     if testFile != '':
         runFile(testFile, True)
+        if reference != "":
+            checkResults("log/{}.log".format(testFile.split("/")[-1].split(".")[0]), reference)
     else:
         runValidTests()
         runInValidTests()
         checkResults()
         print("\n!!!NOTE!!!")
         print("\t1. checkResults is not implemented yet")
-        print("\t2. AST are printed to log/fileName.log")
+        print("\t2. AST are printed to log/(in)valid/fileName.log")
         print("\n!!!Error Found So Far!!!")
         print("\t None :D")
         moveLog()
