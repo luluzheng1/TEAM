@@ -64,7 +64,7 @@ let check (functions, statements) =
         let ts = List.map (fun x -> fst (expr scope x)) es in
         match ts with
         | [] -> (List Unknown, SListLit [])
-        | x :: xs ->
+        | x :: _ ->
             let ty = List.hd ts in
             let check_type e =
               let ty', e' = expr scope e in
@@ -210,18 +210,34 @@ let check (functions, statements) =
       | _ ->
           let t, e' = expr scope e in
           if t = fdecl.typ then SReturn (t, e')
-          else raise (E.ReturnMismatchedTypes (fdecl.typ, t, return))
-      (* | If (p, b1, b2, b3) -> SIf ( check_bool_expr scope p , check_stmt
-         scope b1 , check_stmt scope b2 , check_stmt scope b3 ) | For (e1,
-         e2, st) -> SFor (expr scope e1, expr scope e2, check_stmt scope st)
-         | While (p, s) -> SWhile (check_bool_expr scope p, check_stmt scope
-         s) | Declaration (ty, s, e) as decl -> let expr_ty, e' = expr scope
-         e in let _ = check_void_type ty s in let same = expr_ty = ty in if
-         same then let _ = add_var_to_scope scope s ty in SDeclaration (ty,
-         s, (expr_ty, e')) else let _ = match expr_ty with | List Unknown ->
-         add_var_to_scope scope s ty | _ -> raise (E.IllegalDeclaration (ty,
-         expr_ty, decl)) in SDeclaration (ty, s, (expr_ty, e')) *)
-      | _ -> SExpr (Void, SNoexpr) )
+          else raise (E.ReturnMismatchedTypes (fdecl.typ, t, return)) )
+    | If (p, b1, b2, b3) ->
+        SIf
+          ( check_bool_expr scope p
+          , check_stmt scope b1 fdecl
+          , check_stmt scope b2 fdecl
+          , check_stmt scope b3 fdecl )
+    | For (e1, e2, st) ->
+        SFor (expr scope e1, expr scope e2, check_stmt scope st fdecl)
+    | While (p, s) ->
+        SWhile (check_bool_expr scope p, check_stmt scope s fdecl)
+    | Declaration (ty, s, e) as decl ->
+        let expr_ty, e' = expr scope e in
+        let _ = check_void_type ty s in
+        let same = expr_ty = ty in
+        if same then
+          let _ = add_var_to_scope scope s ty in
+          SDeclaration (ty, s, (expr_ty, e'))
+        else
+          let _ =
+            match expr_ty with
+            | List Unknown -> add_var_to_scope scope s ty
+            | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
+          in
+          SDeclaration (ty, s, (expr_ty, e'))
+    | Break -> SBreak
+    | Continue -> SContinue
+    | _ -> SExpr (Void, SNoexpr)
   in
   let check_stmts stmt = check_stmt global_scope stmt dummy in
   let statements' =
