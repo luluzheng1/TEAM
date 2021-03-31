@@ -19,7 +19,7 @@ let check (functions, statements) =
                                 ("write", [(File, "file_handle"); (String, "content")], Void);
                                 ("close", [(File, "file_handle")], Void);
                                 ("length", [(Unknown, "input_list")], Int);
-                                ("append", [(List of Unknown, "input_list"), List of Unknown])
+                                ("append", [(List(Unknown), "input_list")], List(Unknown))
                               ]
   in
   
@@ -45,51 +45,25 @@ let check (functions, statements) =
      recurisve calls and be mutated when we need to add a new variable *)
   let global_scope = ref variable_table in
   
-
-
-  (* check duplicate var declaration *)
-  let check_var_duplicate scope name =
-    match name with
-    | _ when StringMap.mem name !scope.variables -> raise (Duplicate name)
-    | _ -> name
-  in
-  
   (* check void type variable *)
   let check_void_type (ty, name) =
-    match ty with Void -> raise (VoidType name) | _ -> ty
+    match ty with Void -> raise (E.VoidType name) | _ -> ty
   in
-
 
   let check_binds (to_check : bind list) = 
     let name_compare (_, n1) (_, n2) = compare n1 n2 in
     let check_it checked binding = 
-      in match binding with
+      match binding with
         (* No void bindings *)
-        (Void, name) -> raise (VoidType name)
+        (Void, name) -> raise (E.VoidType name)
       | (_, n1) -> match checked with
                     (* No duplicate bindings *)
-                      ((_, n2) :: _) when n1 = n2 -> raise (Duplicate n2)
+                      ((_, n2) :: _) when n1 = n2 -> raise (E.Duplicate n2)
                     | _ -> binding :: checked
 
     in let _ = List.fold_left check_it [] (List.sort name_compare to_check) 
        in to_check
-  in 
-
-  let check_func func = 
-    
-    let formals' = check_binds func.formals in
-
-    let add_formal map (ty, name) = StringMap.add name ty map in 
-
-    let func_variable_table = {variables = List.fold_left add_formal StringMap.empty formals'; parent= global_scope} in
-    
-    let func_scope = ref func_variable_table in 
-
-    let sbody = check_stmt func_scope (Block of func.body) in
-
-    { typ = func.typ; fname = func.fname; formals = formals'; body = sbody}
-    
-  in 
+  in  
 
   (* Finding a variable, beginning in a given scope and searching upwards *)
   let rec type_of_identifier (scope : symbol_table ref) name =
@@ -303,8 +277,29 @@ let check (functions, statements) =
     | Continue -> SContinue
     | _ -> SExpr (Void, SNoexpr)
   in
+  let check_functions func = 
+    
+    let formals' = check_binds func.formals in
+
+    let add_formal map (ty, name) = StringMap.add name ty map in 
+
+    let func_variable_table = {variables = List.fold_left add_formal StringMap.empty formals'; parent= Some(!global_scope)} in
+    
+    let func_scope = ref func_variable_table in 
+
+    let body' = check_stmt func_scope (Block func.body) func in
+
+    {styp = func.typ; sfname = func.fname; sformals = formals'; sbody = [body']}
+  in
+
   let check_stmts stmt = check_stmt global_scope stmt dummy in
+
   let statements' =
     try List.map check_stmts statements with e -> E.handle_error e
   in
-  (Llist.Map check_func functions, statements')
+
+  let functions' = 
+    try List.map check_functions functions with e -> E.handle_error e
+  in
+
+  (functions', statements')
