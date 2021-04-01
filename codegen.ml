@@ -32,7 +32,6 @@ let translate (functions, statements) =
   let printf_func : L.llvalue = 
      L.declare_function "printf" printf_t the_module in
   
-   
   let var_table = {variables = StringMap.empty; parent = None} in
   let globals = ref var_table in
 
@@ -49,7 +48,12 @@ let translate (functions, statements) =
     let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
 
-    let lookup scope n = StringMap.find n !scope.variables in
+    let rec lookup sc n = try StringMap.find n !sc.variables
+      with Not_found -> (match !sc.parent with
+          None -> raise (Failure "internal error: variable not in scope")
+        | Some t -> lookup (ref t) n)
+    in
+
     let add_variable_to_scope sc n v = sc :=
         {variables = StringMap.add n v !sc.variables; parent = !sc.parent} in
 
@@ -63,7 +67,11 @@ let translate (functions, statements) =
       List.fold_left2 add_formal StringMap.empty fdecl.sformals
         (Array.to_list (L.params the_function)) 
     in
-    let _ = scope := {variables = formals; parent= !scope.parent } in
+
+    let scope = match fdecl.sfname with
+        "main" -> scope
+      | _ -> ref {variables = formals; parent= Some !scope }
+    in 
 
     let rec expr builder ((_, e) : sexpr) = match e with
         SIntLit i -> L.const_int i32_t i
