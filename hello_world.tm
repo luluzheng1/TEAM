@@ -1,1 +1,5 @@
-print("Hello World");
+void test():
+    print("Hello World");
+end
+
+test();
