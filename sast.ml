@@ -43,7 +43,7 @@ type sstmt =
   | SContinue
 
 type sfunc_decl =
-  {typ: typ; fname: string; formals: bind list; body: sstmt list}
+  {styp: typ; sfname: string; sformals: bind list; sbody: sstmt list}
 
 type program = sfunc_decl list * sstmt list
 
@@ -106,10 +106,10 @@ let rec string_of_sstmt = function
   | SContinue -> "continue\n"
 
 let string_of_sfdecl fdecl =
-  string_of_typ fdecl.typ ^ " " ^ fdecl.fname ^ "("
-  ^ String.concat ", " (List.map snd fdecl.formals)
+  string_of_typ fdecl.styp ^ " " ^ fdecl.sfname ^ "("
+  ^ String.concat ", " (List.map snd fdecl.sformals)
   ^ ")\n"
-  ^ String.concat "" (List.map string_of_sstmt fdecl.body)
+  ^ String.concat "" (List.map string_of_sstmt fdecl.sbody)
   ^ "end\n"
 
 let string_of_sprogram (funcs, stmts) =

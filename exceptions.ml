@@ -143,7 +143,7 @@ let handle_error (e : exn) =
   | Duplicate n ->
       raise
         (TypeError
-           (Printf.sprintf "Error: variable name '%s' has already used" n) )
+           (Printf.sprintf "Error: variable name '%s' has already defined" n) )
   | UndefinedFunction n ->
       raise
         (TypeError
