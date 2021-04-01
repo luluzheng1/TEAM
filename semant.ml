@@ -18,7 +18,8 @@ let check (functions, statements) =
                                 ("readline", [(File, "file_handle")], String);
                                 ("write", [(File, "file_handle"); (String, "content")], Void);
                                 ("close", [(File, "file_handle")], Void);
-                                ("length", [(Unknown, "input_list")], Int);
+                                (* TODO: length and append has to be checked as special cases. *)
+                                ("length", [(Unknown, "input_list")], Int); 
                                 ("append", [(List(Unknown), "input_list")], List(Unknown))
                               ]
   in
