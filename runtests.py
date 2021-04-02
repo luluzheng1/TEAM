@@ -20,14 +20,14 @@ def runValidTests():
     print("\nRunning Valid Tests...\n")
     for file in map(lambda x: "/".join((VALID_FILE_DIR, x)), filter(lambda x: "tm" in x, os.listdir(VALID_FILE_DIR))):
         logFilename = runFile(file, True)
-        refFilename = "ref/{}".format(logFilename.split("/")[-1])
+        refFilename = "scanner_parser_ref/{}".format(logFilename.split("/")[-1])
         checkResults(logFilename, refFilename)
 
 def runInValidTests():
     print("\nRunning Invalid Tests...\n")
     for file in map(lambda x: "/".join((INVALID_FILE_DIR, x)), filter(lambda x: "tm" in x, os.listdir(INVALID_FILE_DIR))):
         logFilename = runFile(file, True)
-        refFilename = "ref/{}".format(logFilename.split("/")[-1])
+        refFilename = "scanner_parser_ref/{}".format(logFilename.split("/")[-1])
         checkResults(logFilename, refFilename)
 
 def printFailedTestMessage(logFile):
