@@ -16,6 +16,7 @@ let translate (functions, statements) =
   let i32_t      = L.i32_type    context
   and string_t   = L.pointer_type (L.i8_type context)
   and i8_t       = L.i8_type     context
+  and i1_t       = L.i1_type     context
   and void_t     = L.void_type   context 
 
   and the_module = L.create_module context "TEAM" in
@@ -25,6 +26,7 @@ let translate (functions, statements) =
       A.Int   -> i32_t
     | A.String -> string_t
     | A.Void  -> void_t
+    | A.Bool  -> i1_t
   in
 
   let printf_t : L.lltype = 
@@ -75,6 +77,7 @@ let translate (functions, statements) =
 
     let rec expr sc builder ((_, e) : sexpr) = match e with
         SIntLit i -> L.const_int i32_t i
+      | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
       | SStringLit s ->  L.build_global_stringptr s "string" builder
       | SCall ("print", [e]) ->
