@@ -50,18 +50,29 @@ def printSuccessTestMessage(logFile):
     tmFile = logFile.split("/")[-1].split(".")[0]
     print(bcolors.OKGREEN +"{:20s} -- OK!\n".format(tmFile + ".tm") + bcolors.ENDC)
 
-def checkResults(f_astGenerated, f_astReference):
-    astGenerated = [line for line in open(f_astGenerated)]
-    astReference = [line for line in open(f_astReference)]
+def checkResults(f_generated, f_reference):
+    generated = [line for line in open(f_generated)]
+    reference = [line for line in open(f_reference)]
 
-    if len(astGenerated) != len(astReference):
-        printFailedTestMessage(f_astGenerated)
+    if len(generated) != len(reference):
+        printFailedTestMessage(f_generated)
         return 
-    for index, astGenerateLine in enumerate(astGenerated):
-        if astGenerateLine != astReference[index]:
-            printFailedTestMessage(f_astGenerated)
+    for index, astGenerateLine in enumerate(generated):
+        if astGenerateLine != reference[index]:
+            printFailedTestMessage(f_generated)
+            print("+" * 100)
+            print(bcolors.WARNING + bcolors.UNDERLINE + "Running diff...\n" + bcolors.ENDC)
+            process = subprocess.Popen(["diff", "-y", f_generated, f_reference], 
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
+            print(bcolors.WARNING + 
+                  "command: diff -y {} (output) {} (standard)\n".format(f_generated, f_reference) + 
+                  bcolors.ENDC)
+            print(bcolors.WARNING + stdout + bcolors.ENDC)
+            print("+" * 100)
             return
-    printSuccessTestMessage(f_astGenerated)
+    printSuccessTestMessage(f_generated)
 
 def runFile(fileName, testMode, userInput=False):
     if testMode == "ast":
