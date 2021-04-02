@@ -110,6 +110,21 @@ let translate (functions, statements) =
                let _  = L.build_store (expr sc builder s) local builder in 
                add_variable_to_scope sc n local)
         in builder
+      | SWhile (predicate, body) ->
+        let pred_bb = L.append_block context "while" the_function in
+        let _ = L.build_br pred_bb builder in
+
+        let body_bb = L.append_block context "while_body" the_function in
+        let while_builder = stmt sc (L.builder_at_end context body_bb) body in
+        let () = add_terminal while_builder (L.build_br pred_bb) in
+
+        let pred_builder = L.builder_at_end context pred_bb in
+        let bool_val = expr sc pred_builder predicate in
+
+        let merge_bb = L.append_block context "merge" the_function in
+        let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
+        L.builder_at_end context merge_bb
+        
       | _ -> builder
     in
     let builder = List.fold_left (stmt scope) builder fdecl.sbody
