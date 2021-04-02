@@ -3,7 +3,7 @@
 
 type action = Ast | Sast | LLVM_IR
 
-let () =
+(* let () =
   let action = ref Sast in
   let set_action a () = action := a in
   let speclist =
@@ -24,10 +24,12 @@ let () =
       | Ast -> ()
       | Sast -> print_string (Sast.string_of_sprogram sast)
       (* | LLVM_IR -> print_string (Llvm.string_of_llmodule
-         (Codegen.translate sast)) *) )
+         (Codegen.translate sast)) *) ) *)
 
-(* let () = let usage_msg = "usage ./team.native [files.tm]" in let channel =
-   ref stdin in Arg.parse [] (fun file -> channel := open_in file) usage_msg;
-   let lexbuf = Lexing.from_channel !channel in let ast = Parser.program
-   Scanner.token lexbuf in let sast = Semant.check ast in print_string
-   (Sast.string_of_sprogram sast) *)
+let () =
+let usage_msg = "usage ./team.native [files.tm]" in 
+let channel = ref stdin in 
+Arg.parse [] (fun file -> channel := open_in file) usage_msg;
+let lexbuf = Lexing.from_channel !channel in
+let ast = Parser.program Scanner.token lexbuf in
+print_string (Ast.string_of_program ast)
