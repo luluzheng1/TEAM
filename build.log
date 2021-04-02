@@ -1,0 +1,32 @@
+ocamlfind ocamldep -package llvm -package llvm.analysis -modules codegen.ml > codegen.ml.depends
+ocamlfind ocamlc -c -w +a-4 -package llvm -package llvm.analysis -o codegen.cmo codegen.ml
++ ocamlfind ocamlc -c -w +a-4 -package llvm -package llvm.analysis -o codegen.cmo codegen.ml
+File "codegen.ml", lines 27-34, characters 21-25:
+27 | .....................function
+28 |       A.Int    -> i32_t
+29 |     | A.String -> string_t
+30 |     | A.Bool   -> i1_t
+31 |     | A.Float  -> float_t
+32 |     | A.Void   -> void_t
+33 |     | A.Char   -> char_t
+34 |     | A.Unknown -> void_t
+Warning 8: this pattern-matching is not exhaustive.
+Here is an example of a case that is not matched:
+(File|List _|Func (_, _))
+ocamlfind ocamlc -c -w +a-4 -package llvm -package llvm.analysis -o team.cmo team.ml
+ocamlfind ocamlopt -c -w +a-4 -package llvm -package llvm.analysis -o codegen.cmx codegen.ml
++ ocamlfind ocamlopt -c -w +a-4 -package llvm -package llvm.analysis -o codegen.cmx codegen.ml
+File "codegen.ml", lines 27-34, characters 21-25:
+27 | .....................function
+28 |       A.Int    -> i32_t
+29 |     | A.String -> string_t
+30 |     | A.Bool   -> i1_t
+31 |     | A.Float  -> float_t
+32 |     | A.Void   -> void_t
+33 |     | A.Char   -> char_t
+34 |     | A.Unknown -> void_t
+Warning 8: this pattern-matching is not exhaustive.
+Here is an example of a case that is not matched:
+(File|List _|Func (_, _))
+ocamlfind ocamlopt -c -w +a-4 -package llvm -package llvm.analysis -o team.cmx team.ml
+ocamlfind ocamlopt -linkpkg -package llvm -package llvm.analysis ast.cmx sast.cmx codegen.cmx exceptions.cmx parser.cmx scanner.cmx semant.cmx team.cmx -o team.native

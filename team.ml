@@ -3,8 +3,9 @@
 
 type action = Ast | Sast | LLVM_IR
 
-(* let () =
-  let action = ref Sast in
+let () =
+  let action = ref LLVM_IR in
+
   let set_action a () = action := a in
   let speclist =
     [ ("-a", Arg.Unit (set_action Ast), "Print the AST")
@@ -23,8 +24,10 @@ type action = Ast | Sast | LLVM_IR
       match !action with
       | Ast -> ()
       | Sast -> print_string (Sast.string_of_sprogram sast)
-      (* | LLVM_IR -> print_string (Llvm.string_of_llmodule
-         (Codegen.translate sast)) *) ) *)
+
+      | LLVM_IR -> print_string (Llvm.string_of_llmodule
+         (Codegen.translate sast)))
+
 
 let () =
 let usage_msg = "usage ./team.native [files.tm]" in 
