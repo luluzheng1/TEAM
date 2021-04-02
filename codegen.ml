@@ -10,7 +10,7 @@ type var_table =
 
 let translate (functions, statements) =
   let main_func = {styp = Int; sfname = "main"; sformals = []; sbody = statements} in
-  let functions = functions@[main_func] in
+  let functions = [main_func]@functions in
   let context    = L.global_context () in
 
   let i32_t      = L.i32_type    context
@@ -73,20 +73,20 @@ let translate (functions, statements) =
       | _ -> ref {variables = formals; parent= Some !scope }
     in 
 
-    let rec expr builder ((_, e) : sexpr) = match e with
+    let rec expr sc builder ((_, e) : sexpr) = match e with
         SIntLit i -> L.const_int i32_t i
       | SNoexpr -> L.const_int i32_t 0
       | SStringLit s ->  L.build_global_stringptr s "string" builder
       | SCall ("print", [e]) ->
-        L.build_call printf_func [| (expr builder e) |] "printf" builder
+        L.build_call printf_func [| (expr sc builder e) |] "printf" builder
       | SCall (f, args) ->
         let (fdef, fdecl) = StringMap.find f function_decls in
-        let llargs = List.rev (List.map (expr builder) (List.rev args)) in
+        let llargs = List.rev (List.map (expr sc builder) (List.rev args)) in
         let result = (match fdecl.styp with 
                        A.Void -> ""
                      | _ -> f ^ "_result") in
         L.build_call fdef (Array.of_list llargs) result builder 
-      | SId n -> L.build_load (lookup scope n) n builder
+      | SId n -> L.build_load (lookup sc n) n builder
       | _ -> L.const_int i32_t 0
     in
     
@@ -96,19 +96,19 @@ let translate (functions, statements) =
       | None -> ignore (instr builder) 
     in
 	
-    let rec stmt builder = function
-	      SBlock sl -> List.fold_left stmt builder sl
-      | SExpr e -> let _ = expr builder e in builder 
+    let rec stmt sc builder = function
+	      SBlock sl -> List.fold_left (stmt sc) builder sl
+      | SExpr e -> let _ = expr sc builder e in builder 
       | SDeclaration (t, n, s) -> let _ = (match fdecl.sfname with
-          "main" -> add_variable_to_scope scope n (L.define_global n (expr builder s) the_module)
+          "main" -> add_variable_to_scope sc n (L.define_global n (expr sc builder s) the_module)
         | _ -> let local = L.build_alloca (ltype_of_typ t) n builder in
-               let _  = L.build_store (expr builder s) local builder in 
-               add_variable_to_scope scope n local)
+               let _  = L.build_store (expr sc builder s) local builder in 
+               add_variable_to_scope sc n local)
         in builder
       | _ -> builder
     in
 
-    let builder = stmt builder (SBlock fdecl.sbody) 
+    let builder = stmt scope builder (SBlock fdecl.sbody) 
   in
 
     add_terminal builder (match fdecl.styp with
