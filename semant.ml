@@ -8,64 +8,55 @@ module E = Exceptions
 (* Semantic checking of the AST. Returns an SAST if successful, throws an
    exception if something is wrong. *)
 let check (functions, statements) =
-  let built_in_decls = 
-    let add_bind map (name, formalTypes, returnType) = StringMap.add name {
-        typ = returnType; fname = name; 
-        formals = formalTypes; body = [] } map
-      in List.fold_left add_bind StringMap.empty [
-                                ("print", [(String, "x")], Void);
-                                ("open", [(String, "file_name"); (String, "mode")], File);
-                                ("readline", [(File, "file_handle")], String);
-                                ("write", [(File, "file_handle"); (String, "content")], Void);
-                                ("close", [(File, "file_handle")], Void);
-                                (* TODO: length and append has to be checked as special cases. *)
-                                ("length", [(Unknown, "input_list")], Int); 
-                                ("append", [(List(Unknown), "input_list")], List(Unknown))
-                              ]
+  let built_in_decls =
+    let add_bind map (name, formalTypes, returnType) =
+      StringMap.add name
+        {typ= returnType; fname= name; formals= formalTypes; body= []}
+        map
+    in
+    List.fold_left add_bind StringMap.empty
+      [ ("print", [(String, "x")], Void)
+      ; ("open", [(String, "file_name"); (String, "mode")], File)
+      ; ("readline", [(File, "file_handle")], String)
+      ; ("write", [(File, "file_handle"); (String, "content")], Void)
+      ; ("close", [(File, "file_handle")], Void)
+      ; (* TODO: length and append has to be checked as special cases. *)
+        ("length", [(Unknown, "input_list")], Int)
+      ; ("append", [(List Unknown, "input_list")], List Unknown) ]
   in
-  
   let add_func map fd =
-    let n = fd.fname in (* Name of the function *)
+    let n = fd.fname in
+    (* Name of the function *)
     match fd with
     | _ when StringMap.mem n built_in_decls ->
         raise (E.CannotRedefineBuiltIn fd.fname)
     | _ when StringMap.mem n map -> raise (E.AlreadyDefined fd.fname)
     | _ -> StringMap.add n fd map
   in
-
-  let function_decls = List.fold_left add_func built_in_decls functions
-  in
-  
+  let function_decls = List.fold_left add_func built_in_decls functions in
   let find_func s =
     try StringMap.find s function_decls
     with Not_found -> raise (E.UndefinedFunction s)
   in
-
   let variable_table = {variables= StringMap.empty; parent= None} in
   (* Create a reference to the global table. The scope will be passed through
      recurisve calls and be mutated when we need to add a new variable *)
   let global_scope = ref variable_table in
-  
-  (* check void type variable *)
-  let check_void_type (ty, name) =
-    match ty with Void -> raise (E.VoidType name) | _ -> ty
-  in
-
-  let check_binds (to_check : bind list) = 
+  let check_binds (to_check : bind list) =
     let name_compare (_, n1) (_, n2) = compare n1 n2 in
-    let check_it checked binding = 
+    let check_it checked binding =
       match binding with
-        (* No void bindings *)
-        (Void, name) -> raise (E.VoidType name)
-      | (_, n1) -> match checked with
-                    (* No duplicate bindings *)
-                      ((_, n2) :: _) when n1 = n2 -> raise (E.Duplicate n2)
-                    | _ -> binding :: checked
-
-    in let _ = List.fold_left check_it [] (List.sort name_compare to_check) 
-       in to_check
-  in  
-
+      (* No void bindings *)
+      | Void, name -> raise (E.VoidType name)
+      | _, n1 -> (
+        match checked with
+        (* No duplicate bindings *)
+        | (_, n2) :: _ when n1 = n2 -> raise (E.Duplicate n2)
+        | _ -> binding :: checked )
+    in
+    let _ = List.fold_left check_it [] (List.sort name_compare to_check) in
+    to_check
+  in
   (* Finding a variable, beginning in a given scope and searching upwards *)
   let rec type_of_identifier (scope : symbol_table ref) name =
     try StringMap.find name !scope.variables
@@ -88,7 +79,6 @@ let check (functions, statements) =
   let check_assign lvaluet rvaluet err =
     if lvaluet = rvaluet then lvaluet else raise err
   in
-
   (* Return a semantically-checked expression with a type *)
   let rec expr scope exp =
     match exp with
@@ -217,10 +207,8 @@ let check (functions, statements) =
     | End -> (Int, SEnd)
     | Noexpr -> (Void, SNoexpr)
   in
-
   let check_bool_expr scope e =
     let t', e' = expr scope e in
-
     if t' != Bool then raise (E.MismatchedTypes (t', Bool, e)) else (t', e')
   in
   (* check void type variable *)
@@ -242,7 +230,7 @@ let check (functions, statements) =
           | s :: ss -> check_stmt new_scope_ref s fdecl :: check_stmt_list ss
           | [] -> []
         in
-        SBlock (check_stmt_list sl)
+        SBlock (List.rev (check_stmt_list (List.rev sl)))
     | Return e as return -> (
       match fdecl.fname with
       | "toplevel" -> raise E.ReturnOutsideFunction
@@ -278,29 +266,22 @@ let check (functions, statements) =
     | Continue -> SContinue
     | _ -> SExpr (Void, SNoexpr)
   in
-  let check_functions func = 
-    
+  let check_functions func =
     let formals' = check_binds func.formals in
-
-    let add_formal map (ty, name) = StringMap.add name ty map in 
-
-    let func_variable_table = {variables = List.fold_left add_formal StringMap.empty formals'; parent= Some(!global_scope)} in
-    
-    let func_scope = ref func_variable_table in 
-
+    let add_formal map (ty, name) = StringMap.add name ty map in
+    let func_variable_table =
+      { variables= List.fold_left add_formal StringMap.empty formals'
+      ; parent= Some !global_scope }
+    in
+    let func_scope = ref func_variable_table in
     let body' = check_stmt func_scope (Block func.body) func in
-
-    {styp = func.typ; sfname = func.fname; sformals = formals'; sbody = [body']}
+    {styp= func.typ; sfname= func.fname; sformals= formals'; sbody= [body']}
   in
-
   let check_stmts stmt = check_stmt global_scope stmt dummy in
-
   let statements' =
     try List.map check_stmts statements with e -> E.handle_error e
   in
-
-  let functions' = 
+  let functions' =
     try List.map check_functions functions with e -> E.handle_error e
   in
-
   (functions', statements')
