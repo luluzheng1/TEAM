@@ -5,28 +5,33 @@ open Sast
 module StringMap = Map.Make(String)
 
 type var_table =
-{ variables: L.llvalue StringMap.t;
+{ lvariables: L.llvalue StringMap.t;
   parent: var_table ref option}
   
 let translate (functions, statements) =
-  let main_func = {styp = Int; sfname = "main"; sformals = []; sbody = statements} in
+  let main_func = {styp = A.Int; sfname = "main"; sformals = []; sbody = statements} in
   let functions = [main_func]@functions in
   let context    = L.global_context () in
 
-  let i32_t      = L.i32_type    context
+  let i32_t      = L.i32_type     context
+  and char_t     = L.i8_type      context
+  and i8_t       = L.i8_type      context
+  and void_t     = L.void_type    context 
+  and float_t    = L.double_type  context
+  and i1_t       = L.i1_type      context
   and string_t   = L.pointer_type (L.i8_type context)
-  and i8_t       = L.i8_type     context
-  and i1_t       = L.i1_type     context
-  and void_t     = L.void_type   context 
 
   and the_module = L.create_module context "TEAM" in
 
   (* Convert MicroC types to LLVM types *)
   let ltype_of_typ = function
-      A.Int   -> i32_t
+      A.Int    -> i32_t
     | A.String -> string_t
-    | A.Void  -> void_t
-    | A.Bool  -> i1_t
+    | A.Bool   -> i1_t
+    | A.Float  -> float_t
+    | A.Void   -> void_t
+    | A.Char   -> char_t
+    | A.Unknown -> void_t
   in
 
   let printf_t : L.lltype = 
@@ -34,7 +39,7 @@ let translate (functions, statements) =
   let printf_func : L.llvalue = 
      L.declare_function "printf" printf_t the_module in
   
-  let var_table = {variables = StringMap.empty; parent = None} in
+  let var_table = {lvariables = StringMap.empty; parent = None} in
   let globals = ref var_table in
 
   let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
@@ -50,14 +55,14 @@ let translate (functions, statements) =
     let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
 
-    let rec lookup sc n = try StringMap.find n !sc.variables
+    let rec lookup sc n = try StringMap.find n !sc.lvariables
       with Not_found -> (match !sc.parent with
           None -> raise (Failure "internal error: variable not in scope")
         | Some t -> lookup t n)
     in
 
     let add_variable_to_scope sc n v = sc :=
-        {variables = StringMap.add n v !sc.variables; parent = !sc.parent} in
+        {lvariables = StringMap.add n v !sc.lvariables; parent = !sc.parent} in
 
     let formals =
       let add_formal m (t, n) p = 
@@ -72,7 +77,7 @@ let translate (functions, statements) =
 
     let scope = match fdecl.sfname with
         "main" -> scope
-      | _ -> ref {variables = formals; parent= Some scope }
+      | _ -> ref {lvariables = formals; parent= Some scope }
     in 
 
     let rec expr sc builder ((_, e) : sexpr) = match e with
@@ -101,7 +106,7 @@ let translate (functions, statements) =
 	
     let rec stmt sc builder = function
 	      SBlock sl -> 
-          let new_scope = ref {variables = StringMap.empty; parent = Some sc} in
+          let new_scope = ref {lvariables = StringMap.empty; parent = Some sc} in
           List.fold_left (stmt new_scope) builder sl
       | SExpr e -> let _ = expr sc builder e in builder 
       | SDeclaration (t, n, s) -> let _ = (match fdecl.sfname with
