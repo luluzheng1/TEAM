@@ -6,8 +6,8 @@ module StringMap = Map.Make(String)
 
 type var_table =
 { variables: L.llvalue StringMap.t;
-  parent: var_table option}
-
+  parent: var_table ref option}
+  
 let translate (functions, statements) =
   let main_func = {styp = Int; sfname = "main"; sformals = []; sbody = statements} in
   let functions = [main_func]@functions in
@@ -51,7 +51,7 @@ let translate (functions, statements) =
     let rec lookup sc n = try StringMap.find n !sc.variables
       with Not_found -> (match !sc.parent with
           None -> raise (Failure "internal error: variable not in scope")
-        | Some t -> lookup (ref t) n)
+        | Some t -> lookup t n)
     in
 
     let add_variable_to_scope sc n v = sc :=
@@ -70,7 +70,7 @@ let translate (functions, statements) =
 
     let scope = match fdecl.sfname with
         "main" -> scope
-      | _ -> ref {variables = formals; parent= Some !scope }
+      | _ -> ref {variables = formals; parent= Some scope }
     in 
 
     let rec expr sc builder ((_, e) : sexpr) = match e with
@@ -97,7 +97,9 @@ let translate (functions, statements) =
     in
 	
     let rec stmt sc builder = function
-	      SBlock sl -> List.fold_left (stmt sc) builder sl
+	      SBlock sl -> 
+          let new_scope = ref {variables = StringMap.empty; parent = Some sc} in
+          List.fold_left (stmt new_scope) builder sl
       | SExpr e -> let _ = expr sc builder e in builder 
       | SDeclaration (t, n, s) -> let _ = (match fdecl.sfname with
           "main" -> add_variable_to_scope sc n (L.define_global n (expr sc builder s) the_module)
@@ -107,8 +109,7 @@ let translate (functions, statements) =
         in builder
       | _ -> builder
     in
-
-    let builder = stmt scope builder (SBlock fdecl.sbody) 
+    let builder = List.fold_left (stmt scope) builder fdecl.sbody
   in
 
     add_terminal builder (match fdecl.styp with
