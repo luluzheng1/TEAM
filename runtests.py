@@ -3,33 +3,40 @@ import sys
 import os
 import subprocess
 import optparse
+import shutil
 
 class bcolors:
     OKGREEN = '\033[92m'
     FAIL = '\033[91m'
     ENDC = '\033[0m'
+    WARNING = '\033[93m'
+    UNDERLINE = '\033[4m'
 
-VALID_FILE_DIR = 'tests/valid'
-INVALID_FILE_DIR = 'tests/invalid'
+VALID_FILE_DIR = 'scanner_parser_tests/valid'
+INVALID_FILE_DIR = 'scanner_parser_tests/invalid'
 
 
 def runValidTests():
     print("\nRunning Valid Tests...\n")
     for file in map(lambda x: "/".join((VALID_FILE_DIR, x)), filter(lambda x: "tm" in x, os.listdir(VALID_FILE_DIR))):
-        runFile(file, True)
+        logFilename = runFile(file, True)
+        refFilename = "ref/{}".format(logFilename.split("/")[-1])
+        checkResults(logFilename, refFilename)
 
 def runInValidTests():
     print("\nRunning Invalid Tests...\n")
     for file in map(lambda x: "/".join((INVALID_FILE_DIR, x)), filter(lambda x: "tm" in x, os.listdir(INVALID_FILE_DIR))):
-        runFile(file, True)
+        logFilename = runFile(file, True)
+        refFilename = "ref/{}".format(logFilename.split("/")[-1])
+        checkResults(logFilename, refFilename)
 
 def printFailedTestMessage(logFile):
     tmFile = logFile.split("/")[-1].split(".")[0]
-    print(bcolors.FAIL +"{:15s} -- FAILED!\n".format(tmFile + ".tm") + bcolors.ENDC)
+    print(bcolors.FAIL +"{:20s} -- FAILED!\n".format(tmFile + ".tm") + bcolors.ENDC)
 
 def printSuccessTestMessage(logFile):
     tmFile = logFile.split("/")[-1].split(".")[0]
-    print(bcolors.OKGREEN +"{:15s} -- OK!\n".format(tmFile + ".tm") + bcolors.ENDC)
+    print(bcolors.OKGREEN +"{:20s} -- OK!\n".format(tmFile + ".tm") + bcolors.ENDC)
 
 def checkResults(f_astGenerated, f_astReference):
     astGenerated = [line for line in open(f_astGenerated)]
@@ -53,9 +60,11 @@ def runFile(fileName, verbose):
     if verbose:
         if not os.path.exists('log'):
             os.makedirs('log')
-        with open('log/{}.log'.format(fileName.split('/')[-1].split('.')[0]), 'w+') as fo:
+        filename = 'log/{}.log'.format(fileName.split('/')[-1].split('.')[0])
+        with open(filename, 'w+') as fo:
             toWrite = stdout if stdout else stderr
             fo.write(toWrite.decode('utf-8'))
+    return filename
                 
 
 def interpretCommand(command):
@@ -86,9 +95,9 @@ def moveLog():
         os.makedirs("log/invalid")
     for file in [f for f in os.listdir("log") if "log" in f]:
         if "bad" not in file:
-            os.replace("log/{}".format(file), "log/valid/{}".format(file))
+            shutil.move("log/{}".format(file), "log/valid/{}".format(file))
         else:
-            os.replace("log/{}".format(file), "log/invalid/{}".format(file))
+            shutil.move("log/{}".format(file), "log/invalid/{}".format(file))
 
 
 if __name__ == "__main__":
@@ -130,10 +139,10 @@ if __name__ == "__main__":
     else:
         runValidTests()
         runInValidTests()
-        checkResults()
-        print("\n!!!NOTE!!!")
+        print(bcolors.WARNING + "\n!!!NOTE!!!" + bcolors.ENDC)
         print("\t1. AST are printed to log/(in)valid/fileName.log")
-        print("\n!!!Error Found So Far!!!")
+        print(bcolors.WARNING + "\n!!!Error Found So Far!!!" + bcolors.ENDC)
+
         print("\t None :D")
         moveLog()
         if not verbose and os.path.exists('log'):
