@@ -3,6 +3,7 @@
 open Ast
 open Sast
 module StringMap = Map.Make (String)
+open List
 module E = Exceptions
 
 (* Semantic checking of the AST. Returns an SAST if successful, throws an
@@ -216,16 +217,27 @@ let check (functions, statements) =
     match ty with Void -> raise (E.VoidType name) | _ -> ty
   in
   let dummy = {typ= Int; fname= "toplevel"; formals= []; body= []} in
+  (* Checks if there are any statements after return *)
+  let rec check_return = function
+    | [Return _] -> ()
+    | Return _ :: _ -> raise E.ReturnNotLast
+    | _ :: ss -> check_return ss
+    | [] -> ()
+  in
   (* Return a semantically-checked statement containing exprs *)
   let rec check_stmt scope stmt fdecl =
     match stmt with
     | Expr e -> SExpr (expr scope e)
     | Block sl ->
+        let _ =
+          match fdecl.fname with "toplevel" -> () | _ -> check_return sl
+        in
+        let statements =
+          List.fold_left (fun acc s -> acc ^ string_of_stmt s) "" sl
+        in
         let new_scope = {variables= StringMap.empty; parent= Some !scope} in
         let new_scope_ref = ref new_scope in
         let rec check_stmt_list = function
-          | [(Return _ as s)] -> [check_stmt new_scope_ref s fdecl]
-          | Return _ :: _ -> raise E.ReturnNotLast
           | Block sl :: ss -> check_stmt_list (sl @ ss)
           | s :: ss -> check_stmt new_scope_ref s fdecl :: check_stmt_list ss
           | [] -> []

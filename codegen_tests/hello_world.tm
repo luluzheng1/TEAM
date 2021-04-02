@@ -1,5 +1,7 @@
-void test():
-    print("Hello World");
+void hello_world():
+    string s = "Hello World";
+    print(s);
+    return;
 end
 
-test();
+hello_world();
