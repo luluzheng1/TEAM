@@ -1,0 +1,12 @@
+
+(int : 1234)
+(string : "test")
+(char : a)
+(float : 1.234)
+(list<int> : [(int : 1),(int : 2),(int : 3)])
+(list<float> : [(float : 1.2),(float : 3.1),(float : 5.2)])
+(list<string> : [(string : "hello"),(string : "world")])
+(list<char> : [(char : a),(char : b),(char : c)])
+(list<list<int>> : [(list<int> : [(int : 1),(int : 2),(int : 3)]),(list<int> : [(int : 4),(int : 5),(int : 6)])])
+(bool : true)
+(bool : false)
