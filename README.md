@@ -1,30 +1,47 @@
 # TEAM
 
-## Compilation and Execution
+Note: This file is best viewed in a Markdown reader.
 
-To compile the TEAM, do
+## Compilation
 
-      ocamlbuild team.native
+To compile TEAM, do
 
-To execute a TEAM file (file.tm), do
-
-      ./team.native file.tm
+      make
 
 ## Testing
 
-All files used for testing are located in the tests/ directory. To run all tests, do
+To execute a single TEAM file (file.tm), do
 
-      python runtests.py
+      python runtests.py -t file.tm
 
-To run a single tests, do
+To run all tests, do
 
-      ./team.native tests/if.tm
+      python runtests.py -m all
 
-## Future Work
+To run tests in a specific directory, do
 
-We think our scanner and parser are complete.
+      python runtests.py -m <mode>
 
-## Names and Email Addresses of Group Members
+| Mode    | Description                                                                                                                                                                                                                           |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ast     | run the tests in `ast_tests/` and validate the pretty printed ast against a gold standard. Tests that pass the validation are marked with OK! and those that don't are marked with FAILED!                                            |
+| sast    | run the tests in `sast_tests/` and validates the pretty printed sast against a gold standard. Tests that pass the validation are marked with OK! and those that don't are marked with FAILED!                                         |
+| codegen | run the tests in `codegen_tests/`, compile the resulting LLVM code, execute the resulting file, and validate the output against a gold standard. If the validation fails, a diff of the two files will be printed to standard output. |
+
+Files used for testing are located in `<mode>_tests/`.
+The generated outputs are located in `<mode>_log/` and the expected outputs (gold standard) are located in `<mode>_ref/`.
+
+The default mode is ast if none was provided.
+
+## Hello World
+
+**hello_world.tm** is a simple program that defines and calls the function `hello_world()`, which declares a string with the value "Hello World" and prints it to standard output.
+
+To test the Hello World program, do
+
+      python runtests.py -m codegen
+
+## Group Members
 
 - Wenlu (Lulu) Zheng: <lulu.zheng@tufts.edu>
 - Yingjie Ling: <yingjie.ling@tufts.edu>
