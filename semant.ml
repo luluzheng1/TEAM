@@ -218,11 +218,11 @@ let check (functions, statements) =
   in
   let dummy = {typ= Int; fname= "toplevel"; formals= []; body= []} in
   (* Checks if there are any statements after return *)
-  let rec check_return = function
+  let rec check_return sl typ = match sl with
     | [Return _] -> ()
     | Return _ :: _ -> raise E.ReturnNotLast
-    | _ :: ss -> check_return ss
-    | [] -> ()
+    | _ :: ss -> check_return ss typ
+    | [] -> if typ != Void then raise E.NoReturnInNonVoidFunction else ()
   in
   (* Return a semantically-checked statement containing exprs *)
   let rec check_stmt scope stmt fdecl =
@@ -230,7 +230,7 @@ let check (functions, statements) =
     | Expr e -> SExpr (expr scope e)
     | Block sl ->
         let _ =
-          match fdecl.fname with "toplevel" -> () | _ -> check_return sl
+          match fdecl.fname with "toplevel" -> () | _ -> check_return sl fdecl.typ
         in
         let statements =
           List.fold_left (fun acc s -> acc ^ string_of_stmt s) "" sl

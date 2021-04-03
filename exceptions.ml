@@ -44,6 +44,8 @@ exception ReturnNotLast
 
 exception ReturnOutsideFunction
 
+exception NoReturnInNonVoidFunction
+
 exception ReturnMismatchedTypes of typ * typ * stmt
 
 let handle_error (e : exn) =
@@ -205,6 +207,11 @@ let handle_error (e : exn) =
         (TypeError
            (Printf.sprintf "Error: Return statement is outside of a function")
         )
+   | NoReturnInNonVoidFunction ->
+      raise
+         (TypeError
+            (Printf.sprintf "Error: No return statement in function returning non-void")
+         )
   | ReturnMismatchedTypes (t1, t2, s) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
