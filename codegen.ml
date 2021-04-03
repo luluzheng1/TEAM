@@ -32,6 +32,7 @@ let translate (functions, statements) =
     | A.Void   -> void_t
     | A.Char   -> char_t
     | A.Unknown -> void_t
+    | _         -> void_t
   in
 
   let printf_t : L.lltype = 
