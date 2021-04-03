@@ -1,11 +1,10 @@
 (* team.ml: scan & parse & sematically analyze the input, pretty-print AST
    and SAST *)
 
-type action = Ast | Sast | LLVM_IR
+type action = Ast | Sast | LLVM_IR | Compile
 
 let () =
-  let action = ref LLVM_IR in
-
+  let action = ref Sast in
   let set_action a () = action := a in
   let speclist =
     [ ("-a", Arg.Unit (set_action Ast), "Print the AST")
@@ -24,5 +23,9 @@ let () =
       match !action with
       | Ast -> ()
       | Sast -> print_string (Sast.string_of_sprogram sast)
-      | LLVM_IR -> print_string (Llvm.string_of_llmodule
-         (Codegen.translate sast)))
+      | LLVM_IR ->
+          print_string (Llvm.string_of_llmodule (Codegen.translate sast))
+      | Compile ->
+          let m = Codegen.translate sast in
+          Llvm_analysis.assert_valid_module m ;
+          print_string (Llvm.string_of_llmodule m) )

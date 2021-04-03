@@ -1,0 +1,5 @@
+
+(int : -(int : 5))
+(float : -(float : 5.1))
+(bool : not (bool : true))
+(bool : not (bool : (int : 5) < (int : 6)))
