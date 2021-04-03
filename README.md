@@ -10,10 +10,6 @@ To compile TEAM, do
 
 ## Testing
 
-To execute a single TEAM file (file.tm), do
-
-      python runtests.py -t file.tm
-
 To run all tests, do
 
       python runtests.py -m all
@@ -32,6 +28,16 @@ Files used for testing are located in `<mode>_tests/`.
 The generated outputs are located in `<mode>_log/` and the expected outputs (gold standard) are located in `<mode>_ref/`.
 
 The default mode is ast if none was provided.
+
+To execute a single TEAM file (file.tm), do
+
+      python runtests.py -t file.tm -r file.log -m <mode>
+
+-t specifies the file to be executed
+
+-r specifies the gold standard to be compared to
+
+-m when running a single test, the mode can not be `all`.
 
 ## Hello World
 
