@@ -218,7 +218,8 @@ let check (functions, statements) =
   in
   let dummy = {typ= Int; fname= "toplevel"; formals= []; body= []} in
   (* Checks if there are any statements after return *)
-  let rec check_return sl typ = match sl with
+  let rec check_return sl typ =
+    match sl with
     | [Return _] -> ()
     | Return _ :: _ -> raise E.ReturnNotLast
     | _ :: ss -> check_return ss typ
@@ -230,10 +231,9 @@ let check (functions, statements) =
     | Expr e -> SExpr (expr scope e)
     | Block sl ->
         let _ =
-          match fdecl.fname with "toplevel" -> () | _ -> check_return sl fdecl.typ
-        in
-        let statements =
-          List.fold_left (fun acc s -> acc ^ string_of_stmt s) "" sl
+          match fdecl.fname with
+          | "toplevel" -> ()
+          | _ -> check_return sl fdecl.typ
         in
         let new_scope = {variables= StringMap.empty; parent= Some !scope} in
         let new_scope_ref = ref new_scope in
