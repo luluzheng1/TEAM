@@ -1,7 +1,7 @@
 module L = Llvm
 module A = Ast
 open Sast 
-
+module E = Exceptions
 module StringMap = Map.Make(String)
 
 type var_table =
@@ -23,15 +23,103 @@ let translate (functions, statements) =
 
   and the_module = L.create_module context "TEAM" in
 
-  (* Convert MicroC types to LLVM types *)
+  let int_list_item_struct = L.named_struct_type context "int_list_item" in
+  let float_list_item_struct = L.named_struct_type context "float_list_item" in
+  let bool_list_item_struct = L.named_struct_type context "bool_list_item" in
+  let string_list_item_struct = L.named_struct_type context "string_list_item" in 
+  let char_list_item_struct = L.named_struct_type context "char_list_item" in 
+  let unknown_list_item_struct = L.named_struct_type context "unknown_list_item" in
+
+  let int_list_item_pointer =
+    L.pointer_type int_list_item_struct
+  in
+  let float_list_item_pointer = 
+    L.pointer_type float_list_item_struct
+  in
+  let bool_list_item_pointer =
+    L.pointer_type bool_list_item_struct
+  in
+  let string_list_item_pointer =
+    L.pointer_type string_list_item_struct
+  in
+  let char_list_item_pointer = 
+    L.pointer_type char_list_item_struct
+  in
+  let unknown_list_item_pointer = 
+    L.pointer_type unknown_list_item_struct
+  in
+
+  let pack_struct struct_type arg_list =
+    L.struct_set_body struct_type (Array.of_list arg_list) true
+  in
+
+  let () =
+    pack_struct int_list_item_struct [i32_t; int_list_item_pointer; i1_t]
+  in
+  let () = 
+    pack_struct float_list_item_struct [float_t; float_list_item_pointer; i1_t]
+  in
+  let () =
+    pack_struct bool_list_item_struct [i1_t; bool_list_item_pointer; i1_t]
+  in
+  let () =
+    pack_struct string_list_item_struct [string_t; string_list_item_pointer; i1_t]
+  in
+  let () = 
+    pack_struct char_list_item_struct [char_t; char_list_item_pointer; i1_t]
+  in
+  let () = 
+    pack_struct unknown_list_item_struct [void_t; unknown_list_item_pointer; i1_t]
+  in
+
+
+  let get_list_type ty = match ty with
+      A.Int     -> int_list_item_struct
+    | A.Float   -> float_list_item_struct
+    | A.Bool    -> bool_list_item_struct
+    | A.String  -> string_list_item_struct
+    | A.Char    -> char_list_item_struct
+    | A.Unknown -> unknown_list_item_struct
+    | _ as t    -> raise(E.InvalidListType t)
+  in
+
+  let get_list_pointer_type ty = match ty with
+      A.Int     -> int_list_item_pointer
+    | A.Float   -> float_list_item_pointer
+    | A.Bool    -> bool_list_item_pointer
+    | A.String  -> string_list_item_pointer
+    | A.Char    -> char_list_item_pointer
+    | A.Unknown -> unknown_list_item_pointer 
+    | _ as t    -> raise(E.InvalidListType t)
+  in
+
+  (* Convert TEAM types to LLVM types *)
   let ltype_of_typ = function
-      A.Int    -> i32_t
-    | A.String -> string_t
-    | A.Bool   -> i1_t
-    | A.Float  -> float_t
-    | A.Void   -> void_t
-    | A.Char   -> char_t
+      A.Int     -> i32_t
+    | A.String  -> string_t
+    | A.Bool    -> i1_t
+    | A.Float   -> float_t
+    | A.Void    -> void_t
+    | A.Char    -> char_t
     | A.Unknown -> void_t
+    | A.List(t) -> get_list_pointer_type t
+    | _         -> raise (Failure "Type is not implemented yet!")
+  in
+
+  let list_end_item ty e1 =
+    let list_item_struct = get_list_type ty in
+    L.const_named_struct list_item_struct
+      (Array.of_list [e1; 
+                      L.const_pointer_null (L.pointer_type list_item_struct); 
+                      L.const_int i1_t 0])
+  in
+
+  let list_terminator ty =
+    let list_item_struct = get_list_type ty in
+    L.const_named_struct list_item_struct 
+      (Array.of_list [L.const_null (ltype_of_typ ty); 
+                      L.const_pointer_null (L.pointer_type list_item_struct); 
+                      L.const_int i1_t 1])
   in
 
   let printf_t : L.lltype = 
@@ -80,7 +168,17 @@ let translate (functions, statements) =
       | _ -> ref {lvariables = formals; parent= Some scope }
     in 
 
-    let rec expr sc builder ((_, e) : sexpr) = match e with
+    let raw_list (_, e) = match e with
+          SListLit s -> s
+        | _ -> raise(Failure("invalide argument passed."))
+    in
+
+    let list_inner_type l = match l with
+          A.List(ty) -> ty
+        | _ as t     -> raise(E.InvalidListType t)
+    in
+
+    let rec expr sc builder ((t, e) : sexpr) = match e with
         SIntLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
@@ -95,7 +193,37 @@ let translate (functions, statements) =
                      | _ -> f ^ "_result") in
         L.build_call fdef (Array.of_list llargs) result builder 
       | SId n -> L.build_load (lookup sc n) n builder
+      | SListLit _ -> build_list (list_inner_type t) (t, e) sc builder
       | _ -> L.const_int i32_t 0
+
+    (* MARK: has to double check this function *)
+    and build_list t e (scope: var_table ref) builder =
+      let list_item_struct = get_list_type t in
+      let build_link temp_var b =
+        let front_item = list_end_item t (expr scope builder b) in
+        let head_var = L.build_alloca list_item_struct "LIST_ITEM" builder in
+        let () =
+          ignore(L.build_store front_item head_var builder)
+        in
+        let head_pointer =
+          L.build_struct_gep head_var 1 "TEMP" builder
+        in
+        let () =
+          ignore(L.build_store temp_var head_pointer builder )
+        in
+        head_var
+      in
+      let stripped_list = raw_list e
+      in
+      (* build an empty item to terminate the list *)
+      let empty_expr =
+        list_terminator t
+      in
+      let empty_var = L.build_alloca list_item_struct "TEMP" builder in
+      let () =
+        ignore(L.build_store empty_expr empty_var builder)
+      in
+      List.fold_left build_link empty_var (List.rev stripped_list)
     in
     
     let add_terminal builder instr =

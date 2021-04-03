@@ -46,6 +46,8 @@ exception ReturnOutsideFunction
 
 exception ReturnMismatchedTypes of typ * typ * stmt
 
+exception InvalidListType of typ
+
 let handle_error (e : exn) =
   match e with
   | NonUniformTypeContainer (t1, t2) ->
@@ -215,4 +217,12 @@ let handle_error (e : exn) =
               "Type error: Expected value of type '%s', but got a value of \
                type '%s' in '%s'"
               s1 s2 s3 ) )
-  | e -> raise (TypeError (Printexc.to_string e))
+   | InvalidListType t -> 
+      let s1 = string_of_typ t in
+      raise 
+         (TypeError
+            (Printf.sprintf 
+               "Error: type '%s' cannot be used in a list" s1
+            )
+         )
+   | e -> raise (TypeError (Printexc.to_string e))

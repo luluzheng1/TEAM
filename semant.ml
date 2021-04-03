@@ -232,9 +232,10 @@ let check (functions, statements) =
         let _ =
           match fdecl.fname with "toplevel" -> () | _ -> check_return sl
         in
-        let statements =
+        (* MARK: WHAT IS THIS FOR? *)
+        (* let statements =
           List.fold_left (fun acc s -> acc ^ string_of_stmt s) "" sl
-        in
+        in *)
         let new_scope = {variables= StringMap.empty; parent= Some !scope} in
         let new_scope_ref = ref new_scope in
         let rec check_stmt_list = function
