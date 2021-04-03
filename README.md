@@ -25,7 +25,8 @@ To run tests in a specific directory, do
 | codegen | run the tests in `codegen_tests/`, compile the resulting LLVM code, execute the resulting file, and validate the output against a gold standard. If the validation fails, a diff of the two files will be printed to standard output. |
 
 Files used for testing are located in `<mode>_tests/`.
-The generated outputs are located in `<mode>_log/` and the expected outputs (gold standard) are located in `<mode>_ref/`.
+The generated outputs are located in `<mode>_log/` and
+the expected outputs (gold standard) are located in `<mode>_ref/`.
 
 The default mode is ast if none was provided.
 
@@ -33,15 +34,17 @@ To execute a single TEAM file (file.tm), do
 
       python runtests.py -t file.tm -r file.log -m <mode>
 
--t specifies the file to be executed
+- -t specifies the file to be executed
 
--r specifies the gold standard to be compared to
+- -r specifies the file that is the gold standard
 
--m when running a single test, the mode can not be `all`.
+- -m when running a single test, the mode can not be `all`.
 
 ## Hello World
 
-**hello_world.tm** is a simple program that defines and calls the function `hello_world()`, which declares a string with the value "Hello World" and prints it to standard output.
+**hello_world.tm** is a simple program that defines and calls
+the function `hello_world()`, which declares a string with the
+value "Hello World" and prints it to standard output.
 
 To test the Hello World program, do
 
