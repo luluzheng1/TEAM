@@ -24,4 +24,3 @@ printb(b4);
 
 float f5 = 3.5^2;
 printf(f5);
-
