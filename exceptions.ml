@@ -51,7 +51,7 @@ exception ReturnMismatchedTypes of typ * typ * stmt
 (* Codegen Exceptions *)
 exception InvalidFloatBinop
 
-exception InvalidFloatBinop
+exception InvalidIntBinop
 
 let handle_error (e : exn) =
   match e with
