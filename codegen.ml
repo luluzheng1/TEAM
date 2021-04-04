@@ -59,12 +59,12 @@ let translate (functions, statements) =
     let builder = L.builder_at_end context (L.entry_block the_function) in
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
     and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
-    let rec lookup sc n =
+    let rec find_variable sc n =
       try StringMap.find n !sc.lvariables
       with Not_found -> (
         match !sc.parent with
-        | None -> raise (Failure "internal error: variable not in scope")
-        | Some t -> lookup t n )
+        | None -> raise (E.NotFound n)
+        | Some t -> find_variable t n )
     in
     let formals =
       let add_formal m (t, n) p =
@@ -81,14 +81,14 @@ let translate (functions, statements) =
       | "main" -> scope
       | _ -> ref {lvariables= formals; parent= Some scope}
     in
-    let rec expr sc builder ((_, e) : sexpr) =
+    let rec expr sc builder ((t, e) : sexpr) =
       match e with
       | SIntLit i -> L.const_int i32_t i
       | SFloatLit f -> L.const_float float_t f
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SCharLit c -> L.const_int char_t (Char.code c)
       | SStringLit s -> L.build_global_stringptr s "string" builder
-      | SId n -> L.build_load (lookup sc n) n builder
+      | SId n -> L.build_load (find_variable sc n) n builder
       | SBinop (e1, op, e2) ->
           let t1, _ = e1
           and t2, _ = e2
@@ -169,12 +169,16 @@ let translate (functions, statements) =
             | _ -> raise E.InvalidFloatBinop
           else raise (Failure "Not Yet Implemented")
       | SUnop (op, e) ->
+          let t, _ = e in
           let e' = expr sc builder e in
           ( match op with
           | A.Neg when t = A.Float -> L.build_fneg
           | A.Neg -> L.build_neg
           | A.Not -> L.build_not )
             e' "tmp" builder
+      | SAssign (s, e) ->
+          let _ = update_variable sc s e builder in
+          expr sc builder (t, SId s)
       | SCall ("print", [e]) ->
           L.build_call printf_func [|expr sc builder e|] "printf" builder
       | SCall ("printb", [e]) ->
@@ -183,7 +187,7 @@ let translate (functions, statements) =
             "printf" builder
       | SCall ("printf", [e]) ->
           L.build_call printf_func
-            [|int_format_str; expr sc builder e|]
+            [|float_format_str; expr sc builder e|]
             "printf" builder
       | SCall (f, args) ->
           let fdef, fdecl = StringMap.find f function_decls in
@@ -203,8 +207,15 @@ let translate (functions, statements) =
       let l_var = L.build_alloca ltype n builder in
       let _ = L.build_store e' l_var builder in
       sc :=
-        { lvariables= StringMap.add n l_var !scope.lvariables
-        ; parent= !scope.parent }
+        {lvariables= StringMap.add n l_var !sc.lvariables; parent= !sc.parent}
+    and update_variable sc n e builder =
+      let e' = expr sc builder e in
+      let l_var =
+        try find_variable sc n with Not_found -> raise (E.NotFound n)
+      in
+      let _ = L.build_store e' l_var builder in
+      sc :=
+        {lvariables= StringMap.add n l_var !sc.lvariables; parent= !sc.parent}
     in
     let add_terminal builder instr =
       match L.block_terminator (L.insertion_block builder) with
