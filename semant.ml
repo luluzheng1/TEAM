@@ -17,6 +17,8 @@ let check (functions, statements) =
     in
     List.fold_left add_bind StringMap.empty
       [ ("print", [(String, "x")], Void)
+      ; ("printf", [(Float, "x")], Void)
+      ; ("printb", [(Bool, "x")], Void)
       ; ("open", [(String, "file_name"); (String, "mode")], File)
       ; ("readline", [(File, "file_handle")], String)
       ; ("write", [(File, "file_handle"); (String, "content")], Void)
@@ -115,10 +117,13 @@ let check (functions, statements) =
           | Exp when same && t1 = Float -> Float
           | Exp when t1 = Int && t2 = Float -> Float
           | Exp when t1 = Float && t2 = Int -> Float
+          | (Equal | Neq) when t1 = Int && t2 = Float -> Bool
+          | (Equal | Neq) when t1 = Float && t2 = Int -> Bool
           | (Equal | Neq) when same -> Bool
-          | (Less | Leq | Greater | Geq) when same && (t1 = Int || t1 = Float)
-            ->
-              Bool
+          | (Less | Leq | Greater | Geq) when t1 = Int && t2 = Float -> Bool
+          | (Less | Leq | Greater | Geq) when t1 = Float && t2 = Int -> Bool
+          | (Less | Leq | Greater | Geq) when same && t1 = Int -> Bool
+          | (Less | Leq | Greater | Geq) when same && t1 = Float -> Bool
           | (And | Or) when same && t1 = Bool -> Bool
           | Range when same && t1 = Int -> List Int
           | _ -> raise (E.InvalidBinaryOperation (t1, op, t2, e))
