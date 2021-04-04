@@ -1,5 +1,6 @@
 module L = Llvm
 module A = Ast
+module E = Exceptions
 open Sast
 module StringMap = Map.Make (String)
 
@@ -92,8 +93,38 @@ let translate (functions, statements) =
           let t1, _ = e1
           and t2, _ = e2
           and e1' = expr sc builder e1
-          and e2' = L.const_sitofp (expr sc builder e2) float_t in
-          if t1 = A.Float || t2 = A.Int then
+          and e2' = expr sc builder e2 in
+          if t1 = A.Float && t2 = A.Int then
+            let cast_e2' = L.const_sitofp e2' float_t in
+            match op with
+            | A.Add -> L.build_fadd e1' cast_e2' "tmp" builder
+            | A.Sub -> L.build_fsub e1' cast_e2' "tmp" builder
+            | A.Mult -> L.build_fmul e1' cast_e2' "tmp" builder
+            | A.Div -> L.build_fdiv e1' cast_e2' "tmp" builder
+            | A.Exp -> L.build_call pow_func [|e1'; cast_e2'|] "exp" builder
+            | A.Equal -> L.build_fcmp L.Fcmp.Oeq e1' cast_e2' "tmp" builder
+            | A.Neq -> L.build_fcmp L.Fcmp.One e1' cast_e2' "tmp" builder
+            | A.Less -> L.build_fcmp L.Fcmp.Olt e1' cast_e2' "tmp" builder
+            | A.Leq -> L.build_fcmp L.Fcmp.Ole e1' cast_e2' "tmp" builder
+            | A.Greater -> L.build_fcmp L.Fcmp.Ogt e1' cast_e2' "tmp" builder
+            | A.Geq -> L.build_fcmp L.Fcmp.Oge e1' cast_e2' "tmp" builder
+            | _ -> raise E.InvalidFloatBinop
+          else if t1 = A.Int && t2 = A.Float then
+            let cast_e1' = L.const_sitofp e1' float_t in
+            match op with
+            | A.Add -> L.build_fadd cast_e1' e2' "tmp" builder
+            | A.Sub -> L.build_fsub cast_e1' e2' "tmp" builder
+            | A.Mult -> L.build_fmul cast_e1' e2' "tmp" builder
+            | A.Div -> L.build_fdiv cast_e1' e2' "tmp" builder
+            | A.Exp -> L.build_call pow_func [|cast_e1'; e2'|] "exp" builder
+            | A.Equal -> L.build_fcmp L.Fcmp.Oeq cast_e1' e2' "tmp" builder
+            | A.Neq -> L.build_fcmp L.Fcmp.One cast_e1' e2' "tmp" builder
+            | A.Less -> L.build_fcmp L.Fcmp.Olt cast_e1' e2' "tmp" builder
+            | A.Leq -> L.build_fcmp L.Fcmp.Ole cast_e1' e2' "tmp" builder
+            | A.Greater -> L.build_fcmp L.Fcmp.Ogt cast_e1' e2' "tmp" builder
+            | A.Geq -> L.build_fcmp L.Fcmp.Oge cast_e1' e2' "tmp" builder
+            | _ -> raise E.InvalidFloatBinop
+          else if t1 = A.Float && t2 = A.Float then
             match op with
             | A.Add -> L.build_fadd e1' e2' "tmp" builder
             | A.Sub -> L.build_fsub e1' e2' "tmp" builder
@@ -106,11 +137,36 @@ let translate (functions, statements) =
             | A.Leq -> L.build_fcmp L.Fcmp.Ole e1' e2' "tmp" builder
             | A.Greater -> L.build_fcmp L.Fcmp.Ogt e1' e2' "tmp" builder
             | A.Geq -> L.build_fcmp L.Fcmp.Oge e1' e2' "tmp" builder
-            | _ ->
-                raise
-                  (Failure
-                     "Internal Error: Invalid operation on float. Semant \
-                      should have rejected this" )
+            | _ -> raise E.InvalidFloatBinop
+          else if t1 = A.Int && t2 = A.Int then
+            match op with
+            | A.Add -> L.build_add e1' e2' "tmp" builder
+            | A.Sub -> L.build_sub e1' e2' "tmp" builder
+            | A.Mult -> L.build_mul e1' e2' "tmp" builder
+            | A.Div -> L.build_sdiv e1' e2' "tmp" builder
+            | A.Mod -> L.build_srem e1' e2' "tmp" builder
+            | A.Exp ->
+                let cast_e1' = L.const_sitofp e1' float_t
+                and cast_e2' = L.const_sitofp e2' float_t in
+                let result =
+                  L.build_call pow_func [|cast_e1'; cast_e2'|] "exp" builder
+                in
+                L.build_fptosi result i32_t "result" builder
+            | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "tmp" builder
+            | A.Neq -> L.build_icmp L.Icmp.Ne e1' e2' "tmp" builder
+            | A.Less -> L.build_icmp L.Icmp.Slt e1' e2' "tmp" builder
+            | A.Leq -> L.build_icmp L.Icmp.Sle e1' e2' "tmp" builder
+            | A.Greater -> L.build_icmp L.Icmp.Sgt e1' e2' "tmp" builder
+            | A.Geq -> L.build_icmp L.Icmp.Sge e1' e2' "tmp" builder
+            | A.Range -> raise (Failure "Not Yet Implemented")
+            | _ -> raise E.InvalidIntBinop
+          else if t1 = A.Bool && t2 = A.Bool then
+            match op with
+            | A.And -> L.build_and e1' e2' "tmp" builder
+            | A.Or -> L.build_or e1' e2' "tmp" builder
+            | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "tmp" builder
+            | A.Neq -> L.build_icmp L.Icmp.Ne e1' e2' "tmp" builder
+            | _ -> raise E.InvalidFloatBinop
           else raise (Failure "Not Yet Implemented")
       | SCall ("print", [e]) ->
           L.build_call printf_func [|expr sc builder e|] "printf" builder
@@ -120,7 +176,7 @@ let translate (functions, statements) =
             "printf" builder
       | SCall ("printf", [e]) ->
           L.build_call printf_func
-            [|float_format_str; expr sc builder e|]
+            [|int_format_str; expr sc builder e|]
             "printf" builder
       | SCall (f, args) ->
           let fdef, fdecl = StringMap.find f function_decls in
@@ -158,18 +214,7 @@ let translate (functions, statements) =
           let _ = expr sc builder e in
           builder
       | SDeclaration (t, n, e) ->
-          let _ =
-            add_variable sc t n e builder
-            (* let _ = *)
-            (* match fdecl.sfname with *)
-            (* | "main" -> *)
-            (* add_variable_to_scope sc n *)
-            (* (L.define_global n (expr sc builder e) the_module) *)
-            (* | _ -> *)
-            (* let local = L.build_alloca (ltype_of_typ t) n builder in *)
-            (* let _ = L.build_store (expr sc builder s) local builder in *)
-            (* add_variable_to_scope sc n local *)
-          in
+          let _ = add_variable sc t n e builder in
           builder
       | SWhile (predicate, body) ->
           let pred_bb = L.append_block context "while" the_function in
@@ -192,5 +237,8 @@ let translate (functions, statements) =
       | A.Void -> L.build_ret_void
       | t -> L.build_ret (L.const_int (ltype_of_typ t) 0) )
   in
-  List.iter (build_function_body globals) functions ;
-  the_module
+  let functions' =
+    try List.iter (build_function_body globals) functions
+    with e -> E.handle_error e
+  in
+  functions' ; the_module
