@@ -168,6 +168,13 @@ let translate (functions, statements) =
             | A.Neq -> L.build_icmp L.Icmp.Ne e1' e2' "tmp" builder
             | _ -> raise E.InvalidFloatBinop
           else raise (Failure "Not Yet Implemented")
+      | SUnop (op, e) ->
+          let e' = expr sc builder e in
+          ( match op with
+          | A.Neg when t = A.Float -> L.build_fneg
+          | A.Neg -> L.build_neg
+          | A.Not -> L.build_not )
+            e' "tmp" builder
       | SCall ("print", [e]) ->
           L.build_call printf_func [|expr sc builder e|] "printf" builder
       | SCall ("printb", [e]) ->
