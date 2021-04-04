@@ -52,8 +52,8 @@ type program = sfunc_decl list * sstmt list
 let rec string_of_sexpr (t, e) =
   "(" ^ string_of_typ t ^ " : "
   ^ ( match e with
-    | SIntLit l -> string_of_int l
-    | SFloatLit l -> string_of_float l
+    | SIntLit i -> string_of_int i
+    | SFloatLit f -> string_of_float f
     | SBoolLit true -> "true"
     | SBoolLit false -> "false"
     | SCharLit c -> String.make 1 c
