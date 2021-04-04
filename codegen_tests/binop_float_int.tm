@@ -1,26 +1,26 @@
-float f1 = 1.5 + 1;
-printf(f1);
+float f = 1.5 + 1;
+printf(f);
 
-float f2 = 1.5 - 1;
-printf(f2);
+f = 1.5 - 1;
+printf(f);
 
-float f3 = 3.0 * 1;
-printf(f3);
+f = 3.0 * 1;
+printf(f);
 
-float f4 = 3.0 / 1;
-printf(f4);
+f = 3.0 / 1;
+printf(f);
 
-bool b1 = 5.5 >= 5;
-printb(b1);
+bool b = 5.5 >= 5;
+printb(b);
 
-bool b2 = 5.5 <= 5;
-printb(b2);
+b = 5.5 <= 5;
+printb(b);
 
-bool b3 = 5.0 == 5;
-printb(b3);
+b = 5.0 == 5;
+printb(b);
 
-bool b4 = 5.5 != 5;
-printb(b4);
+b = 5.5 != 5;
+printb(b);
 
-float f5 = 3.5^2;
-printf(f5);
+f = 3.5^2;
+printf(f);
