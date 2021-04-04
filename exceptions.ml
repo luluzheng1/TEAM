@@ -53,6 +53,8 @@ exception InvalidFloatBinop
 
 exception InvalidIntBinop
 
+exception NotFound of string
+
 let handle_error (e : exn) =
   match e with
   | NonUniformTypeContainer (t1, t2) ->
@@ -239,4 +241,8 @@ let handle_error (e : exn) =
         (Failure
            "Internal Error: Invalid operation on int. Semant should have \
             rejected this" )
+  | NotFound s ->
+      raise
+        (Failure
+           (Printf.sprintf "Internal Error: Variable '%s' not in scope" s) )
   | e -> raise (TypeError (Printexc.to_string e))
