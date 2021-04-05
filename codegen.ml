@@ -32,11 +32,13 @@ let translate (functions, statements) =
     | A.Unknown -> void_t
     | _ -> void_t
   in
-  let printf_t : L.lltype =
-    L.var_arg_function_type i32_t [|L.pointer_type i8_t|]
-  in
+  let printf_t : L.lltype = L.function_type i32_t [|L.pointer_type i8_t|] in
   let printf_func : L.llvalue =
     L.declare_function "printf" printf_t the_module
+  in
+  let substring_t = L.function_type string_t [|string_t; i32_t; i32_t|] in
+  let substring_func =
+    L.declare_function "substring" substring_t the_module
   in
   let pow_t : L.lltype = L.function_type float_t [|float_t; float_t|] in
   let pow_func : L.llvalue = L.declare_function "pow" pow_t the_module in
@@ -88,6 +90,7 @@ let translate (functions, statements) =
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SCharLit c -> L.const_int char_t (Char.code c)
       | SStringLit s -> L.build_global_stringptr s "string" builder
+      | SListLit _ -> raise (Failure "Not Yet Implemented")
       | SId n -> L.build_load (find_variable sc n) n builder
       | SBinop (e1, op, e2) ->
           let t1, _ = e1
@@ -179,6 +182,9 @@ let translate (functions, statements) =
       | SAssign (s, e) ->
           let _ = update_variable sc s e builder in
           expr sc builder (t, SId s)
+      | SListAssign _ -> raise (Failure "Not Yet Implemented")
+      | SAssignOp (s, op, e) ->
+          expr sc builder (t, SAssign (s, (t, SBinop ((t, SId s), op, e))))
       | SCall ("print", [e]) ->
           L.build_call printf_func [|expr sc builder e|] "printf" builder
       | SCall ("printb", [e]) ->
@@ -198,6 +204,19 @@ let translate (functions, statements) =
             match fdecl.styp with A.Void -> "" | _ -> f ^ "_result"
           in
           L.build_call fdef (Array.of_list llargs) result builder
+      | SSliceExpr (s, slce) -> (
+        match t with
+        | A.String -> (
+          match slce with
+          | SIndex e -> raise (Failure "Not Yet Implemented")
+          | SSlice (e1, e2) ->
+              let s' = expr sc builder (t, SId s)
+              and e1' = expr sc builder e1
+              and e2' = expr sc builder e2 in
+              L.build_call substring_func [|s'; e1'; e2'|] "substring"
+                builder )
+        | A.List _ -> raise (Failure "Not Yet Implemented")
+        | _ -> raise (Failure "Internal Error") )
       | SNoexpr -> L.const_int i32_t 0
       | _ -> L.const_int i32_t 0
     and add_variable sc t n e builder =
