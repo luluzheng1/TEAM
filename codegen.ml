@@ -145,8 +145,8 @@ let translate (functions, statements) =
       let la_builder = L.builder_at_end context (L.entry_block la_function) in
       let curr_ptr = L.build_alloca list_struct_ptr "curr_pointer" la_builder in
       let _ = L.build_store (L.param la_function 0) curr_ptr la_builder in
-      let target_idx = L.build_alloca i32_t "index" la_builder in
-      let _ = L.build_store (L.param la_function 1) target_idx la_builder in
+      let curr_idx = L.build_alloca i32_t "index" la_builder in
+      let _ = L.build_store (L.param la_function 1) curr_idx la_builder in
 
       let pred_bb = L.append_block context "while" la_function in
       let _ = L.build_br pred_bb la_builder in
@@ -154,17 +154,18 @@ let translate (functions, statements) =
       let body_bb = L.append_block context "while_body" la_function in
       let while_builder = L.builder_at_end context body_bb in
 
-      let aasdf = L.build_load curr_ptr "asdf" while_builder in 
-      let next_ptr_ptr = L.build_struct_gep aasdf 1 "next" while_builder in
-      let next_ptr = L.build_load next_ptr_ptr "struct" while_builder in
+      let curr = L.build_load curr_ptr "get_curr" while_builder in 
+      let next_ptr_ptr = L.build_struct_gep curr 1 "next_ptr" while_builder in
+      let next_ptr = L.build_load next_ptr_ptr "next" while_builder in
       let _ = L.build_store next_ptr curr_ptr while_builder in
-      let sub = L.build_sub (L.build_load target_idx "asdfasdf" while_builder) (L.const_int i32_t 1) "tmp" while_builder in
-      let _ = L.build_store sub target_idx while_builder in
+      let index_val = L.build_load curr_idx "get_curr_index" while_builder in
+      let sub = L.build_sub index_val (L.const_int i32_t 1) "subtracted" while_builder in
+      let _ = L.build_store sub curr_idx while_builder in
       let () = add_terminal while_builder (L.build_br pred_bb) in
 
       let pred_builder = L.builder_at_end context pred_bb in
-
-      let bool_val = L.build_icmp L.Icmp.Ne (L.build_load target_idx "axcf" pred_builder) (L.const_int i32_t 0) "tmp" pred_builder in
+      let index_val = L.build_load curr_idx "get_curr" pred_builder in
+      let bool_val = L.build_icmp L.Icmp.Ne index_val (L.const_int i32_t 0) "is_non_zero" pred_builder in
       let merge_bb = L.append_block context "merge" la_function in
       let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in 
 
@@ -172,7 +173,6 @@ let translate (functions, statements) =
       let _ = L.build_ret (L.build_load curr_ptr "TARGET_ITEM" la_builder) la_builder in
     la_function
 
-    (* MARK: has to double check this function *)
     and build_list list_typ lis (scope: var_table ref) builder =
       let A.List(typ) = list_typ in
       let ltyp = ltype_of_typ typ in
@@ -181,23 +181,23 @@ let translate (functions, statements) =
           L.const_named_struct list_struct_type 
             [| L.const_pointer_null void_t; L.const_pointer_null void_t |]
         in
-        let entry_ptr = L.build_alloca list_struct_type "LIST_ITEM" builder in
+        let entry_ptr = L.build_alloca list_struct_type "list_item" builder in
         let _ = L.build_store new_entry entry_ptr builder in
 
-        let item_ptr = L.build_alloca ltyp "COPIED" builder in
-        let _ = L.build_store (expr scope builder data) item_ptr builder in
-        let typcast_ptr = L.build_bitcast item_ptr (L.pointer_type i8_t) "werte" builder in
-        let ewt = L.build_struct_gep entry_ptr 0 "werytu" builder in
-        let _ = L.build_store typcast_ptr ewt builder in
+        let data_ptr = L.build_alloca ltyp "copied" builder in
+        let _ = L.build_store (expr scope builder data) data_ptr builder in
+        let typcast_ptr = L.build_bitcast data_ptr (L.pointer_type i8_t) "cast_ptr" builder in
+        let data_ptr_container = L.build_struct_gep entry_ptr 0 "data_ptr_container" builder in
+        let _ = L.build_store typcast_ptr data_ptr_container builder in
 
-        let next = L.build_struct_gep entry_ptr 1 "NEXT" builder in
+        let next = L.build_struct_gep entry_ptr 1 "next" builder in
         let _ = L.build_store prev next builder
       in entry_ptr
       in let null_ptr = L.const_pointer_null list_struct_ptr 
     in List.fold_left build_link null_ptr (List.rev lis)
     in
     
-	
+
     let rec stmt sc builder = function
 	      SBlock sl -> 
           let new_scope = ref {lvariables = StringMap.empty; parent = Some sc} in
