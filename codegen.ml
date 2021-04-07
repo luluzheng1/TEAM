@@ -92,6 +92,7 @@ let translate (functions, statements) =
       | None -> ignore (instr builder) 
     in
 
+    (* TODO: make sure build_access_function is only defined once *)
     let rec expr sc builder ((t, e) : sexpr) = match e with
         SIntLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
@@ -108,19 +109,35 @@ let translate (functions, statements) =
         L.build_call fdef (Array.of_list llargs) result builder 
       | SId n -> L.build_load (lookup sc n) n builder
       | SListLit l -> build_list t l sc builder
-
       | SSliceExpr (id, slice) -> (match slice with
-            SIndex i -> let f = build_access_function t in
-                        let lis = L.build_load (lookup sc id) "temp" builder in
-                        L.build_call f [|lis; expr sc builder i|] (id ^ "_result") builder
-          | SSlice (index_a, index_b) -> raise(Failure("Nooooo."))
+            SIndex i -> 
+              let la_func = build_access_function in
+              let lis = L.build_load (lookup sc id) "get_list" builder in
+              let item_ptr = L.build_call la_func [|lis; expr sc builder i|] (id ^ "_result") builder in
+              let data_ptr_ptr = L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder in
+              let dat_ptr = L.build_load data_ptr_ptr "data_ptr" builder in
+              let type_casted = L.build_bitcast dat_ptr (L.pointer_type (ltype_of_typ t)) "cast_data_ptr" builder in
+              L.build_load type_casted "data" builder
+          | SSlice (i, j) ->
+              let la_func = build_access_function in
+              let lis = L.build_load (lookup sc id) "get_list" builder in
+              let i = expr sc builder i in
+              let item_ptr = L.build_call la_func [|lis; i|] (id ^ "start") builder in
+              item_ptr
+              (* let j = L.build_sub (expr sc builder j) i "difference" builder in  *)
+              (* let lc_func = build_copy_function in *)
+              (* L.build_call lc_func [|lis; j|] (id ^ "new_list") builder *)
           | _ -> raise(Failure("Invalid types while accessing")))
           
       | _ -> L.const_int i32_t 0
+
+    (* and build_copy_function =
+      let lc_function_t = (L.function_type list_struct_ptr [|list_struct_ptr; i32_t|]) *)
+
     
-    and build_access_function ty =
+    and build_access_function =
       let la_function_t = 
-        (L.function_type (ltype_of_typ ty) [|list_struct_ptr; i32_t|])
+        (L.function_type list_struct_ptr [|list_struct_ptr; i32_t|])
       in
       let la_function =
         L.define_function "list_access" la_function_t the_module
@@ -152,16 +169,10 @@ let translate (functions, statements) =
       let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in 
 
       let la_builder = L.builder_at_end context merge_bb in
-      let cat = L.build_struct_gep (L.build_load curr_ptr "asdfasdf" la_builder) 0 "data" la_builder in
-      let dat = L.build_load cat "temp" la_builder in
-      let hat = L.build_bitcast dat (L.pointer_type (ltype_of_typ ty)) "awewre" la_builder in
-      let mat = L.build_load hat "yolo" la_builder in
-
-      let _ = L.build_ret mat la_builder in
+      let _ = L.build_ret (L.build_load curr_ptr "TARGET_ITEM" la_builder) la_builder in
     la_function
 
     (* MARK: has to double check this function *)
-    (* TODO: change new_entry *)
     and build_list list_typ lis (scope: var_table ref) builder =
       let A.List(typ) = list_typ in
       let ltyp = ltype_of_typ typ in
