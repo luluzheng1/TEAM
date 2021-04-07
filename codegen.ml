@@ -23,29 +23,9 @@ let translate (functions, statements) =
 
   and the_module = L.create_module context "TEAM" in
 
-  let struct_names = ["int_list_item"; "float_list_item"; "bool_list_item";
-                    "string_list_item"; "char_list_item"] in
-  let item_types = [i32_t; float_t; i1_t; string_t; char_t] in
-
-  let structs = List.map (fun n -> L.named_struct_type context n) struct_names in
-  let struct_ptrs = List.map (fun s -> L.pointer_type s) structs in
-
-  let pack_struct struct_type arg_list = L.struct_set_body struct_type arg_list true in
-  let struct_fields = List.map2 (fun ty ptr -> [|ty; ptr|]) item_types struct_ptrs in
-  let _ = List.iter2 (fun ty fields -> pack_struct ty fields) structs struct_fields in
-
-  let get_struct_index ty = match ty with
-      A.Int     -> 0
-    | A.Float   -> 1
-    | A.Bool    -> 2
-    | A.String  -> 3
-    | A.Char    -> 4
-    | _ as t    -> raise(E.InvalidListType t)
-  in
-
-  let get_struct_type ty = List.nth structs (get_struct_index ty) in
-  let get_list_pointer_type ty = List.nth struct_ptrs (get_struct_index ty) in
-
+  let list_struct_type = L.named_struct_type context "list_item" in
+  let list_struct_ptr = L.pointer_type list_struct_type in
+  let _ = L.struct_set_body list_struct_type [|L.pointer_type i8_t; list_struct_ptr|] true in
 
   (* Convert TEAM types to LLVM types *)
   let ltype_of_typ = function
@@ -56,12 +36,8 @@ let translate (functions, statements) =
     | A.Void    -> void_t
     | A.Char    -> char_t
     | A.Unknown -> void_t
-    | A.List(t) -> get_list_pointer_type t
+    | A.List(_) -> list_struct_ptr
     | _         -> raise (Failure "Type is not implemented yet!")
-  in
-
-  let list_entry ty e1 =
-    L.const_named_struct ty [| e1; L.const_pointer_null (L.pointer_type ty) |]
   in
 
   let printf_t : L.lltype = 
@@ -132,41 +108,28 @@ let translate (functions, statements) =
         L.build_call fdef (Array.of_list llargs) result builder 
       | SId n -> L.build_load (lookup sc n) n builder
       | SListLit l -> build_list t l sc builder
+
       | SSliceExpr (id, slice) -> (match slice with
             SIndex i -> let f = build_access_function t in
                         let lis = L.build_load (lookup sc id) "temp" builder in
                         L.build_call f [|lis; expr sc builder i|] (id ^ "_result") builder
           | SSlice (index_a, index_b) -> raise(Failure("Nooooo."))
           | _ -> raise(Failure("Invalid types while accessing")))
+          
       | _ -> L.const_int i32_t 0
     
-    (* and build_list_access_single id index scope builder =
-      let get_ptr_at_target target i ptr = if i = target then
-            ptr
-          else
-            let list_entry = L.build_load ptr "temp" builder in
-            L.build_struct_gep list_entry 0 "temp" builder in
-      let head_ptr = lookup scope id in
-      (* let ptr_at_target = get_ptr_at_target index 0 head_ptr in  *)
-      let entr = L.build_load head_ptr "asdf" builder in
-      let data = L.build_struct_gep entr 0 "TEMP" builder 
-    in L.build_load data "temp" builder *)
-
     and build_access_function ty =
-      let list_struct_type = get_struct_type ty in
-      let list_struct_pointer = get_list_pointer_type ty in
       let la_function_t = 
-        (L.function_type (ltype_of_typ ty) [|list_struct_pointer; i32_t|])
+        (L.function_type (ltype_of_typ ty) [|list_struct_ptr; i32_t|])
       in
       let la_function =
         L.define_function "list_access" la_function_t the_module
       in
       let la_builder = L.builder_at_end context (L.entry_block la_function) in
-      let curr_ptr = L.build_alloca list_struct_pointer "curr_pointer" la_builder in
+      let curr_ptr = L.build_alloca list_struct_ptr "curr_pointer" la_builder in
       let _ = L.build_store (L.param la_function 0) curr_ptr la_builder in
       let target_idx = L.build_alloca i32_t "index" la_builder in
       let _ = L.build_store (L.param la_function 1) target_idx la_builder in
-
 
       let pred_bb = L.append_block context "while" la_function in
       let _ = L.build_br pred_bb la_builder in
@@ -191,25 +154,36 @@ let translate (functions, statements) =
       let la_builder = L.builder_at_end context merge_bb in
       let cat = L.build_struct_gep (L.build_load curr_ptr "asdfasdf" la_builder) 0 "data" la_builder in
       let dat = L.build_load cat "temp" la_builder in
-      let _ = L.build_ret dat la_builder in
-      la_function
+      let hat = L.build_bitcast dat (L.pointer_type (ltype_of_typ ty)) "awewre" la_builder in
+      let mat = L.build_load hat "yolo" la_builder in
 
-      
-
+      let _ = L.build_ret mat la_builder in
+    la_function
 
     (* MARK: has to double check this function *)
+    (* TODO: change new_entry *)
     and build_list list_typ lis (scope: var_table ref) builder =
       let A.List(typ) = list_typ in
-      let struct_type = get_struct_type typ in
+      let ltyp = ltype_of_typ typ in
       let build_link prev data =
-        let new_entry = list_entry struct_type (expr scope builder data) in
-        let entry_ptr = L.build_alloca struct_type "LIST_ITEM" builder in
+        let new_entry = 
+          L.const_named_struct list_struct_type 
+            [| L.const_pointer_null void_t; L.const_pointer_null void_t |]
+        in
+        let entry_ptr = L.build_alloca list_struct_type "LIST_ITEM" builder in
         let _ = L.build_store new_entry entry_ptr builder in
+
+        let item_ptr = L.build_alloca ltyp "COPIED" builder in
+        let _ = L.build_store (expr scope builder data) item_ptr builder in
+        let typcast_ptr = L.build_bitcast item_ptr (L.pointer_type i8_t) "werte" builder in
+        let ewt = L.build_struct_gep entry_ptr 0 "werytu" builder in
+        let _ = L.build_store typcast_ptr ewt builder in
+
         let next = L.build_struct_gep entry_ptr 1 "NEXT" builder in
         let _ = L.build_store prev next builder
       in entry_ptr
-      in let null_var = L.const_pointer_null (L.pointer_type struct_type) 
-    in List.fold_left build_link null_var (List.rev lis)
+      in let null_ptr = L.const_pointer_null list_struct_ptr 
+    in List.fold_left build_link null_ptr (List.rev lis)
     in
     
 	
