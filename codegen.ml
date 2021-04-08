@@ -114,27 +114,28 @@ let translate (functions, statements) =
           L.build_call fdef (Array.of_list llargs) result builder 
       | SId n -> L.build_load (lookup sc n) n builder
       | SListLit l -> build_list t l sc builder
-      | SSliceExpr (id, slice) -> (match slice with
-            SIndex i -> 
-              let la_func = build_access_function in
-              let lis = L.build_load (lookup sc id) "get_list" builder in
-              let item_ptr = L.build_call la_func [|lis; expr sc builder i|] (id ^ "_result") builder in
-              let data_ptr_ptr = L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder in
-              let dat_ptr = L.build_load data_ptr_ptr "data_ptr" builder in
-              let type_casted = L.build_bitcast dat_ptr (L.pointer_type (ltype_of_typ t)) "cast_data_ptr" builder in
-              L.build_load type_casted "data" builder
-          | SSlice (i, j) ->
-              let la_func = build_access_function in
-              let lis = L.build_load (lookup sc id) "get_list" builder in
-              let i = expr sc builder i in
-              let item_ptr = L.build_call la_func [|lis; i|] (id ^ "start") builder in
-              let j = (match j with
-                    (_, SNoexpr) -> L.const_int i32_t 100
-                  | _       -> L.build_sub (expr sc builder j) i "difference" builder) in
-              let lc_func = build_copy_function t in
-              let new_list_ptr = L.build_alloca list_struct_ptr "new_list_ptr" builder in
-              let _ = L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder in
-              L.build_load new_list_ptr "bwwaz" builder)
+      | SSliceExpr (id, slice) ->
+          (match slice with
+              SIndex i -> 
+                let la_func = build_access_function in
+                let lis = L.build_load (lookup sc id) "get_list" builder in
+                let item_ptr = L.build_call la_func [|lis; expr sc builder i|] (id ^ "_result") builder in
+                let data_ptr_ptr = L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder in
+                let dat_ptr = L.build_load data_ptr_ptr "data_ptr" builder in
+                let type_casted = L.build_bitcast dat_ptr (L.pointer_type (ltype_of_typ t)) "cast_data_ptr" builder in
+                L.build_load type_casted "data" builder
+            | SSlice (i, j) ->
+                let la_func = build_access_function in
+                let lis = L.build_load (lookup sc id) "get_list" builder in
+                let i = expr sc builder i in
+                let item_ptr = L.build_call la_func [|lis; i|] (id ^ "start") builder in
+                let j = (match j with
+                      (_, SEnd) -> L.const_int i32_t (-1)
+                    | _       -> L.build_sub (expr sc builder j) i "difference" builder) in
+                let lc_func = build_copy_function t in
+                let new_list_ptr = L.build_alloca list_struct_ptr "new_list_ptr" builder in
+                let _ = L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder in
+                L.build_load new_list_ptr "bwwaz" builder)
       | SListAssign (id, i, value) ->
           let inner_t = get_list_inner_typ t in
           let la_func = build_access_function in
@@ -164,29 +165,22 @@ let translate (functions, statements) =
 
       let else_bb = L.append_block context "else" la_function in
       let else_builder = L.builder_at_end context else_bb in
-
       let new_struct_ptr = L.build_alloca list_struct_type "new_struct_ptr" else_builder in
       let new_struct = 
         L.const_named_struct list_struct_type 
           [| L.const_pointer_null void_t; L.const_pointer_null void_t |]
       in
       let _ = L.build_store new_struct new_struct_ptr else_builder in
-
       let data_ptr = L.build_alloca (ltype_of_typ t) "ltyp" else_builder in
-
       let old_data_ptr_ptr = L.build_struct_gep (L.param la_function 0) 0 "old_data_ptr_ptr" else_builder in
       let old_data_ptr = L.build_load old_data_ptr_ptr "old_data_ptr" else_builder in
       let old_data_ptr = L.build_bitcast old_data_ptr  (L.pointer_type (ltype_of_typ t)) "cast_old_data_ptr" else_builder in
       let old_data = L.build_load old_data_ptr "old_data" else_builder in
       let _ = L.build_store old_data data_ptr else_builder in
       let data_ptr_cast = L.build_bitcast data_ptr (L.pointer_type i8_t) "data_ptr_cast" else_builder in 
-    
       let _ = L.build_store data_ptr_cast (L.build_struct_gep new_struct_ptr 0 "store_new_data" else_builder) else_builder in
-
       let _ = L.build_store new_struct_ptr (L.param la_function 2) else_builder in
-      
       let ptr_ptr = L.build_struct_gep new_struct_ptr 1 "next" else_builder in
-
       let next_ptr = L.build_struct_gep (L.param la_function 0) 1 "next" else_builder in
       let next = L.build_load next_ptr "adsf" else_builder in
       let sub = L.build_sub (L.param la_function 1) (L.const_int i32_t 1) "sub" else_builder in
