@@ -123,7 +123,9 @@ let translate (functions, statements) =
               let lis = L.build_load (lookup sc id) "get_list" builder in
               let i = expr sc builder i in
               let item_ptr = L.build_call la_func [|lis; i|] (id ^ "start") builder in
-              let j = L.build_sub (expr sc builder j) i "difference" builder in
+              let j = (match j with
+                    (_, SNoexpr) -> L.const_int i32_t 100
+                  | _       -> L.build_sub (expr sc builder j) i "difference" builder) in
               let lc_func = build_copy_function t in
               let ptr_ptr = L.build_alloca list_struct_ptr "asdf" builder in
               let _ = L.build_call lc_func [|item_ptr; j; ptr_ptr|] "" builder in
@@ -138,7 +140,10 @@ let translate (functions, statements) =
       let la_function_t = (L.function_type void_t [|list_struct_ptr; i32_t; L.pointer_type list_struct_ptr|]) in
       let la_function = L.define_function "list_copy" la_function_t the_module in
       let la_builder = L.builder_at_end context (L.entry_block la_function) in
-      let bool_val = L.build_icmp L.Icmp.Eq (L.param la_function 1) (L.const_int i32_t 0) "is_zero" la_builder in
+
+      let i_cond = L.build_icmp L.Icmp.Eq (L.param la_function 1) (L.const_int i32_t 0) "is_zero" la_builder in
+      let n_cond = L.build_is_null (L.param la_function 0) "ptr_is_null" la_builder in
+      let bool_val = L.build_or i_cond n_cond "or_conds" la_builder in
 
       let then_bb = L.append_block context "then" la_function in
       let _ = L.build_ret_void (L.builder_at_end context then_bb) in
@@ -290,7 +295,7 @@ let translate (functions, statements) =
       | SReturn e -> let _ = match fdecl.styp with
             A.Void -> L.build_ret_void builder 
           | _ -> L.build_ret (expr sc builder e) builder 
-in builder
+        in builder
 
       | _ -> builder
 
