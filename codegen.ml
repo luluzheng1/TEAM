@@ -118,24 +118,34 @@ let translate (functions, statements) =
               let dat_ptr = L.build_load data_ptr_ptr "data_ptr" builder in
               let type_casted = L.build_bitcast dat_ptr (L.pointer_type (ltype_of_typ t)) "cast_data_ptr" builder in
               L.build_load type_casted "data" builder
-          | SSlice (i, j) ->
-              let la_func = build_access_function in
-              let lis = L.build_load (lookup sc id) "get_list" builder in
-              let i = expr sc builder i in
-              let item_ptr = L.build_call la_func [|lis; i|] (id ^ "start") builder in
-              item_ptr
-              (* let j = L.build_sub (expr sc builder j) i "difference" builder in  *)
-              (* let lc_func = build_copy_function in *)
-              (* L.build_call lc_func [|lis; j|] (id ^ "new_list") builder *)
           | _ -> raise(Failure("Invalid types while accessing")))
           
       | _ -> L.const_int i32_t 0
 
-    (* and build_copy_function =
-      let lc_function_t = (L.function_type list_struct_ptr [|list_struct_ptr; i32_t|]) *)
+
+
+    and build_access_function =
+      let la_function_t = (L.function_type list_struct_ptr [|list_struct_ptr; i32_t|]) in
+      let la_function = L.define_function "list_access" la_function_t the_module in
+      let la_builder = L.builder_at_end context (L.entry_block la_function) in
+      let bool_val = L.build_icmp L.Icmp.Eq (L.param la_function 1) (L.const_int i32_t 0) "is_zero" la_builder in
+
+      let then_bb = L.append_block context "then" la_function in
+      let _ = L.build_ret (L.param la_function 0) (L.builder_at_end context then_bb) in
+
+      let else_bb = L.append_block context "else" la_function in
+      let else_builder = L.builder_at_end context else_bb in
+      let next_ptr = L.build_struct_gep (L.param la_function 0) 1 "next" else_builder in
+      let next = L.build_load next_ptr "adsf" else_builder in
+      let sub = L.build_sub (L.param la_function 1) (L.const_int i32_t 1) "sub" else_builder in
+      let ret = L.build_call la_function [|next; sub|] "result" else_builder in
+      let _ = L.build_ret ret else_builder in
+
+      let _ = L.build_cond_br bool_val then_bb else_bb la_builder in      
+    la_function
 
     
-    and build_access_function =
+    (* and build_access_function =
       let la_function_t = 
         (L.function_type list_struct_ptr [|list_struct_ptr; i32_t|])
       in
@@ -171,7 +181,7 @@ let translate (functions, statements) =
 
       let la_builder = L.builder_at_end context merge_bb in
       let _ = L.build_ret (L.build_load curr_ptr "TARGET_ITEM" la_builder) la_builder in
-    la_function
+    la_function *)
 
     and build_list list_typ lis (scope: var_table ref) builder =
       let A.List(typ) = list_typ in
