@@ -92,6 +92,11 @@ let translate (functions, statements) =
       | None -> ignore (instr builder) 
     in
 
+    let get_list_inner_typ = function
+        A.List(t) -> t
+      | _         -> raise(Failure "Internal error: Not a list type")
+    in
+
     (* TODO: make sure build_access_function is only defined once *)
     let rec expr sc builder ((t, e) : sexpr) = match e with
         SIntLit i -> L.const_int i32_t i
@@ -129,10 +134,9 @@ let translate (functions, statements) =
               let lc_func = build_copy_function t in
               let new_list_ptr = L.build_alloca list_struct_ptr "new_list_ptr" builder in
               let _ = L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder in
-              L.build_load new_list_ptr "bwwaz" builder
-          | _ -> raise(Failure("Invalid types while accessing")))
+              L.build_load new_list_ptr "bwwaz" builder)
       | SListAssign (id, i, value) ->
-          let A.List(inner_t) = t in
+          let inner_t = get_list_inner_typ t in
           let la_func = build_access_function in
           let lis = L.build_load (lookup sc id) "get_list" builder in
           let item_ptr = L.build_call la_func [|lis; expr sc builder i|] (id ^ "_result") builder in
@@ -145,8 +149,8 @@ let translate (functions, statements) =
           L.const_int i32_t 0
       | _ -> L.const_int i32_t 0
 
-    and build_copy_function a = 
-      let A.List(t) = a in
+    and build_copy_function typ = 
+      let t = get_list_inner_typ typ in
       let la_function_t = (L.function_type void_t [|list_struct_ptr; i32_t; L.pointer_type list_struct_ptr|]) in
       let la_function = L.define_function "list_copy" la_function_t the_module in
       let la_builder = L.builder_at_end context (L.entry_block la_function) in
@@ -253,7 +257,7 @@ let translate (functions, statements) =
     la_function *)
 
     and build_list list_typ lis (scope: var_table ref) builder =
-      let A.List(typ) = list_typ in
+      let typ = get_list_inner_typ list_typ in
       let ltyp = ltype_of_typ typ in
       let build_link prev data =
         let new_entry = 
