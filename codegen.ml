@@ -118,10 +118,64 @@ let translate (functions, statements) =
               let dat_ptr = L.build_load data_ptr_ptr "data_ptr" builder in
               let type_casted = L.build_bitcast dat_ptr (L.pointer_type (ltype_of_typ t)) "cast_data_ptr" builder in
               L.build_load type_casted "data" builder
+          | SSlice (i, j) ->
+              let la_func = build_access_function in
+              let lis = L.build_load (lookup sc id) "get_list" builder in
+              let i = expr sc builder i in
+              let item_ptr = L.build_call la_func [|lis; i|] (id ^ "start") builder in
+              let j = L.build_sub (expr sc builder j) i "difference" builder in
+              let lc_func = build_copy_function t in
+              let ptr_ptr = L.build_alloca list_struct_ptr "asdf" builder in
+              let _ = L.build_call lc_func [|item_ptr; j; ptr_ptr|] "" builder in
+              L.build_load ptr_ptr "bwwaz" builder
+
           | _ -> raise(Failure("Invalid types while accessing")))
           
       | _ -> L.const_int i32_t 0
 
+    and build_copy_function a = 
+      let A.List(t) = a in
+      let la_function_t = (L.function_type void_t [|list_struct_ptr; i32_t; L.pointer_type list_struct_ptr|]) in
+      let la_function = L.define_function "list_copy" la_function_t the_module in
+      let la_builder = L.builder_at_end context (L.entry_block la_function) in
+      let bool_val = L.build_icmp L.Icmp.Eq (L.param la_function 1) (L.const_int i32_t 0) "is_zero" la_builder in
+
+      let then_bb = L.append_block context "then" la_function in
+      let _ = L.build_ret_void (L.builder_at_end context then_bb) in
+
+      let else_bb = L.append_block context "else" la_function in
+      let else_builder = L.builder_at_end context else_bb in
+
+      let new_struct_ptr = L.build_alloca list_struct_type "new_struct_ptr" else_builder in
+      let new_struct = 
+        L.const_named_struct list_struct_type 
+          [| L.const_pointer_null void_t; L.const_pointer_null void_t |]
+      in
+      let _ = L.build_store new_struct new_struct_ptr else_builder in
+
+      let data_ptr = L.build_alloca (ltype_of_typ t) "ltyp" else_builder in
+
+      let old_data_ptr_ptr = L.build_struct_gep (L.param la_function 0) 0 "old_data_ptr_ptr" else_builder in
+      let old_data_ptr = L.build_load old_data_ptr_ptr "old_data_ptr" else_builder in
+      let old_data_ptr = L.build_bitcast old_data_ptr  (L.pointer_type (ltype_of_typ t)) "cast_old_data_ptr" else_builder in
+      let old_data = L.build_load old_data_ptr "old_data" else_builder in
+      let _ = L.build_store old_data data_ptr else_builder in
+      let data_ptr_cast = L.build_bitcast data_ptr (L.pointer_type i8_t) "data_ptr_cast" else_builder in 
+    
+      let _ = L.build_store data_ptr_cast (L.build_struct_gep new_struct_ptr 0 "store_new_data" else_builder) else_builder in
+
+      let _ = L.build_store new_struct_ptr (L.param la_function 2) else_builder in
+      
+      let ptr_ptr = L.build_struct_gep new_struct_ptr 1 "next" else_builder in
+
+      let next_ptr = L.build_struct_gep (L.param la_function 0) 1 "next" else_builder in
+      let next = L.build_load next_ptr "adsf" else_builder in
+      let sub = L.build_sub (L.param la_function 1) (L.const_int i32_t 1) "sub" else_builder in
+      let _ = L.build_call la_function [|next; sub; ptr_ptr|] "" else_builder in
+      let _ = L.build_ret_void else_builder in
+
+      let _ = L.build_cond_br bool_val then_bb else_bb la_builder in      
+    la_function
 
 
     and build_access_function =
