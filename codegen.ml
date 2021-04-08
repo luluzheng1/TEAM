@@ -99,14 +99,14 @@ let translate (functions, statements) =
       | SNoexpr -> L.const_int i32_t 0
       | SStringLit s ->  L.build_global_stringptr s "string" builder
       | SCall ("print", [e]) ->
-        L.build_call printf_func [| (expr sc builder e) |] "printf" builder
+          L.build_call printf_func [| (expr sc builder e) |] "printf" builder
       | SCall (f, args) ->
-        let (fdef, fdecl) = StringMap.find f function_decls in
-        let llargs = List.rev (List.map (expr sc builder) (List.rev args)) in
-        let result = (match fdecl.styp with 
-                       A.Void -> ""
-                     | _ -> f ^ "_result") in
-        L.build_call fdef (Array.of_list llargs) result builder 
+          let (fdef, fdecl) = StringMap.find f function_decls in
+          let llargs = List.rev (List.map (expr sc builder) (List.rev args)) in
+          let result = (match fdecl.styp with 
+                        A.Void -> ""
+                      | _ -> f ^ "_result") in
+          L.build_call fdef (Array.of_list llargs) result builder 
       | SId n -> L.build_load (lookup sc n) n builder
       | SListLit l -> build_list t l sc builder
       | SSliceExpr (id, slice) -> (match slice with
@@ -127,12 +127,22 @@ let translate (functions, statements) =
                     (_, SNoexpr) -> L.const_int i32_t 100
                   | _       -> L.build_sub (expr sc builder j) i "difference" builder) in
               let lc_func = build_copy_function t in
-              let ptr_ptr = L.build_alloca list_struct_ptr "asdf" builder in
-              let _ = L.build_call lc_func [|item_ptr; j; ptr_ptr|] "" builder in
-              L.build_load ptr_ptr "bwwaz" builder
-
+              let new_list_ptr = L.build_alloca list_struct_ptr "new_list_ptr" builder in
+              let _ = L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder in
+              L.build_load new_list_ptr "bwwaz" builder
           | _ -> raise(Failure("Invalid types while accessing")))
-          
+      | SListAssign (id, i, value) ->
+          let A.List(inner_t) = t in
+          let la_func = build_access_function in
+          let lis = L.build_load (lookup sc id) "get_list" builder in
+          let item_ptr = L.build_call la_func [|lis; expr sc builder i|] (id ^ "_result") builder in
+          let data_ptr_ptr = L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder in
+          let copy_data_ptr = L.build_alloca (ltype_of_typ inner_t) "copy_ptr" builder in
+          let data = expr sc builder value in
+          let _ = L.build_store data copy_data_ptr builder in
+          let type_casted_copy = L.build_bitcast copy_data_ptr (L.pointer_type i8_t) "cast_copy" builder in
+          let _ = L.build_store type_casted_copy data_ptr_ptr builder in
+          L.const_int i32_t 0
       | _ -> L.const_int i32_t 0
 
     and build_copy_function a = 
