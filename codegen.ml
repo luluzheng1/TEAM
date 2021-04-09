@@ -115,27 +115,46 @@ let translate (functions, statements) =
       | SId n -> L.build_load (lookup sc n) n builder
       | SListLit l -> build_list t l sc builder
       | SSliceExpr (id, slice) ->
-          (match slice with
-              SIndex i -> 
-                let la_func = build_access_function in
-                let lis = L.build_load (lookup sc id) "get_list" builder in
-                let item_ptr = L.build_call la_func [|lis; expr sc builder i|] (id ^ "_result") builder in
-                let data_ptr_ptr = L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder in
-                let dat_ptr = L.build_load data_ptr_ptr "data_ptr" builder in
-                let type_casted = L.build_bitcast dat_ptr (L.pointer_type (ltype_of_typ t)) "cast_data_ptr" builder in
-                L.build_load type_casted "data" builder
-            | SSlice (i, j) ->
-                let la_func = build_access_function in
-                let lis = L.build_load (lookup sc id) "get_list" builder in
-                let i = expr sc builder i in
-                let item_ptr = L.build_call la_func [|lis; i|] (id ^ "start") builder in
-                let j = (match j with
-                      (_, SEnd) -> L.const_int i32_t (-1)
-                    | _       -> L.build_sub (expr sc builder j) i "difference" builder) in
-                let lc_func = build_copy_function t in
-                let new_list_ptr = L.build_alloca list_struct_ptr "new_list_ptr" builder in
-                let _ = L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder in
-                L.build_load new_list_ptr "bwwaz" builder)
+        (match t with
+            A.String ->
+              (match slice with
+                  SIndex i ->
+                    let str = L.build_load (lookup sc id) "get_string" builder in
+                    let ptr = L.build_gep  str [|expr sc builder i|] "get_char_ptr" builder in
+                    L.build_load ptr "get_char" builder
+                | SSlice (i, j) ->
+                    let str = L.build_load (lookup sc id) "get_string" builder in
+                    let ptr = L.build_gep  str [|expr sc builder i|] "get_char_ptr" builder in
+                    let t = L.build_sub (expr sc builder j) (expr sc builder i) "subb" builder in
+                    let new_str = L.build_array_alloca i8_t t "new_string" builder in
+                    let mmcpy_t = L.function_type void_t [| (L.pointer_type i8_t); (L.pointer_type i8_t); i32_t; i1_t |] in
+                    let mmcpy = L.declare_function "llvm.memcpy" mmcpy_t the_module in
+                    let _ = L.build_call mmcpy [|new_str; ptr; t; (L.const_int i1_t) 1 |] "" builder in
+                    new_str
+              )
+          | A.List _->
+              (match slice with
+                  SIndex i -> 
+                    let la_func = build_access_function in
+                    let lis = L.build_load (lookup sc id) "get_list" builder in
+                    let item_ptr = L.build_call la_func [|lis; expr sc builder i|] (id ^ "_result") builder in
+                    let data_ptr_ptr = L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder in
+                    let dat_ptr = L.build_load data_ptr_ptr "data_ptr" builder in
+                    let type_casted = L.build_bitcast dat_ptr (L.pointer_type (ltype_of_typ t)) "cast_data_ptr" builder in
+                    L.build_load type_casted "data" builder
+                | SSlice (i, j) ->
+                    let la_func = build_access_function in
+                    let lis = L.build_load (lookup sc id) "get_list" builder in
+                    let i = expr sc builder i in
+                    let item_ptr = L.build_call la_func [|lis; i|] (id ^ "start") builder in
+                    let j = (match j with
+                          (_, SEnd) -> L.const_int i32_t (-1)
+                        | _       -> L.build_sub (expr sc builder j) i "difference" builder) in
+                    let lc_func = build_copy_function t in
+                    let new_list_ptr = L.build_alloca list_struct_ptr "new_list_ptr" builder in
+                    let _ = L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder in
+                    L.build_load new_list_ptr "bwwaz" builder)
+            | tes -> let _ = print_endline (string_of_sexpr (t,e)) in raise (Failure "yppppppp"))
       | SListAssign (id, i, value) ->
           let inner_t = get_list_inner_typ t in
           let la_func = build_access_function in
