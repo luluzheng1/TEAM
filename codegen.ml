@@ -135,7 +135,7 @@ let translate (functions, statements) =
                     let _ = L.build_call mmcpy [|new_str; ptr; t; (L.const_int i1_t) 1 |] "" builder in
                     new_str
               )
-          | A.List _->
+          | A.List _ ->
               (match slice with
                   SIndex i -> 
                     let la_func = build_access_function in
@@ -188,11 +188,7 @@ let translate (functions, statements) =
       let else_bb = L.append_block context "else" la_function in
       let else_builder = L.builder_at_end context else_bb in
       let new_struct_ptr = L.build_alloca list_struct_type "new_struct_ptr" else_builder in
-      let new_struct = 
-        L.const_named_struct list_struct_type 
-          [| L.const_pointer_null void_t; L.const_pointer_null void_t |]
-      in
-      let _ = L.build_store new_struct new_struct_ptr else_builder in
+      (* let _ = L.build_store (L.const_null list_struct_type) new_struct_ptr else_builder in *)
       let data_ptr = L.build_alloca (ltype_of_typ t) "ltyp" else_builder in
       let old_data_ptr_ptr = L.build_struct_gep (L.param la_function 0) 0 "old_data_ptr_ptr" else_builder in
       let old_data_ptr = L.build_load old_data_ptr_ptr "old_data_ptr" else_builder in
@@ -295,7 +291,6 @@ let translate (functions, statements) =
       in let null_ptr = L.const_pointer_null list_struct_ptr 
     in List.fold_left build_link null_ptr (List.rev lis)
     in
-    
 
     let rec stmt sc builder = function
 	      SBlock sl -> 
@@ -303,7 +298,11 @@ let translate (functions, statements) =
           List.fold_left (stmt new_scope) builder sl
       | SExpr e -> let _ = expr sc builder e in builder 
       | SDeclaration (t, n, s) -> let _ = (match fdecl.sfname with
-          "main" -> add_variable_to_scope sc n (L.define_global n (expr sc builder s) the_module)
+          "main" -> 
+                    let global = L.define_global n (L.const_null (ltype_of_typ t)) the_module in
+                    let _ = L.build_store (expr sc builder s) global builder in
+                    add_variable_to_scope sc n global
+            (* add_variable_to_scope sc n (L.define_global n (expr sc builder s) the_module) *)
         | _ -> let local = L.build_alloca (ltype_of_typ t) n builder in
                let _  = L.build_store (expr sc builder s) local builder in 
                add_variable_to_scope sc n local)
