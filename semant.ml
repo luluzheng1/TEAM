@@ -17,8 +17,9 @@ let check (functions, statements) =
     in
     List.fold_left add_bind StringMap.empty
       [ ("print", [(String, "x")], Void)
-      ; ("printf", [(Float, "x")], Void)
+      ; ("printf", [(Int, "x")], Void)
       ; ("printb", [(Bool, "x")], Void)
+      ; ("printd", [(Int, "x")], Void)
       ; ("open", [(String, "file_name"); (String, "mode")], File)
       ; ("readline", [(File, "file_handle")], String)
       ; ("write", [(File, "file_handle"); (String, "content")], Void)
@@ -261,8 +262,23 @@ let check (functions, statements) =
           , check_stmt scope b1 fdecl
           , check_stmt scope b2 fdecl
           , check_stmt scope b3 fdecl )
-    | For (e1, e2, st) ->
-        SFor (expr scope e1, expr scope e2, check_stmt scope st fdecl)
+    | Elif (p, b1) ->
+        SElif (check_bool_expr scope p, check_stmt scope b1 fdecl)
+    | For (s, e, st) ->
+        let t, e' = expr scope e in
+        let s_ty =
+          match t with
+          | List t -> t
+          | _ -> raise (Failure "Cannot get non list type")
+        in
+        let _ = add_var_to_scope scope s s_ty in
+        let sexpr = SFor (s, (List t, e'), check_stmt scope st fdecl) in
+        let _ =
+          scope :=
+            { variables= StringMap.remove s !scope.variables
+            ; parent= !scope.parent }
+        in
+        sexpr
     | While (p, s) ->
         SWhile (check_bool_expr scope p, check_stmt scope s fdecl)
     | Declaration (ty, s, e) as decl ->
@@ -281,7 +297,6 @@ let check (functions, statements) =
           SDeclaration (ty, s, (expr_ty, e'))
     | Break -> SBreak
     | Continue -> SContinue
-    | _ -> SExpr (Void, SNoexpr)
   in
   let check_functions func =
     let formals' = check_binds func.formals in
