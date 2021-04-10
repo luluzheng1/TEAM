@@ -32,7 +32,9 @@ let translate (functions, statements) =
     | A.Unknown -> void_t
     | _ -> void_t
   in
-  let printf_t : L.lltype = L.function_type i32_t [|L.pointer_type i8_t|] in
+  let printf_t : L.lltype =
+    L.var_arg_function_type i32_t [|L.pointer_type i8_t|]
+  in
   let printf_func : L.llvalue =
     L.declare_function "printf" printf_t the_module
   in
@@ -185,6 +187,8 @@ let translate (functions, statements) =
       | SListAssign _ -> raise (Failure "Not Yet Implemented")
       | SAssignOp (s, op, e) ->
           expr sc builder (t, SAssign (s, (t, SBinop ((t, SId s), op, e))))
+          (* For testing purposes only, will need to combine into one
+             function *)
       | SCall ("print", [e]) ->
           L.build_call printf_func [|expr sc builder e|] "printf" builder
       | SCall ("printb", [e]) ->
@@ -194,6 +198,10 @@ let translate (functions, statements) =
       | SCall ("printf", [e]) ->
           L.build_call printf_func
             [|float_format_str; expr sc builder e|]
+            "printf" builder
+      | SCall ("printd", [e]) ->
+          L.build_call printf_func
+            [|int_format_str; expr sc builder e|]
             "printf" builder
       | SCall (f, args) ->
           let fdef, fdecl = StringMap.find f function_decls in
@@ -241,15 +249,69 @@ let translate (functions, statements) =
       | Some _ -> ()
       | None -> ignore (instr builder)
     in
-    let rec stmt sc builder = function
+    let rec build_stmt sc builder stmt fdecl =
+      match stmt with
       | SBlock sl ->
           let new_scope =
             ref {lvariables= StringMap.empty; parent= Some sc}
           in
-          List.fold_left (stmt new_scope) builder sl
+          List.fold_left
+            (fun b s -> build_stmt new_scope b s fdecl)
+            builder sl
       | SExpr e ->
           let _ = expr sc builder e in
           builder
+      | SReturn e ->
+          let _ =
+            match fdecl.styp with
+            | A.Void -> L.build_ret_void builder
+            | _ -> L.build_ret (expr scope builder e) builder
+          in
+          builder
+      | SIf (predicate, then_stmts, else_if_stmts, else_stmts) ->
+          (* Removing the elseifs by recursively replacing the
+             else_statements *)
+          let rec remove_elif (_, _, else_if_stmts, else_stmts) =
+            match else_if_stmts with
+            | SBlock (hd :: tl) ->
+                let new_predicate, new_then =
+                  match hd with
+                  | SElif (predicate, stmts) -> (predicate, stmts)
+                  | _ -> raise (Failure "Corrupted tree - Elseif problem")
+                in
+                let new_else_ifs = SBlock tl in
+                let new_else =
+                  remove_elif
+                    (new_predicate, new_then, new_else_ifs, else_stmts)
+                in
+                SIf (new_predicate, new_then, new_else_ifs, new_else)
+            | SBlock [] -> else_stmts
+            | _ -> else_stmts
+          in
+          let new_else_stmts =
+            remove_elif (predicate, then_stmts, else_if_stmts, else_stmts)
+          in
+          let bool_val = expr sc builder predicate in
+          let merge_bb = L.append_block context "merge" the_function in
+          (* Emit 'then' value. *)
+          let then_bb = L.append_block context "then" the_function in
+          let then_builder =
+            build_stmt sc (L.builder_at_end context then_bb) then_stmts fdecl
+          in
+          let () = add_terminal then_builder (L.build_br merge_bb) in
+          (* Emit 'else' value. *)
+          let else_bb = L.append_block context "else" the_function in
+          let else_builder =
+            build_stmt sc
+              (L.builder_at_end context else_bb)
+              new_else_stmts fdecl
+          in
+          let () = add_terminal else_builder (L.build_br merge_bb) in
+          (* Add the conditional branch. *)
+          let _ = L.build_cond_br bool_val then_bb else_bb builder in
+          L.builder_at_end context merge_bb
+      | SElif _ -> raise E.ImpossibleElif
+      | SFor (e1, e2, sl) -> raise (Failure "Not Yet Implemented")
       | SDeclaration (t, n, e) ->
           let _ = add_variable sc t n e builder in
           builder
@@ -258,7 +320,7 @@ let translate (functions, statements) =
           let _ = L.build_br pred_bb builder in
           let body_bb = L.append_block context "while_body" the_function in
           let while_builder =
-            stmt sc (L.builder_at_end context body_bb) body
+            build_stmt sc (L.builder_at_end context body_bb) body fdecl
           in
           let () = add_terminal while_builder (L.build_br pred_bb) in
           let pred_builder = L.builder_at_end context pred_bb in
@@ -266,9 +328,15 @@ let translate (functions, statements) =
           let merge_bb = L.append_block context "merge" the_function in
           let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
           L.builder_at_end context merge_bb
-      | _ -> builder
+      | SBreak -> raise (Failure "Not Yet Implemented")
+      | SContinue -> raise (Failure "Not Yet Implemented")
+      | _ -> raise (Failure "Error: Not Yet Implemented")
     in
-    let builder = List.fold_left (stmt scope) builder fdecl.sbody in
+    let builder =
+      List.fold_left
+        (fun b s -> build_stmt scope b s fdecl)
+        builder fdecl.sbody
+    in
     add_terminal builder
       ( match fdecl.styp with
       | A.Void -> L.build_ret_void
