@@ -10,7 +10,7 @@ filename=$(echo "$file" | cut -f 1 -d ".")
 func=$2
 
 create() { 
-    # generate code, need to pass in file since it could bemodified
+    # generate code, need to pass in file since it could be modified
     ./team.native -l "$1" > "$filename".ll
     llc "$2".ll
     eval "$CC $LIBS -o $filename.exe $filename.s string.o"
