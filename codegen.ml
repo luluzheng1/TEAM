@@ -248,14 +248,15 @@ let translate (functions, statements) =
       | Some _ -> ()
       | None -> ignore (instr builder)
     in
-    let rec build_stmt sc builder stmt fdecl =
+    (* Statements *)
+    let rec build_stmt sc builder stmt loop fdecl =
       match stmt with
       | SBlock sl ->
           let new_scope =
             ref {lvariables= StringMap.empty; parent= Some sc}
           in
           List.fold_left
-            (fun b s -> build_stmt new_scope b s fdecl)
+            (fun b s -> build_stmt new_scope b s loop fdecl)
             builder sl
       | SExpr e ->
           let _ = expr sc builder e in
@@ -295,7 +296,9 @@ let translate (functions, statements) =
           (* Emit 'then' value. *)
           let then_bb = L.append_block context "then" the_function in
           let then_builder =
-            build_stmt sc (L.builder_at_end context then_bb) then_stmts fdecl
+            build_stmt sc
+              (L.builder_at_end context then_bb)
+              then_stmts loop fdecl
           in
           let () = add_terminal then_builder (L.build_br merge_bb) in
           (* Emit 'else' value. *)
@@ -303,7 +306,7 @@ let translate (functions, statements) =
           let else_builder =
             build_stmt sc
               (L.builder_at_end context else_bb)
-              new_else_stmts fdecl
+              new_else_stmts loop fdecl
           in
           let () = add_terminal else_builder (L.build_br merge_bb) in
           (* Add the conditional branch. *)
@@ -347,34 +350,43 @@ let translate (functions, statements) =
                                 ) ) )
                       ; sl ] ) ]
           in
-          build_stmt sc builder equivalent fdecl
+          build_stmt sc builder equivalent loop fdecl
       | SDeclaration (t, n, e) ->
           let _ = add_variable sc t n e builder in
           builder
       | SWhile (predicate, body) ->
           let pred_bb = L.append_block context "while" the_function in
           let _ = L.build_br pred_bb builder in
+          let merge_bb = L.append_block context "merge" the_function in
           let body_bb = L.append_block context "while_body" the_function in
           let while_builder =
-            build_stmt sc (L.builder_at_end context body_bb) body fdecl
+            build_stmt sc
+              (L.builder_at_end context body_bb)
+              body
+              ((pred_bb, merge_bb) :: loop)
+              fdecl
           in
           let () = add_terminal while_builder (L.build_br pred_bb) in
           let pred_builder = L.builder_at_end context pred_bb in
           let bool_val = expr sc pred_builder predicate in
-          let merge_bb = L.append_block context "merge" the_function in
           let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
           L.builder_at_end context merge_bb
-      | SBreak -> raise (Failure "Not Yet Implemented")
-      | SContinue -> raise (Failure "Not Yet Implemented")
+      | SBreak ->
+          let () = add_terminal builder (L.build_br (snd (List.hd loop))) in
+          builder
+      | SContinue ->
+          let () = add_terminal builder (L.build_br (fst (List.hd loop))) in
+          builder
     in
     let builder =
       List.fold_left
-        (fun b s -> build_stmt scope b s fdecl)
+        (fun b s -> build_stmt scope b s [] fdecl)
         builder fdecl.sbody
     in
     add_terminal builder
       ( match fdecl.styp with
       | A.Void -> L.build_ret_void
+      | A.Float -> L.build_ret (L.const_float float_t 0.0)
       | t -> L.build_ret (L.const_int (ltype_of_typ t) 0) )
   in
   let functions' =
