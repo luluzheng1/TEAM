@@ -1,5 +1,5 @@
 
-all: team.native string.o
+all: team.native
 
 team.native : parser.mly scanner.mll codegen.ml semant.ml team.ml
 	opam config exec -- \
