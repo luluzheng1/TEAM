@@ -224,8 +224,8 @@ let translate (functions, statements) =
           in
           L.build_call fdef (Array.of_list llargs) result builder
       | SSliceExpr _ -> raise (Failure "Not Yet Implemented")
+      | SEnd -> raise (Failure "Not Yet Implemented")
       | SNoexpr -> L.const_int i32_t 0
-      | _ -> L.const_int i32_t 0
     and add_variable sc t n e builder =
       let e' = expr sc builder e in
       let _ = L.set_value_name n e' in
