@@ -55,6 +55,8 @@ exception InvalidIntBinop
 
 exception NotFound of string
 
+exception ImpossibleElif
+
 let handle_error (e : exn) =
   match e with
   | NonUniformTypeContainer (t1, t2) ->
@@ -245,4 +247,10 @@ let handle_error (e : exn) =
       raise
         (Failure
            (Printf.sprintf "Internal Error: Variable '%s' not in scope" s) )
+  | ImpossibleElif ->
+      raise
+        (Failure
+           (Printf.sprintf
+              "Internal Error: Corrupted Tree. Semant should have rejected \
+               this" ) )
   | e -> raise (TypeError (Printexc.to_string e))
