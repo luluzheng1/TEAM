@@ -21,8 +21,15 @@ let translate (functions, statements) =
   and i1_t = L.i1_type context
   and string_t = L.pointer_type (L.i8_type context)
   and the_module = L.create_module context "TEAM" in
+  let list_struct_type = L.named_struct_type context "list_item" in
+  let list_struct_ptr = L.pointer_type list_struct_type in
+  let _ =
+    L.struct_set_body list_struct_type
+      [|L.pointer_type i8_t; list_struct_ptr|]
+      true
+  in
   (* Convert MicroC types to LLVM types *)
-  let ltype_of_typ = function
+  let rec ltype_of_typ = function
     | A.Int -> i32_t
     | A.String -> string_t
     | A.Bool -> i1_t
@@ -30,17 +37,21 @@ let translate (functions, statements) =
     | A.Void -> void_t
     | A.Char -> char_t
     | A.Unknown -> void_t
+    | A.Func (args_t, ret_t) -> func_ty args_t ret_t
+    | A.List _ -> list_struct_ptr
     | _ -> void_t
+  and func_ty args_t ret_t =
+    let llret_type = ltype_of_typ ret_t in
+    let llargs =
+      Array.map (fun t -> ltype_of_typ t) (Array.of_list args_t)
+    in
+    L.pointer_type (L.function_type llret_type llargs)
   in
   let printf_t : L.lltype =
     L.var_arg_function_type i32_t [|L.pointer_type i8_t|]
   in
   let printf_func : L.llvalue =
     L.declare_function "printf" printf_t the_module
-  in
-  let substring_t = L.function_type string_t [|string_t; i32_t; i32_t|] in
-  let substring_func =
-    L.declare_function "substring" substring_t the_module
   in
   let pow_t : L.lltype = L.function_type float_t [|float_t; float_t|] in
   let pow_func : L.llvalue = L.declare_function "pow" pow_t the_module in
@@ -212,19 +223,7 @@ let translate (functions, statements) =
             match fdecl.styp with A.Void -> "" | _ -> f ^ "_result"
           in
           L.build_call fdef (Array.of_list llargs) result builder
-      | SSliceExpr (s, slce) -> (
-        match t with
-        | A.String -> (
-          match slce with
-          | SIndex e -> raise (Failure "Not Yet Implemented")
-          | SSlice (e1, e2) ->
-              let s' = expr sc builder (t, SId s)
-              and e1' = expr sc builder e1
-              and e2' = expr sc builder e2 in
-              L.build_call substring_func [|s'; e1'; e2'|] "substring"
-                builder )
-        | A.List _ -> raise (Failure "Not Yet Implemented")
-        | _ -> raise (Failure "Internal Error") )
+      | SSliceExpr _ -> raise (Failure "Not Yet Implemented")
       | SNoexpr -> L.const_int i32_t 0
       | _ -> L.const_int i32_t 0
     and add_variable sc t n e builder =
@@ -311,7 +310,44 @@ let translate (functions, statements) =
           let _ = L.build_cond_br bool_val then_bb else_bb builder in
           L.builder_at_end context merge_bb
       | SElif _ -> raise E.ImpossibleElif
-      | SFor (e1, e2, sl) -> raise (Failure "Not Yet Implemented")
+      | SFor (s, (t, e), sl) ->
+          let list_identifier = "for_list" in
+          let list_expr = (t, SId list_identifier) in
+          let s_ty =
+            match t with
+            | A.List ty -> ty
+            | _ -> raise (Failure "internal error")
+          in
+          let len_call = (A.Int, SCall ("length", [list_expr])) in
+          let index_expr = (A.Int, SId "for_index") in
+          let while_cond = (A.Bool, SBinop (index_expr, A.Less, len_call)) in
+          let equivalent =
+            SBlock
+              [ SDeclaration (A.Int, "for_index", (A.Int, SIntLit 0))
+              ; SDeclaration (t, list_identifier, (t, e))
+              ; SDeclaration (s_ty, s, (s_ty, SNoexpr))
+              ; SWhile
+                  ( while_cond
+                  , SBlock
+                      [ SExpr
+                          ( s_ty
+                          , SAssign
+                              ( s
+                              , ( s_ty
+                                , SSliceExpr
+                                    (list_identifier, SIndex index_expr) ) )
+                          )
+                      ; SExpr
+                          ( A.Int
+                          , SAssign
+                              ( "for_index"
+                              , ( A.Int
+                                , SBinop
+                                    (index_expr, A.Add, (A.Int, SIntLit 1))
+                                ) ) )
+                      ; sl ] ) ]
+          in
+          build_stmt sc builder equivalent fdecl
       | SDeclaration (t, n, e) ->
           let _ = add_variable sc t n e builder in
           builder
@@ -330,7 +366,6 @@ let translate (functions, statements) =
           L.builder_at_end context merge_bb
       | SBreak -> raise (Failure "Not Yet Implemented")
       | SContinue -> raise (Failure "Not Yet Implemented")
-      | _ -> raise (Failure "Error: Not Yet Implemented")
     in
     let builder =
       List.fold_left

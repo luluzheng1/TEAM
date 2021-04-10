@@ -268,11 +268,11 @@ let check (functions, statements) =
         let t, e' = expr scope e in
         let s_ty =
           match t with
-          | List t -> t
+          | List ty -> ty
           | _ -> raise (Failure "Cannot get non list type")
         in
         let _ = add_var_to_scope scope s s_ty in
-        let sexpr = SFor (s, (List t, e'), check_stmt scope st fdecl) in
+        let sexpr = SFor (s, (t, e'), check_stmt scope st fdecl) in
         let _ =
           scope :=
             { variables= StringMap.remove s !scope.variables
