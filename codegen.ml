@@ -135,7 +135,7 @@ let translate (functions, statements) =
                     let _ = L.build_call mmcpy [|new_str; ptr; t; (L.const_int i1_t) 1 |] "" builder in
                     new_str
               )
-          | A.List _ ->
+          | _ ->
               (match slice with
                   SIndex i -> 
                     let la_func = build_access_function in
@@ -272,19 +272,13 @@ let translate (functions, statements) =
       let typ = get_list_inner_typ list_typ in
       let ltyp = ltype_of_typ typ in
       let build_link prev data =
-        let new_entry = 
-          L.const_named_struct list_struct_type 
-            [| L.const_pointer_null void_t; L.const_pointer_null void_t |]
-        in
         let entry_ptr = L.build_alloca list_struct_type "list_item" builder in
-        let _ = L.build_store new_entry entry_ptr builder in
-
+        (* let _ = L.build_store (L.const_null list_struct_type) entry_ptr builder in *)
         let data_ptr = L.build_alloca ltyp "copied" builder in
         let _ = L.build_store (expr scope builder data) data_ptr builder in
         let typcast_ptr = L.build_bitcast data_ptr (L.pointer_type i8_t) "cast_ptr" builder in
         let data_ptr_container = L.build_struct_gep entry_ptr 0 "data_ptr_container" builder in
         let _ = L.build_store typcast_ptr data_ptr_container builder in
-
         let next = L.build_struct_gep entry_ptr 1 "next" builder in
         let _ = L.build_store prev next builder
       in entry_ptr
@@ -302,7 +296,6 @@ let translate (functions, statements) =
                     let global = L.define_global n (L.const_null (ltype_of_typ t)) the_module in
                     let _ = L.build_store (expr sc builder s) global builder in
                     add_variable_to_scope sc n global
-            (* add_variable_to_scope sc n (L.define_global n (expr sc builder s) the_module) *)
         | _ -> let local = L.build_alloca (ltype_of_typ t) n builder in
                let _  = L.build_store (expr sc builder s) local builder in 
                add_variable_to_scope sc n local)
