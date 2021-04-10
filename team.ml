@@ -29,3 +29,9 @@ let () =
           let m = Codegen.translate sast in
           Llvm_analysis.assert_valid_module m ;
           print_string (Llvm.string_of_llmodule m) )
+
+(* For testing scanner & parser *)
+(* let () = let usage_msg = "usage: ./team.native [file.tm]" in let channel =
+   ref stdin in Arg.parse [] (fun file -> channel := open_in file) usage_msg
+   ; let lexbuf = Lexing.from_channel !channel in let ast = Parser.program
+   Scanner.token lexbuf in print_string (Ast.string_of_program ast) *)
