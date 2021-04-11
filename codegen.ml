@@ -83,13 +83,13 @@ let translate (functions, statements) =
 
     let scope = match fdecl.sfname with
         "main" -> scope
-      | _ -> ref {lvariables = formals; parent= Some scope }
+      | _      -> ref {lvariables = formals; parent= Some scope }
     in 
 
     let add_terminal builder instr =
       match L.block_terminator (L.insertion_block builder) with
 	      Some _ -> ()
-      | None -> ignore (instr builder) 
+      | None   -> ignore (instr builder) 
     in
 
     let get_list_inner_typ = function
@@ -125,20 +125,19 @@ let translate (functions, statements) =
                 | SSlice (i, j) ->
                     let str = L.build_load (lookup sc id) "get_string" builder in
                     let ptr = L.build_gep  str [|expr sc builder i|] "get_char_ptr" builder in
-                    let t = L.build_sub (expr sc builder j) (expr sc builder i) "subb" builder in
-                    let gg = L.build_add t ((L.const_int i8_t) 1) "asdfa" builder in
-                    let new_str = L.build_array_alloca i8_t gg "new_string" builder in
-                    let nul = L.build_gep new_str [|t|] "string_term" builder in
+                    let length = L.build_sub (expr sc builder j) (expr sc builder i) "subb" builder in
+                    let length_w_nul = L.build_add length ((L.const_int i8_t) 1) "length_w_nul" builder in
+                    let new_str = L.build_array_alloca i8_t length_w_nul "new_string" builder in
+                    let nul = L.build_gep new_str [|length|] "string_term" builder in
                     let _ = L.build_store ((L.const_int i8_t) 0) nul builder in
                     let mmcpy_t = L.function_type void_t [| (L.pointer_type i8_t); (L.pointer_type i8_t); i32_t; i1_t |] in
                     let mmcpy = L.declare_function "llvm.memcpy" mmcpy_t the_module in
-                    let _ = L.build_call mmcpy [|new_str; ptr; t; (L.const_int i1_t) 1 |] "" builder in
-                    new_str
-              )
+                    let _ = L.build_call mmcpy [|new_str; ptr; length; (L.const_int i1_t) 1 |] "" builder in
+                    new_str)
           | _ ->
               (match slice with
                   SIndex i -> 
-                    let la_func = build_access_function in
+                    let la_func = build_access_function () in
                     let lis = L.build_load (lookup sc id) "get_list" builder in
                     let item_ptr = L.build_call la_func [|lis; expr sc builder i|] (id ^ "_result") builder in
                     let data_ptr_ptr = L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder in
@@ -146,7 +145,7 @@ let translate (functions, statements) =
                     let type_casted = L.build_bitcast dat_ptr (L.pointer_type (ltype_of_typ t)) "cast_data_ptr" builder in
                     L.build_load type_casted "data" builder
                 | SSlice (i, j) ->
-                    let la_func = build_access_function in
+                    let la_func = build_access_function () in
                     let lis = L.build_load (lookup sc id) "get_list" builder in
                     let i = expr sc builder i in
                     let item_ptr = L.build_call la_func [|lis; i|] (id ^ "start") builder in
@@ -156,11 +155,11 @@ let translate (functions, statements) =
                     let lc_func = build_copy_function t in
                     let new_list_ptr = L.build_alloca list_struct_ptr "new_list_ptr" builder in
                     let _ = L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder in
-                    L.build_load new_list_ptr "bwwaz" builder)
+                    L.build_load new_list_ptr "new_string" builder)
             | tes -> let _ = print_endline (string_of_sexpr (t,e)) in raise (Failure "yppppppp"))
       | SListAssign (id, i, value) ->
           let inner_t = get_list_inner_typ t in
-          let la_func = build_access_function in
+          let la_func = build_access_function () in
           let lis = L.build_load (lookup sc id) "get_list" builder in
           let item_ptr = L.build_call la_func [|lis; expr sc builder i|] (id ^ "_result") builder in
           let data_ptr_ptr = L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder in
@@ -174,99 +173,66 @@ let translate (functions, statements) =
 
     and build_copy_function typ = 
       let t = get_list_inner_typ typ in
-      let la_function_t = (L.function_type void_t [|list_struct_ptr; i32_t; L.pointer_type list_struct_ptr|]) in
-      let la_function = L.define_function "list_copy" la_function_t the_module in
-      let la_builder = L.builder_at_end context (L.entry_block la_function) in
+      let func_name = "list_copy_" ^ A.string_of_typ t in 
+      match (L.lookup_function func_name the_module) with
+          Some func -> func
+        | None ->
+            let lc_func_t = (L.function_type void_t [|list_struct_ptr; i32_t; L.pointer_type list_struct_ptr|]) in
+            let lc_func = L.define_function func_name lc_func_t the_module in
+            let lc_builder = L.builder_at_end context (L.entry_block lc_func) in
 
-      let i_cond = L.build_icmp L.Icmp.Eq (L.param la_function 1) (L.const_int i32_t 0) "is_zero" la_builder in
-      let n_cond = L.build_is_null (L.param la_function 0) "ptr_is_null" la_builder in
-      let bool_val = L.build_or i_cond n_cond "or_conds" la_builder in
+            let i_cond = L.build_icmp L.Icmp.Eq (L.param lc_func 1) (L.const_int i32_t 0) "is_zero" lc_builder in
+            let n_cond = L.build_is_null (L.param lc_func 0) "ptr_is_null" lc_builder in
+            let bool_val = L.build_or i_cond n_cond "or_conds" lc_builder in
 
-      let then_bb = L.append_block context "then" la_function in
-      let _ = L.build_ret_void (L.builder_at_end context then_bb) in
+            let then_bb = L.append_block context "then" lc_func in
+            let _ = L.build_ret_void (L.builder_at_end context then_bb) in
 
-      let else_bb = L.append_block context "else" la_function in
-      let else_builder = L.builder_at_end context else_bb in
-      let new_struct_ptr = L.build_alloca list_struct_type "new_struct_ptr" else_builder in
-      (* let _ = L.build_store (L.const_null list_struct_type) new_struct_ptr else_builder in *)
-      let data_ptr = L.build_alloca (ltype_of_typ t) "ltyp" else_builder in
-      let old_data_ptr_ptr = L.build_struct_gep (L.param la_function 0) 0 "old_data_ptr_ptr" else_builder in
-      let old_data_ptr = L.build_load old_data_ptr_ptr "old_data_ptr" else_builder in
-      let old_data_ptr = L.build_bitcast old_data_ptr  (L.pointer_type (ltype_of_typ t)) "cast_old_data_ptr" else_builder in
-      let old_data = L.build_load old_data_ptr "old_data" else_builder in
-      let _ = L.build_store old_data data_ptr else_builder in
-      let data_ptr_cast = L.build_bitcast data_ptr (L.pointer_type i8_t) "data_ptr_cast" else_builder in 
-      let _ = L.build_store data_ptr_cast (L.build_struct_gep new_struct_ptr 0 "store_new_data" else_builder) else_builder in
-      let _ = L.build_store new_struct_ptr (L.param la_function 2) else_builder in
-      let ptr_ptr = L.build_struct_gep new_struct_ptr 1 "next" else_builder in
-      let next_ptr = L.build_struct_gep (L.param la_function 0) 1 "next" else_builder in
-      let next = L.build_load next_ptr "adsf" else_builder in
-      let sub = L.build_sub (L.param la_function 1) (L.const_int i32_t 1) "sub" else_builder in
-      let _ = L.build_call la_function [|next; sub; ptr_ptr|] "" else_builder in
-      let _ = L.build_ret_void else_builder in
+            let else_bb = L.append_block context "else" lc_func in
+            let else_builder = L.builder_at_end context else_bb in
+            let new_struct_ptr = L.build_alloca list_struct_type "new_struct_ptr" else_builder in
+            (* let _ = L.build_store (L.const_null list_struct_type) new_struct_ptr else_builder in *)
+            let data_ptr = L.build_alloca (ltype_of_typ t) "ltyp" else_builder in
+            let old_data_ptr_ptr = L.build_struct_gep (L.param lc_func 0) 0 "old_data_ptr_ptr" else_builder in
+            let old_data_ptr = L.build_load old_data_ptr_ptr "old_data_ptr" else_builder in
+            let old_data_ptr = L.build_bitcast old_data_ptr  (L.pointer_type (ltype_of_typ t)) "cast_old_data_ptr" else_builder in
+            let old_data = L.build_load old_data_ptr "old_data" else_builder in
+            let _ = L.build_store old_data data_ptr else_builder in
+            let data_ptr_cast = L.build_bitcast data_ptr (L.pointer_type i8_t) "data_ptr_cast" else_builder in 
+            let _ = L.build_store data_ptr_cast (L.build_struct_gep new_struct_ptr 0 "store_new_data" else_builder) else_builder in
+            let _ = L.build_store new_struct_ptr (L.param lc_func 2) else_builder in
+            let ptr_ptr = L.build_struct_gep new_struct_ptr 1 "next" else_builder in
+            let next_ptr = L.build_struct_gep (L.param lc_func 0) 1 "next_ptr" else_builder in
+            let next = L.build_load next_ptr "next" else_builder in
+            let sub = L.build_sub (L.param lc_func 1) (L.const_int i32_t 1) "sub" else_builder in
+            let _ = L.build_call lc_func [|next; sub; ptr_ptr|] "" else_builder in
+            let _ = L.build_ret_void else_builder in
 
-      let _ = L.build_cond_br bool_val then_bb else_bb la_builder in      
-    la_function
+            let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in      
+          lc_func
 
+    and build_access_function () =
+      match (L.lookup_function "list_access" the_module) with
+          Some func -> func
+        | None -> 
+            let la_func_t = (L.function_type list_struct_ptr [|list_struct_ptr; i32_t|]) in
+            let la_func = L.define_function "list_access" la_func_t the_module in
+            let la_builder = L.builder_at_end context (L.entry_block la_func) in
+            let bool_val = L.build_icmp L.Icmp.Eq (L.param la_func 1) (L.const_int i32_t 0) "is_zero" la_builder in
 
-    and build_access_function =
-      let la_function_t = (L.function_type list_struct_ptr [|list_struct_ptr; i32_t|]) in
-      let la_function = L.define_function "list_access" la_function_t the_module in
-      let la_builder = L.builder_at_end context (L.entry_block la_function) in
-      let bool_val = L.build_icmp L.Icmp.Eq (L.param la_function 1) (L.const_int i32_t 0) "is_zero" la_builder in
+            let then_bb = L.append_block context "then" la_func in
+            let _ = L.build_ret (L.param la_func 0) (L.builder_at_end context then_bb) in
 
-      let then_bb = L.append_block context "then" la_function in
-      let _ = L.build_ret (L.param la_function 0) (L.builder_at_end context then_bb) in
+            let else_bb = L.append_block context "else" la_func in
+            let else_builder = L.builder_at_end context else_bb in
+            let next_ptr = L.build_struct_gep (L.param la_func 0) 1 "next" else_builder in
+            let next = L.build_load next_ptr "adsf" else_builder in
+            let sub = L.build_sub (L.param la_func 1) (L.const_int i32_t 1) "sub" else_builder in
+            let ret = L.build_call la_func [|next; sub|] "result" else_builder in
+            let _ = L.build_ret ret else_builder in
 
-      let else_bb = L.append_block context "else" la_function in
-      let else_builder = L.builder_at_end context else_bb in
-      let next_ptr = L.build_struct_gep (L.param la_function 0) 1 "next" else_builder in
-      let next = L.build_load next_ptr "adsf" else_builder in
-      let sub = L.build_sub (L.param la_function 1) (L.const_int i32_t 1) "sub" else_builder in
-      let ret = L.build_call la_function [|next; sub|] "result" else_builder in
-      let _ = L.build_ret ret else_builder in
-
-      let _ = L.build_cond_br bool_val then_bb else_bb la_builder in      
-    la_function
-
-    
-    (* and build_access_function =
-      let la_function_t = 
-        (L.function_type list_struct_ptr [|list_struct_ptr; i32_t|])
-      in
-      let la_function =
-        L.define_function "list_access" la_function_t the_module
-      in
-      let la_builder = L.builder_at_end context (L.entry_block la_function) in
-      let curr_ptr = L.build_alloca list_struct_ptr "curr_pointer" la_builder in
-      let _ = L.build_store (L.param la_function 0) curr_ptr la_builder in
-      let curr_idx = L.build_alloca i32_t "index" la_builder in
-      let _ = L.build_store (L.param la_function 1) curr_idx la_builder in
-
-      let pred_bb = L.append_block context "while" la_function in
-      let _ = L.build_br pred_bb la_builder in
-
-      let body_bb = L.append_block context "while_body" la_function in
-      let while_builder = L.builder_at_end context body_bb in
-
-      let curr = L.build_load curr_ptr "get_curr" while_builder in 
-      let next_ptr_ptr = L.build_struct_gep curr 1 "next_ptr" while_builder in
-      let next_ptr = L.build_load next_ptr_ptr "next" while_builder in
-      let _ = L.build_store next_ptr curr_ptr while_builder in
-      let index_val = L.build_load curr_idx "get_curr_index" while_builder in
-      let sub = L.build_sub index_val (L.const_int i32_t 1) "subtracted" while_builder in
-      let _ = L.build_store sub curr_idx while_builder in
-      let () = add_terminal while_builder (L.build_br pred_bb) in
-
-      let pred_builder = L.builder_at_end context pred_bb in
-      let index_val = L.build_load curr_idx "get_curr" pred_builder in
-      let bool_val = L.build_icmp L.Icmp.Ne index_val (L.const_int i32_t 0) "is_non_zero" pred_builder in
-      let merge_bb = L.append_block context "merge" la_function in
-      let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in 
-
-      let la_builder = L.builder_at_end context merge_bb in
-      let _ = L.build_ret (L.build_load curr_ptr "TARGET_ITEM" la_builder) la_builder in
-    la_function *)
+            let _ = L.build_cond_br bool_val then_bb else_bb la_builder in      
+          la_func
 
     and build_list list_typ lis (scope: var_table ref) builder =
       let typ = get_list_inner_typ list_typ in
