@@ -1,26 +1,26 @@
 float f = 1.5 + 1;
-printf(f);
+print(f);
 
 f = 1.5 - 1;
-printf(f);
+print(f);
 
 f = 3.0 * 1;
-printf(f);
+print(f);
 
 f = 3.0 / 1;
-printf(f);
+print(f);
 
 bool b = 5.5 >= 5;
-printb(b);
+print(b);
 
 b = 5.5 <= 5;
-printb(b);
+print(b);
 
 b = 5.0 == 5;
-printb(b);
+print(b);
 
 b = 5.5 != 5;
-printb(b);
+print(b);
 
 f = 3.5^2;
-printf(f);
+print(f);

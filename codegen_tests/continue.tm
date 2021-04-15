@@ -5,5 +5,5 @@ while i < 10:
   if (i == 6):
     continue;
   end
-  printd(i);
+  print(i);
 end
