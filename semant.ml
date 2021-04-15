@@ -21,9 +21,11 @@ let check (functions, statements) =
       ; ("readline", [(File, "file_handle")], String)
       ; ("write", [(File, "file_handle"); (String, "content")], Void)
       ; ("close", [(File, "file_handle")], Void)
+      ; ( "append"
+        , [(List Unknown, "input_list"); (Unknown, "element")]
+        , List Unknown )
       ; (* TODO: length and append has to be checked as special cases. *)
-        ("length", [(Unknown, "input_list")], Int)
-      ; ("append", [(List Unknown, "input_list")], List Unknown) ]
+        ("length", [(Unknown, "input_list")], Int) ]
   in
   let add_func map fd =
     let n = fd.fname in
@@ -192,6 +194,21 @@ let check (functions, statements) =
                 let et, _ = expr scope (hd args) in
                 let _ = check_print et in
                 (fd.typ, SCall (fname, List.map (expr scope) args))
+            | "append" ->
+                let args' = List.map (expr scope) args in
+                let et1, _ = hd args' in
+                let et2, _ = hd (tl args') in
+                let inner_ty =
+                  match et1 with
+                  | List ty -> ty
+                  | _ -> raise (E.AppendNonList et2)
+                in
+                let ret =
+                  if inner_ty != et2 then
+                    raise (E.MismatchedTypes (inner_ty, et2, call))
+                  else (et1, SCall (fname, args'))
+                in
+                ret
             | _ ->
                 let check_call (ft, _) e =
                   let et, e' = expr scope e in

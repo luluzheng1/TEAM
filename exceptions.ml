@@ -50,6 +50,8 @@ exception ReturnMismatchedTypes of typ * typ * stmt
 
 exception NotInLoop of string
 
+exception AppendNonList of typ
+
 (* Codegen Exceptions *)
 exception InvalidFloatBinop
 
@@ -260,4 +262,12 @@ let handle_error (e : exn) =
         (Failure
            (Printf.sprintf
               "Error: Expected '%s' to be in a loop, but it was not" s ) )
+  | AppendNonList t ->
+      let s = string_of_typ t in
+      raise
+        (Failure
+           (Printf.sprintf
+              "Expected first argument to append to be of type list, but \
+               got type '%s' instead"
+              s ) )
   | e -> raise (TypeError (Printexc.to_string e))
