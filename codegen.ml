@@ -25,7 +25,7 @@ let translate (functions, statements) =
 
   let list_struct_type = L.named_struct_type context "list_item" in
   let list_struct_ptr = L.pointer_type list_struct_type in
-  let _ = L.struct_set_body list_struct_type [|L.pointer_type i8_t; list_struct_ptr|] true in
+  let _ = L.struct_set_body list_struct_type [|L.pointer_type i8_t; list_struct_ptr|] false in
 
   (* Convert TEAM types to LLVM types *)
   let ltype_of_typ = function
@@ -137,7 +137,7 @@ let translate (functions, statements) =
                 L.build_add length ((L.const_int i8_t) 1) "length_w_nul" builder
               in
               let new_str =
-                L.build_array_alloca i8_t length_w_nul "new_string" builder
+                L.build_array_malloc i8_t length_w_nul "new_string" builder
               in
               let nul = L.build_gep new_str [|length|] "string_term" builder in
               let _ = L.build_store ((L.const_int i8_t) 0) nul builder in
@@ -186,7 +186,7 @@ let translate (functions, statements) =
               in
               let lc_func = build_copy_function t in
               let new_list_ptr =
-                L.build_alloca list_struct_ptr "new_list_ptr" builder
+                L.build_malloc list_struct_ptr "new_list_ptr" builder
               in
               let _ =
                 L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder
@@ -208,7 +208,7 @@ let translate (functions, statements) =
             L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder
           in
           let copy_data_ptr =
-            L.build_alloca (ltype_of_typ inner_t) "copy_ptr" builder
+            L.build_malloc (ltype_of_typ inner_t) "copy_ptr" builder
           in
           let data = expr sc builder value in
           let _ = L.build_store data copy_data_ptr builder in
@@ -245,11 +245,11 @@ let translate (functions, statements) =
           let else_bb = L.append_block context "else" lc_func in
           let else_builder = L.builder_at_end context else_bb in
           let new_struct_ptr =
-            L.build_alloca list_struct_type "new_struct_ptr" else_builder
+            L.build_malloc list_struct_type "new_struct_ptr" else_builder
           in
-          (* let _ = L.build_store (L.const_null list_struct_type)
-             new_struct_ptr else_builder in *)
-          let data_ptr = L.build_alloca (ltype_of_typ t) "ltyp" else_builder in
+          let _ = L.build_store (L.const_null list_struct_type)
+             new_struct_ptr else_builder in
+          let data_ptr = L.build_malloc (ltype_of_typ t) "ltyp" else_builder in
           let old_data_ptr_ptr =
             L.build_struct_gep (L.param lc_func 0) 0 "old_data_ptr_ptr"
               else_builder
@@ -324,10 +324,10 @@ let translate (functions, statements) =
       let typ = get_list_inner_typ list_typ in
       let ltyp = ltype_of_typ typ in
       let build_link prev data =
-        let entry_ptr = L.build_alloca list_struct_type "list_item" builder in
-        (* let _ = L.build_store (L.const_null list_struct_type) entry_ptr
-            builder in *)
-        let data_ptr = L.build_alloca ltyp "copied" builder in
+        let entry_ptr = L.build_malloc list_struct_type "list_item" builder in
+        let _ = L.build_store (L.const_null list_struct_type) entry_ptr
+            builder in
+        let data_ptr = L.build_malloc ltyp "copied" builder in
         let _ = L.build_store (expr scope builder data) data_ptr builder in
         let typcast_ptr =
           L.build_bitcast data_ptr (L.pointer_type i8_t) "cast_ptr" builder
