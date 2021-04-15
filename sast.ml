@@ -36,7 +36,7 @@ type sstmt =
   | SReturn of sexpr
   | SIf of sexpr * sstmt * sstmt * sstmt
   | SElif of sexpr * sstmt
-  | SFor of sexpr * sexpr * sstmt
+  | SFor of string * sexpr * sstmt
   | SWhile of sexpr * sstmt
   | SDeclaration of typ * string * sexpr
   | SBreak
@@ -52,8 +52,8 @@ type program = sfunc_decl list * sstmt list
 let rec string_of_sexpr (t, e) =
   "(" ^ string_of_typ t ^ " : "
   ^ ( match e with
-    | SIntLit l -> string_of_int l
-    | SFloatLit l -> string_of_float l
+    | SIntLit i -> string_of_int i
+    | SFloatLit f -> string_of_float f
     | SBoolLit true -> "true"
     | SBoolLit false -> "false"
     | SCharLit c -> String.make 1 c
@@ -92,9 +92,9 @@ let rec string_of_sstmt = function
       "if " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s1
       ^ string_of_sstmt s2 ^ "else:\n" ^ string_of_sstmt s3 ^ "end\n"
   | SElif (e, s) -> "elif " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s
-  | SFor (e1, e2, s) ->
-      "for " ^ string_of_sexpr e1 ^ " in " ^ string_of_sexpr e2 ^ ":\n "
-      ^ string_of_sstmt s ^ "end\n"
+  | SFor (s, e2, st) ->
+      "for " ^ s ^ " in " ^ string_of_sexpr e2 ^ ":\n " ^ string_of_sstmt st
+      ^ "end\n"
   | SWhile (e, s) ->
       "while " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s ^ "end\n"
   | SDeclaration (t, id, (tp, e)) -> (

@@ -16,7 +16,7 @@ let check (functions, statements) =
         map
     in
     List.fold_left add_bind StringMap.empty
-      [ ("print", [(String, "x")], Void)
+      [ ("print", [(Unknown, "x")], Void)
       ; ("open", [(String, "file_name"); (String, "mode")], File)
       ; ("readline", [(File, "file_handle")], String)
       ; ("write", [(File, "file_handle"); (String, "content")], Void)
@@ -115,10 +115,13 @@ let check (functions, statements) =
           | Exp when same && t1 = Float -> Float
           | Exp when t1 = Int && t2 = Float -> Float
           | Exp when t1 = Float && t2 = Int -> Float
+          | (Equal | Neq) when t1 = Int && t2 = Float -> Bool
+          | (Equal | Neq) when t1 = Float && t2 = Int -> Bool
           | (Equal | Neq) when same -> Bool
-          | (Less | Leq | Greater | Geq) when same && (t1 = Int || t1 = Float)
-            ->
-              Bool
+          | (Less | Leq | Greater | Geq) when t1 = Int && t2 = Float -> Bool
+          | (Less | Leq | Greater | Geq) when t1 = Float && t2 = Int -> Bool
+          | (Less | Leq | Greater | Geq) when same && t1 = Int -> Bool
+          | (Less | Leq | Greater | Geq) when same && t1 = Float -> Bool
           | (And | Or) when same && t1 = Bool -> Bool
           | Range when same && t1 = Int -> List Int
           | _ -> raise (E.InvalidBinaryOperation (t1, op, t2, e))
@@ -172,12 +175,30 @@ let check (functions, statements) =
         if List.length args != param_length then
           raise (E.WrongNumberOfArgs (param_length, List.length args, call))
         else
-          let check_call (ft, _) e =
-            let et, e' = expr scope e in
-            (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
+          (* TODO: Temporary print semantic check, need to be updated to
+             support format strings*)
+          let check_print t =
+            match t with
+            | Int -> true
+            | Float -> true
+            | Bool -> true
+            | String -> true
+            | _ ->
+                raise
+                  (Failure
+                     ( "Print does not support printing for type"
+                     ^ string_of_typ t ) )
           in
-          let args' = List.map2 check_call fd.formals args in
-          (fd.typ, SCall (fname, args'))
+          let et, _ = expr scope (hd args) in
+          if String.equal fname "print" && check_print et then
+            (fd.typ, SCall (fname, List.map (expr scope) args))
+          else
+            let check_call (ft, _) e =
+              let et, e' = expr scope e in
+              (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
+            in
+            let args' = List.map2 check_call fd.formals args in
+            (fd.typ, SCall (fname, args'))
     | SliceExpr (id, slce) as slice ->
         let lt = type_of_identifier scope id in
         let check_slice_expr =
@@ -226,7 +247,7 @@ let check (functions, statements) =
     | [] -> if typ != Void then raise E.NoReturnInNonVoidFunction else ()
   in
   (* Return a semantically-checked statement containing exprs *)
-  let rec check_stmt scope stmt fdecl =
+  let rec check_stmt scope stmt loop fdecl =
     match stmt with
     | Expr e -> SExpr (expr scope e)
     | Block sl ->
@@ -239,7 +260,8 @@ let check (functions, statements) =
         let new_scope_ref = ref new_scope in
         let rec check_stmt_list = function
           | Block sl :: ss -> check_stmt_list (sl @ ss)
-          | s :: ss -> check_stmt new_scope_ref s fdecl :: check_stmt_list ss
+          | s :: ss ->
+              check_stmt new_scope_ref s loop fdecl :: check_stmt_list ss
           | [] -> []
         in
         SBlock (List.rev (check_stmt_list (List.rev sl)))
@@ -253,13 +275,30 @@ let check (functions, statements) =
     | If (p, b1, b2, b3) ->
         SIf
           ( check_bool_expr scope p
-          , check_stmt scope b1 fdecl
-          , check_stmt scope b2 fdecl
-          , check_stmt scope b3 fdecl )
-    | For (e1, e2, st) ->
-        SFor (expr scope e1, expr scope e2, check_stmt scope st fdecl)
+          , check_stmt scope b1 loop fdecl
+          , check_stmt scope b2 loop fdecl
+          , check_stmt scope b3 loop fdecl )
+    | Elif (p, b1) ->
+        SElif (check_bool_expr scope p, check_stmt scope b1 loop fdecl)
+    | For (s, e, st) ->
+        let t, e' = expr scope e in
+        let s_ty =
+          match t with
+          | List ty -> ty
+          | _ -> raise (Failure "Cannot get non list type")
+        in
+        let _ = add_var_to_scope scope s s_ty in
+        let sexpr =
+          SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl)
+        in
+        let _ =
+          scope :=
+            { variables= StringMap.remove s !scope.variables
+            ; parent= !scope.parent }
+        in
+        sexpr
     | While (p, s) ->
-        SWhile (check_bool_expr scope p, check_stmt scope s fdecl)
+        SWhile (check_bool_expr scope p, check_stmt scope s (loop + 1) fdecl)
     | Declaration (ty, s, e) as decl ->
         let expr_ty, e' = expr scope e in
         let _ = check_void_type ty s in
@@ -274,9 +313,9 @@ let check (functions, statements) =
             | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
           in
           SDeclaration (ty, s, (expr_ty, e'))
-    | Break -> SBreak
-    | Continue -> SContinue
-    | _ -> SExpr (Void, SNoexpr)
+    | Break -> if loop > 0 then SBreak else raise (E.NotInLoop "Break")
+    | Continue ->
+        if loop > 0 then SContinue else raise (E.NotInLoop "Continue")
   in
   let check_functions func =
     let formals' = check_binds func.formals in
@@ -286,10 +325,10 @@ let check (functions, statements) =
       ; parent= Some !global_scope }
     in
     let func_scope = ref func_variable_table in
-    let body' = check_stmt func_scope (Block func.body) func in
+    let body' = check_stmt func_scope (Block func.body) 0 func in
     {styp= func.typ; sfname= func.fname; sformals= formals'; sbody= [body']}
   in
-  let check_stmts stmt = check_stmt global_scope stmt dummy in
+  let check_stmts stmt = check_stmt global_scope stmt 0 dummy in
   let statements' =
     try List.map check_stmts statements with e -> E.handle_error e
   in

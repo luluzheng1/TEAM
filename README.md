@@ -48,7 +48,7 @@ value "Hello World" and prints it to standard output.
 
 To test the Hello World program, do
 
-      python runtests.py -m codegen
+      python runtests.py -t codegen_tests/hello_world.tm -r codegen_ref/hello_world.log -m codegen
 
 ## Group Members
 
