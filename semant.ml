@@ -175,30 +175,32 @@ let check (functions, statements) =
         if List.length args != param_length then
           raise (E.WrongNumberOfArgs (param_length, List.length args, call))
         else
-          (* TODO: Temporary print semantic check, need to be updated to
-             support format strings*)
-          let check_print t =
-            match t with
-            | Int -> true
-            | Float -> true
-            | Bool -> true
-            | String -> true
+          let ret =
+            match fname with
+            (* TODO: Temporary print semantic check, need to be updated to
+               support format strings*)
+            | "print" ->
+                let check_print t =
+                  match t with
+                  | Int | Float | Bool | String -> ()
+                  | _ ->
+                      raise
+                        (Failure
+                           ( "Print does not support printing for type"
+                           ^ string_of_typ t ) )
+                in
+                let et, _ = expr scope (hd args) in
+                let _ = check_print et in
+                (fd.typ, SCall (fname, List.map (expr scope) args))
             | _ ->
-                raise
-                  (Failure
-                     ( "Print does not support printing for type"
-                     ^ string_of_typ t ) )
+                let check_call (ft, _) e =
+                  let et, e' = expr scope e in
+                  (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
+                in
+                let args' = List.map2 check_call fd.formals args in
+                (fd.typ, SCall (fname, args'))
           in
-          let et, _ = expr scope (hd args) in
-          if String.equal fname "print" && check_print et then
-            (fd.typ, SCall (fname, List.map (expr scope) args))
-          else
-            let check_call (ft, _) e =
-              let et, e' = expr scope e in
-              (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
-            in
-            let args' = List.map2 check_call fd.formals args in
-            (fd.typ, SCall (fname, args'))
+          ret
     | SliceExpr (id, slce) as slice ->
         let lt = type_of_identifier scope id in
         let check_slice_expr =
