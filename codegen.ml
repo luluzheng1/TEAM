@@ -234,14 +234,13 @@ let translate (functions, statements) =
       | SSliceExpr _ -> raise (Failure "Not Yet Implemented")
       | SEnd -> raise (Failure "Not Yet Implemented")
       | SNoexpr -> L.const_int i32_t 0
-    and add_variable sc t n e builder =
-      let e' = expr sc builder e in
-      let _ = L.set_value_name n e' in
-      let ltype = ltype_of_typ t in
-      let l_var = L.build_alloca ltype n builder in
-      let _ = L.build_store e' l_var builder in
-      sc :=
-        {lvariables= StringMap.add n l_var !sc.lvariables; parent= !sc.parent}
+    (* and add_variable sc t n e builder = let e' = expr sc builder e in let
+       _ = L.set_value_name n e' in let ltype = ltype_of_typ t in let l_var =
+       L.build_alloca ltype n builder in let _ = L.build_store e' l_var
+       builder in sc := {lvariables= StringMap.add n l_var !sc.lvariables;
+       parent= !sc.parent} *)
+    and add_variable_to_scope sc n v =
+      sc := {lvariables= StringMap.add n v !sc.lvariables; parent= !sc.parent}
     and update_variable sc n e builder =
       let e' = expr sc builder e in
       let l_var =
@@ -360,7 +359,21 @@ let translate (functions, statements) =
           in
           build_stmt sc builder equivalent loop fdecl
       | SDeclaration (t, n, e) ->
-          let _ = add_variable sc t n e builder in
+          let _ =
+            match fdecl.sfname with
+            | "main" ->
+                let global =
+                  L.define_global n
+                    (L.const_null (ltype_of_typ t))
+                    the_module
+                in
+                let _ = L.build_store (expr sc builder e) global builder in
+                add_variable_to_scope sc n global
+            | _ ->
+                let local = L.build_alloca (ltype_of_typ t) n builder in
+                let _ = L.build_store (expr sc builder e) local builder in
+                add_variable_to_scope sc n local
+          in
           builder
       | SWhile (predicate, body) ->
           let pred_bb = L.append_block context "while" the_function in
