@@ -200,20 +200,28 @@ let translate (functions, statements) =
           expr sc builder (t, SAssign (s, (t, SBinop ((t, SId s), op, e))))
           (* For testing purposes only, will need to combine into one
              function *)
-      | SCall ("print", [e]) ->
-          L.build_call printf_func [|expr sc builder e|] "printf" builder
-      | SCall ("printb", [e]) ->
-          L.build_call printf_func
-            [|int_format_str; expr sc builder e|]
-            "printf" builder
-      | SCall ("printf", [e]) ->
-          L.build_call printf_func
-            [|float_format_str; expr sc builder e|]
-            "printf" builder
-      | SCall ("printd", [e]) ->
-          L.build_call printf_func
-            [|int_format_str; expr sc builder e|]
-            "printf" builder
+      | SCall ("print", [e]) -> (
+          let t, _ = e in
+          match t with
+          | A.String ->
+              L.build_call printf_func [|expr sc builder e|] "printf" builder
+          | A.Bool ->
+              L.build_call printf_func
+                [|int_format_str; expr sc builder e|]
+                "printf" builder
+          | A.Float ->
+              L.build_call printf_func
+                [|float_format_str; expr sc builder e|]
+                "printf" builder
+          | A.Int ->
+              L.build_call printf_func
+                [|int_format_str; expr sc builder e|]
+                "printf" builder
+          | _ ->
+              raise
+                (Failure
+                   ( "Print for type " ^ A.string_of_typ t
+                   ^ " not supported yet" ) ) )
       | SCall (f, args) ->
           let fdef, fdecl = StringMap.find f function_decls in
           let llargs =
