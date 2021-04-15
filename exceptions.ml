@@ -48,6 +48,8 @@ exception NoReturnInNonVoidFunction
 
 exception ReturnMismatchedTypes of typ * typ * stmt
 
+exception NotInLoop of string
+
 (* Codegen Exceptions *)
 exception InvalidFloatBinop
 
@@ -253,4 +255,9 @@ let handle_error (e : exn) =
            (Printf.sprintf
               "Internal Error: Corrupted Tree. Semant should have rejected \
                this" ) )
+  | NotInLoop s ->
+      raise
+        (Failure
+           (Printf.sprintf
+              "Error: Expected '%s' to be in a loop, but it was not" s ) )
   | e -> raise (TypeError (Printexc.to_string e))

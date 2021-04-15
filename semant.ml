@@ -183,7 +183,11 @@ let check (functions, statements) =
             | Float -> true
             | Bool -> true
             | String -> true
-            | _ -> raise (Failure "Not Yet Implemented")
+            | _ ->
+                raise
+                  (Failure
+                     ( "Print does not support printing for type"
+                     ^ string_of_typ t ) )
           in
           let et, _ = expr scope (hd args) in
           if String.equal fname "print" && check_print et then
@@ -309,10 +313,9 @@ let check (functions, statements) =
             | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
           in
           SDeclaration (ty, s, (expr_ty, e'))
-    | Break ->
-        if loop > 0 then SBreak else raise (Failure "Break not in loop")
+    | Break -> if loop > 0 then SBreak else raise (E.NotInLoop "Break")
     | Continue ->
-        if loop > 0 then SContinue else raise (Failure "Continue not in loop")
+        if loop > 0 then SContinue else raise (E.NotInLoop "Continue")
   in
   let check_functions func =
     let formals' = check_binds func.formals in
