@@ -16,7 +16,7 @@ let translate (functions, statements) =
   let i32_t      = L.i32_type     context
   and char_t     = L.i8_type      context
   and i8_t       = L.i8_type      context
-  and void_t     = L.void_type    context 
+  and void_t     = L.void_type    context
   and float_t    = L.double_type  context
   and i1_t       = L.i1_type      context
   and string_t   = L.pointer_type (L.i8_type context)
@@ -279,15 +279,11 @@ let translate (functions, statements) =
           let ptr_ptr =
             L.build_struct_gep new_struct_ptr 1 "next" else_builder
           in
-          let next_ptr =
-            L.build_struct_gep (L.param lc_func 0) 1 "next_ptr" else_builder
-          in
-          let next = L.build_load next_ptr "next" else_builder in
           let sub =
             L.build_sub (L.param lc_func 1) (L.const_int i32_t 1) "sub"
               else_builder
           in
-          let _ = L.build_call lc_func [|next; sub; ptr_ptr|] "" else_builder in
+          let _ = L.build_call lc_func [|new_struct_ptr; sub; ptr_ptr|] "" else_builder in
           let _ = L.build_ret_void else_builder in
           let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in
           lc_func
