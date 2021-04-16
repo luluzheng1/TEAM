@@ -209,6 +209,16 @@ let check (functions, statements) =
                   else (et1, SCall (fname, args'))
                 in
                 ret
+            | "length" ->
+                let args' = List.map (expr scope) args in
+                let et1, _ = hd args' in
+                let _ =
+                  match et1 with
+                  | List _ -> ()
+                  | String -> ()
+                  | _ -> raise (E.LengthWrongArgument et1)
+                in
+                (Int, SCall (fname, args'))
             | _ ->
                 let check_call (ft, _) e =
                   let et, e' = expr scope e in

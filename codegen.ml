@@ -234,11 +234,6 @@ let translate (functions, statements) =
       | SSliceExpr _ -> raise (Failure "Not Yet Implemented")
       | SEnd -> raise (Failure "Not Yet Implemented")
       | SNoexpr -> L.const_int i32_t 0
-    (* and add_variable sc t n e builder = let e' = expr sc builder e in let
-       _ = L.set_value_name n e' in let ltype = ltype_of_typ t in let l_var =
-       L.build_alloca ltype n builder in let _ = L.build_store e' l_var
-       builder in sc := {lvariables= StringMap.add n l_var !sc.lvariables;
-       parent= !sc.parent} *)
     and add_variable_to_scope sc n v =
       sc := {lvariables= StringMap.add n v !sc.lvariables; parent= !sc.parent}
     and update_variable sc n e builder =
