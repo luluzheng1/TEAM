@@ -232,16 +232,6 @@ let check (functions, statements) =
         let lt = type_of_identifier scope id in
         let check_slice_expr =
           match slce with
-          | Index e ->
-              let t, e' = expr scope e in
-              let id_type =
-                match lt with
-                | List ty -> ty
-                | String -> Char
-                | _ -> raise (E.IllegalSlice (slice, lt))
-              in
-              if t = Int then (id_type, SSliceExpr (id, SIndex (t, e')))
-              else raise (E.WrongIndex (t, e))
           | Slice (e1, e2) ->
               let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
               let id_type =
@@ -253,6 +243,22 @@ let check (functions, statements) =
               if t1 = Int && t1 = t2 then
                 (id_type, SSliceExpr (id, SSlice ((t1, e1'), (t2, e2'))))
               else raise (E.WrongSliceIndex (t1, t2, e1, e2))
+        in
+        check_slice_expr
+    | IndexExpr (id, index) as slice -> 
+        let lt = type_of_identifier scope id in
+        let check_slice_expr =
+          match index with
+          | Index e ->
+              let t, e' = expr scope e in
+              let id_type =
+                match lt with
+                | List ty -> ty
+                | String -> Char
+                | _ -> raise (E.IllegalSlice (slice, lt))
+              in
+              if t = Int then (id_type, SIndexExpr (id, SIndex (t, e')))
+              else raise (E.WrongIndex (t, e))
         in
         check_slice_expr
     | End -> (Int, SEnd)

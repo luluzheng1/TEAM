@@ -148,7 +148,7 @@ expr:
   | ID MODASN expr { AssignOp($1, Mod, $3) }
   | ID LSQUARE expr RSQUARE ASSIGN expr { ListAssign($1, $3, $6)}
   | ID LPAREN args_opt RPAREN { Call($1, $3) }
-  | ID LSQUARE expr RSQUARE { SliceExpr($1, Index($3)) }
+  | ID LSQUARE expr RSQUARE { IndexExpr($1, Index($3)) }
   | ID LSQUARE expr COLON expr RSQUARE { SliceExpr($1, Slice($3, $5)) }
   | ID LSQUARE COLON expr RSQUARE { SliceExpr($1, Slice(IntLit 0, $4)) }
   | ID LSQUARE expr COLON RSQUARE { SliceExpr($1, Slice($3, End)) }

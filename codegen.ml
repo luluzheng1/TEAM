@@ -232,6 +232,7 @@ let translate (functions, statements) =
           in
           L.build_call fdef (Array.of_list llargs) result builder
       | SSliceExpr _ -> raise (Failure "Not Yet Implemented")
+      | SIndexExpr _ -> raise (Failure "Not Yet Implemented")
       | SEnd -> raise (Failure "Not Yet Implemented")
       | SNoexpr -> L.const_int i32_t 0
     and add_variable_to_scope sc n v =
@@ -339,7 +340,7 @@ let translate (functions, statements) =
                           , SAssign
                               ( s
                               , ( s_ty
-                                , SSliceExpr
+                                , SIndexExpr
                                     (list_identifier, SIndex index_expr) ) )
                           )
                       ; SExpr
