@@ -52,6 +52,8 @@ exception NotInLoop of string
 
 exception AppendNonList of typ
 
+exception LengthWrongArgument of typ
+
 (* Codegen Exceptions *)
 exception InvalidFloatBinop
 
@@ -269,5 +271,13 @@ let handle_error (e : exn) =
            (Printf.sprintf
               "Expected first argument to append to be of type list, but \
                got type '%s' instead"
+              s ) )
+  | LengthWrongArgument t ->
+      let s = string_of_typ t in
+      raise
+        (Failure
+           (Printf.sprintf
+              "Expected argument to length to be of type list or string, \
+               but got type '%s' instead"
               s ) )
   | e -> raise (TypeError (Printexc.to_string e))
