@@ -34,7 +34,7 @@ type expr =
   | AssignOp of string * op * expr
   | Call of string * expr list
   | SliceExpr of string * slce
-  | IndexExpr of string * index
+  | IndexExpr of expr * index
   | End
   | Noexpr
 
@@ -109,7 +109,7 @@ let rec string_of_expr = function
         e ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
   | IndexExpr (e, s) -> (
     match s with
-    | Index i -> e ^ "[" ^ string_of_expr i ^ "]"
+    | Index i -> string_of_expr e ^ "[" ^ string_of_expr i ^ "]"
   )
   | Id s -> s
   | Binop (e1, o, e2) -> (

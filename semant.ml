@@ -246,7 +246,8 @@ let check (functions, statements) =
         in
         check_slice_expr
     | IndexExpr (id, index) as slice -> 
-        let lt = type_of_identifier scope id in
+        (* let lt = type_of_identifier scope id in *)
+        let lt = fst(expr scope id) in
         let check_slice_expr =
           match index with
           | Index e ->
@@ -257,7 +258,7 @@ let check (functions, statements) =
                 | String -> Char
                 | _ -> raise (E.IllegalSlice (slice, lt))
               in
-              if t = Int then (id_type, SIndexExpr (id, SIndex (t, e')))
+              if t = Int then (id_type, SIndexExpr (expr scope id, SIndex (t, e')))
               else raise (E.WrongIndex (t, e))
         in
         check_slice_expr

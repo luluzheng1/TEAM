@@ -25,7 +25,7 @@ and sx =
   | SAssignOp of string * op * sexpr
   | SCall of string * sexpr list
   | SSliceExpr of string * sslce
-  | SIndexExpr of string * sindex
+  | SIndexExpr of sexpr * sindex
   | SEnd
   | SNoexpr
 
@@ -68,7 +68,7 @@ let rec string_of_sexpr (t, e) =
           e ^ "[" ^ string_of_sexpr i ^ ":" ^ string_of_sexpr j ^ "]" )
     | SIndexExpr (e, i) -> (
       match i with
-      | SIndex i -> e ^ "[" ^ string_of_sexpr i ^ "]")
+      | SIndex i -> string_of_sexpr e ^ "[" ^ string_of_sexpr i ^ "]")
     | SId s -> s
     | SBinop (e1, o, e2) -> (
       match o with

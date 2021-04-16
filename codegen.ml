@@ -341,7 +341,8 @@ let translate (functions, statements) =
                               ( s
                               , ( s_ty
                                 , SIndexExpr
-                                    (list_identifier, SIndex index_expr) ) )
+                                    (* TODO Replace with actual code *)
+                                    ((A.String, SStringLit "for_list"), SIndex index_expr) ) )
                           )
                       ; SExpr
                           ( A.Int
