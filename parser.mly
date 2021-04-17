@@ -126,13 +126,13 @@ primary:
 
 bracket_expr:
     primary {$1}
-  | postfix_expr LSQUARE index RSQUARE {SliceExpr($1, $3)}
+  | bracket_expr LSQUARE index RSQUARE {SliceExpr($1, $3)}
   | ID LPAREN args_opt RPAREN { Call($1, $3) }
 
 unary_expr:
     bracket_expr {$1}
-  | MINUS prefix_expr {Unop(Neg, $2)}
-  | NOT prefix_expr {Unop(Not, $2)}
+  | MINUS unary_expr {Unop(Neg, $2)}
+  | NOT unary_expr {Unop(Not, $2)}
 
 expr:
     unary_expr {$1}
