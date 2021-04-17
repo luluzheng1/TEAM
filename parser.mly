@@ -108,7 +108,7 @@ expr_opt:
   /* nothing */ { Noexpr }
   | expr { $1 }
 
-primary_expr:
+primary:
     LITERAL { IntLit($1) }
   | BLIT    { BoolLit($1) }
   | FLIT    { FloatLit($1) }
@@ -118,18 +118,18 @@ primary_expr:
   | LSQUARE list_literal RSQUARE { ListLit(List.rev $2) }
   | LPAREN expr RPAREN   { $2 }
 
-postfix_expr:
-    primary_expr {$1}
+bracket_expr:
+    primary {$1}
   | postfix_expr LSQUARE index RSQUARE {SliceExpr($1, $3)}
   | ID LPAREN args_opt RPAREN { Call($1, $3) }
 
-prefix_expr:
-    postfix_expr {$1}
+unary_expr:
+    bracket_expr {$1}
   | MINUS prefix_expr {Unop(Neg, $2)}
   | NOT prefix_expr {Unop(Not, $2)}
 
 expr:
-    prefix_expr {$1}
+    unary_expr {$1}
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr TIMES  expr { Binop($1, Mult,  $3)   }
@@ -157,6 +157,7 @@ index:
   | expr COLON expr { Slice($1, $3) }
   | COLON expr { Slice(IntLit 0, $2) }
   | expr COLON { Slice($1, End) }
+
 list_literal:
   /* nothing */ { [] }
   | expr        { [$1] }
