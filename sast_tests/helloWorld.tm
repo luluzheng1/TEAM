@@ -1,4 +1,4 @@
-int hello_world():
+void hello_world():
     string h = "Hello World";
     print(h);
     return;
