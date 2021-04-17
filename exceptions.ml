@@ -44,9 +44,24 @@ exception ReturnNotLast
 
 exception ReturnOutsideFunction
 
+exception NoReturnInNonVoidFunction
+
 exception ReturnMismatchedTypes of typ * typ * stmt
 
-exception InvalidListType of typ
+exception NotInLoop of string
+
+exception AppendNonList of typ
+
+exception LengthWrongArgument of typ
+
+(* Codegen Exceptions *)
+exception InvalidFloatBinop
+
+exception InvalidIntBinop
+
+exception NotFound of string
+
+exception ImpossibleElif
 
 let handle_error (e : exn) =
   match e with
@@ -145,7 +160,8 @@ let handle_error (e : exn) =
   | Duplicate n ->
       raise
         (TypeError
-           (Printf.sprintf "Error: variable name '%s' has already defined" n) )
+           (Printf.sprintf "Error: variable name '%s' has already defined" n)
+        )
   | UndefinedFunction n ->
       raise
         (TypeError
@@ -207,6 +223,12 @@ let handle_error (e : exn) =
         (TypeError
            (Printf.sprintf "Error: Return statement is outside of a function")
         )
+  | NoReturnInNonVoidFunction ->
+      raise
+        (TypeError
+           (Printf.sprintf
+              "Error: No return statement in function returning non-void" )
+        )
   | ReturnMismatchedTypes (t1, t2, s) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
@@ -217,12 +239,45 @@ let handle_error (e : exn) =
               "Type error: Expected value of type '%s', but got a value of \
                type '%s' in '%s'"
               s1 s2 s3 ) )
-   | InvalidListType t -> 
-      let s1 = string_of_typ t in
-      raise 
-         (TypeError
-            (Printf.sprintf 
-               "Error: type '%s' cannot be used in a list" s1
-            )
-         )
-   | e -> raise (TypeError (Printexc.to_string e))
+  | InvalidFloatBinop ->
+      raise
+        (Failure
+           "Internal Error: Invalid operation on float. Semant should have \
+            rejected this" )
+  | InvalidIntBinop ->
+      raise
+        (Failure
+           "Internal Error: Invalid operation on int. Semant should have \
+            rejected this" )
+  | NotFound s ->
+      raise
+        (Failure
+           (Printf.sprintf "Internal Error: Variable '%s' not in scope" s) )
+  | ImpossibleElif ->
+      raise
+        (Failure
+           (Printf.sprintf
+              "Internal Error: Corrupted Tree. Semant should have rejected \
+               this" ) )
+  | NotInLoop s ->
+      raise
+        (Failure
+           (Printf.sprintf
+              "Error: Expected '%s' to be in a loop, but it was not" s ) )
+  | AppendNonList t ->
+      let s = string_of_typ t in
+      raise
+        (Failure
+           (Printf.sprintf
+              "Expected first argument to append to be of type list, but \
+               got type '%s' instead"
+              s ) )
+  | LengthWrongArgument t ->
+      let s = string_of_typ t in
+      raise
+        (Failure
+           (Printf.sprintf
+              "Expected argument to length to be of type list or string, \
+               but got type '%s' instead"
+              s ) )
+  | e -> raise (TypeError (Printexc.to_string e))

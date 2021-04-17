@@ -52,7 +52,6 @@ fdecl:
     formals = $4;
     body = List.rev $7;
   } }
-
 formals_opt:
   /* nothing */  { [] }
   | formals_list { List.rev $1 }
@@ -70,8 +69,15 @@ typ:
   | VOID   { Void }
   | FILE   { File }
   | LIST LT typ GT { List $3 }
-  | LPAREN typ RPAREN { $2 }
-  | typ ARROW typ { Func($1, $3) }
+  | typ_list ARROW typ { Func($1, $3) }
+
+typ_list_helper:
+    typ { [$1] }
+  | typ_list_helper COMMA typ { $3 :: $1 }
+
+typ_list:
+    LPAREN RPAREN { [] }
+  | LPAREN typ_list_helper RPAREN { List.rev $2 } 
 
 vdecl:
   typ ID ASSIGN expr { Declaration($1, $2, $4) }
@@ -85,7 +91,7 @@ stmt:
   | expr SEMI { Expr $1 }
   | RETURN expr_opt SEMI { Return $2 }
   | IF internal_if { $2 } 
-  | FOR expr IN expr COLON stmt_list END { For($2, $4, Block(List.rev $6)) }
+  | FOR ID IN expr COLON stmt_list END { For($2, $4, Block(List.rev $6)) }
   | WHILE expr COLON stmt_list END  { While($2, Block(List.rev $4)) }
   | BREAK SEMI { Break }
   | CONTINUE SEMI { Continue }

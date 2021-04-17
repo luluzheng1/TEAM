@@ -47,7 +47,7 @@ type typ =
   | Char
   | String
   | List of typ
-  | Func of typ * typ
+  | Func of typ list * typ
   | File
   | Unknown
 (* An empty list has an unknown type *)
@@ -60,7 +60,7 @@ type stmt =
   | Return of expr
   | If of expr * stmt * stmt * stmt
   | Elif of expr * stmt
-  | For of expr * expr * stmt
+  | For of string * expr * stmt
   | While of expr * stmt
   | Declaration of typ * string * expr
   | Break
@@ -152,9 +152,9 @@ let rec string_of_stmt = function
         ^ "end\n" )
   | Elif (e, s) ->
       "elif " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s)
-  | For (e1, e2, s) ->
-      "for " ^ string_of_expr e1 ^ " in " ^ string_of_expr e2 ^ ":\n"
-      ^ indent (string_of_stmt s)
+  | For (s, e2, st) ->
+      "for " ^ s ^ " in " ^ string_of_expr e2 ^ ":\n"
+      ^ indent (string_of_stmt st)
       ^ "end\n"
   | While (e, s) ->
       "while " ^ string_of_expr e ^ ":\n"
@@ -175,7 +175,10 @@ and string_of_typ = function
   | Char -> "char"
   | String -> "string"
   | List t -> "list<" ^ string_of_typ t ^ ">"
-  | Func (a, r) -> "(" ^ string_of_typ a ^ "->" ^ string_of_typ r ^ ")"
+  | Func (a, r) ->
+      "("
+      ^ String.concat "," (List.map string_of_typ a)
+      ^ ")" ^ "->" ^ string_of_typ r
   | File -> "file"
   | Unknown -> "?"
 

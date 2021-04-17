@@ -34,3 +34,6 @@ _opam/
 
 #Tim test files
 test.ml
+
+# VSCode files
+.vscode/

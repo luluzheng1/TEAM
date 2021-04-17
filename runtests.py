@@ -3,7 +3,6 @@ import sys
 import os
 import subprocess
 import optparse
-import shutil
 
 class bcolors:
     OKGREEN = '\033[92m'
