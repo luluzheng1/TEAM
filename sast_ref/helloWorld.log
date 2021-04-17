@@ -1,7 +1,7 @@
 void hello_world()
-string h = (string : "Hello World")
-(void : print((string : h)))
-return (void : )
+	string h = (string : "Hello World")
+	(void : print((string : h)))
+	return (void : )
 end
 
 (void : hello_world())
