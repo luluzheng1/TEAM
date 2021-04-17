@@ -33,7 +33,7 @@ type expr =
   | ListAssign of string * expr * expr
   | AssignOp of string * op * expr
   | Call of string * expr list
-  | SliceExpr of string * slce
+  | SliceExpr of expr * slce
   | End
   | Noexpr
 
@@ -102,9 +102,9 @@ let rec string_of_expr = function
   | ListLit l -> "[" ^ String.concat "," (List.map string_of_expr l) ^ "]"
   | SliceExpr (e, s) -> (
     match s with
-    | Index i -> e ^ "[" ^ string_of_expr i ^ "]"
+    | Index i -> (string_of_expr e) ^ "[" ^ string_of_expr i ^ "]"
     | Slice (i, j) ->
-        e ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
+        (string_of_expr e) ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
   | Id s -> s
   | Binop (e1, o, e2) -> (
     match o with
