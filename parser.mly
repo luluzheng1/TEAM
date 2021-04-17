@@ -108,7 +108,7 @@ expr_opt:
   /* nothing */ { Noexpr }
   | expr { $1 }
 
-expr:
+primary_expr:
     LITERAL { IntLit($1) }
   | BLIT    { BoolLit($1) }
   | FLIT    { FloatLit($1) }
@@ -116,6 +116,20 @@ expr:
   | SLIT    { StringLit($1) }
   | ID      { Id($1) }
   | LSQUARE list_literal RSQUARE { ListLit(List.rev $2) }
+  | LPAREN expr RPAREN   { $2 }
+
+postfix_expr:
+    primary_expr {$1}
+  | postfix_expr LSQUARE index RSQUARE {SliceExpr($1, $3)}
+  | ID LPAREN args_opt RPAREN { Call($1, $3) }
+
+prefix_expr:
+    postfix_expr {$1}
+  | MINUS prefix_expr {Unop(Neg, $2)}
+  | NOT prefix_expr {Unop(Not, $2)}
+
+expr:
+    prefix_expr {$1}
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr TIMES  expr { Binop($1, Mult,  $3)   }
@@ -130,23 +144,19 @@ expr:
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
   | expr MOD    expr { Binop($1, Mod,   $3)   }
-  | expr RANGE  expr { Binop($1, Range, $3) }
-  | MINUS expr %prec NOT { Unop(Neg, $2)      }
-  | NOT   expr           { Unop(Not, $2)      }
-  | LPAREN expr RPAREN   { $2                 }
-  | ID ASSIGN expr { Assign($1, $3) }
-  | ID ADDASN expr { AssignOp($1, Add, $3) }
-  | ID SUBASN expr { AssignOp($1, Sub, $3) }
-  | ID MULASN expr { AssignOp($1, Mult, $3) }
-  | ID DIVASN expr { AssignOp($1, Div, $3) }
-  | ID MODASN expr { AssignOp($1, Mod, $3) }
-  | ID LSQUARE expr RSQUARE ASSIGN expr { ListAssign($1, $3, $6)}
-  | ID LPAREN args_opt RPAREN { Call($1, $3) }
-  | ID LSQUARE expr RSQUARE { SliceExpr($1, Index($3)) }
-  | ID LSQUARE expr COLON expr RSQUARE { SliceExpr($1, Slice($3, $5)) }
-  | ID LSQUARE COLON expr RSQUARE { SliceExpr($1, Slice(IntLit 0, $4)) }
-  | ID LSQUARE expr COLON RSQUARE { SliceExpr($1, Slice($3, End)) }
+  | expr RANGE  expr { Binop($1, Range, $3)   }
+  // | expr ASSIGN expr { Assign($1, $3) }
+  // | expr ADDASN expr { AssignOp($1, Add, $3) }
+  // | expr SUBASN expr { AssignOp($1, Sub, $3) }
+  // | expr MULASN expr { AssignOp($1, Mult, $3) }
+  // | expr DIVASN expr { AssignOp($1, Div, $3) }
+  // | expr MODASN expr { AssignOp($1, Mod, $3) }
 
+index:
+    expr { Index $1 }
+  | expr COLON expr { Slice($1, $3) }
+  | COLON expr { Slice(IntLit 0, $2) }
+  | expr COLON { Slice($1, End) }
 list_literal:
   /* nothing */ { [] }
   | expr        { [$1] }
