@@ -114,20 +114,20 @@ let translate (functions, statements) =
           L.build_call fdef (Array.of_list llargs) result builder 
       | SId n -> L.build_load (lookup sc n) n builder
       | SListLit l -> build_list t l sc builder
-      | SSliceExpr (id, slice) -> (
-        match t with
+      | SSliceExpr (lexpr, slice) ->
+          (let (lt, _) = lexpr in
+          let l = expr sc builder lexpr in
+        match lt with
         | A.String -> (
           match slice with
           | SIndex i ->
-              let str = L.build_load (lookup sc id) "get_string" builder in
               let ptr =
-                L.build_gep str [|expr sc builder i|] "get_char_ptr" builder
+                L.build_gep l [|expr sc builder i|] "get_char_ptr" builder
               in
               L.build_load ptr "get_char" builder
           | SSlice (i, j) ->
-              let str = L.build_load (lookup sc id) "get_string" builder in
               let ptr =
-                L.build_gep str [|expr sc builder i|] "get_char_ptr" builder
+                L.build_gep l [|expr sc builder i|] "get_char_ptr" builder
               in
               let length =
                 L.build_sub (expr sc builder j) (expr sc builder i) "subb"
@@ -152,15 +152,14 @@ let translate (functions, statements) =
                   "" builder
               in
               new_str )
-        | _ -> (
-          match slice with
+        | _ -> 
+          (match slice with
           | SIndex i ->
               let la_func = build_access_function () in
-              let lis = L.build_load (lookup sc id) "get_list" builder in
               let item_ptr =
                 L.build_call la_func
-                  [|lis; expr sc builder i|]
-                  (id ^ "_result") builder
+                  [|l; expr sc builder i|]
+                  "_result" builder
               in
               let data_ptr_ptr =
                 L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder
@@ -174,10 +173,9 @@ let translate (functions, statements) =
               L.build_load type_casted "data" builder
           | SSlice (i, j) ->
               let la_func = build_access_function () in
-              let lis = L.build_load (lookup sc id) "get_list" builder in
               let i = expr sc builder i in
               let item_ptr =
-                L.build_call la_func [|lis; i|] (id ^ "start") builder
+                L.build_call la_func [|l; i|] "start" builder
               in
               let j =
                 match j with
@@ -191,10 +189,7 @@ let translate (functions, statements) =
               let _ =
                 L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder
               in
-              L.build_load new_list_ptr "new_string" builder )
-        | tes ->
-            let _ = print_endline (string_of_sexpr (t, e)) in
-            raise (Failure "yppppppp") )
+              L.build_load new_list_ptr "new_string" builder ))
       | SListAssign (id, i, value) ->
           let inner_t = get_list_inner_typ t in
           let la_func = build_access_function () in
