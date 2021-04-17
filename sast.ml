@@ -24,7 +24,7 @@ and sx =
   | SListAssign of string * sexpr * sexpr
   | SAssignOp of string * op * sexpr
   | SCall of string * sexpr list
-  | SSliceExpr of string * sslce
+  | SSliceExpr of sexpr * sslce
   | SEnd
   | SNoexpr
 
@@ -62,9 +62,9 @@ let rec string_of_sexpr (t, e) =
         "[" ^ String.concat "," (List.map string_of_sexpr l) ^ "]"
     | SSliceExpr (e, s) -> (
       match s with
-      | SIndex i -> e ^ "[" ^ string_of_sexpr i ^ "]"
+      | SIndex i -> (string_of_sexpr e) ^ "[" ^ string_of_sexpr i ^ "]"
       | SSlice (i, j) ->
-          e ^ "[" ^ string_of_sexpr i ^ ":" ^ string_of_sexpr j ^ "]" )
+          (string_of_sexpr e) ^ "[" ^ string_of_sexpr i ^ ":" ^ string_of_sexpr j ^ "]" )
     | SId s -> s
     | SBinop (e1, o, e2) -> (
       match o with

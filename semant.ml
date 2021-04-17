@@ -178,8 +178,9 @@ let check (functions, statements) =
           in
           let args' = List.map2 check_call fd.formals args in
           (fd.typ, SCall (fname, args'))
-    | SliceExpr (id, slce) as slice ->
-        let lt = type_of_identifier scope id in
+    | SliceExpr (lexpr, slce) as slice ->
+        (* let lt = type_of_identifier scope id in *)
+        let (lt, lexpr') = expr scope lexpr in
         let check_slice_expr =
           match slce with
           | Index e ->
@@ -190,7 +191,7 @@ let check (functions, statements) =
                 | String -> Char
                 | _ -> raise (E.IllegalSlice (slice, lt))
               in
-              if t = Int then (id_type, SSliceExpr (id, SIndex (t, e')))
+              if t = Int then (id_type, SSliceExpr ((lt, lexpr'), SIndex (t, e')))
               else raise (E.WrongIndex (t, e))
           | Slice (e1, e2) ->
               let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
@@ -201,7 +202,7 @@ let check (functions, statements) =
                 | _ -> raise (E.IllegalSlice (slice, lt))
               in
               if t1 = Int && t1 = t2 then
-                (id_type, SSliceExpr (id, SSlice ((t1, e1'), (t2, e2'))))
+                (id_type, SSliceExpr ((lt, lexpr'), SSlice ((t1, e1'), (t2, e2'))))
               else raise (E.WrongSliceIndex (t1, t2, e1, e2))
         in
         check_slice_expr
