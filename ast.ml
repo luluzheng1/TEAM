@@ -30,7 +30,6 @@ type expr =
   | Binop of expr * op * expr
   | Unop of uop * expr
   | Assign of expr * expr
-  | AssignOp of string * op * expr
   | Call of string * expr list
   | SliceExpr of expr * slce
   | End
@@ -112,7 +111,6 @@ let rec string_of_expr = function
     )
   | Unop (o, e) -> string_of_uop o ^ string_of_expr e
   | Assign (v, e) -> (string_of_expr v) ^ " = " ^ string_of_expr e
-  | AssignOp (s, o, e) -> s ^ " " ^ string_of_op o ^ " = " ^ string_of_expr e
   | Call (f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | End -> ""

@@ -148,18 +148,6 @@ let check (functions, statements) =
         let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex))
         in
         (lrt, SAssign ((lt, s'), (rt, e')) )
-    | AssignOp (s, op, e) as ex ->
-        let lt = type_of_identifier scope s and rt, e' = expr scope e in
-        let same = lt = rt in
-        let ty =
-          match op with
-          | (Add | Sub | Mult | Div) when same && (lt = Int || lt = Float) ->
-              lt
-          | (Add | Sub | Mult | Div) when lt = Float && rt = Int -> Float
-          | Mod when same && lt = Int -> Int
-          | _ -> raise (E.IllegalAssignment (lt, Some op, rt, ex))
-        in
-        (ty, SAssignOp (s, op, (rt, e')))
     | Call (fname, args) as call ->
         let fd = find_func fname in
         let param_length = List.length fd.formals in

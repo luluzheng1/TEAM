@@ -290,10 +290,6 @@ let translate (functions, statements) =
             | _ -> raise (Failure "Internal Error")  
           in
           re'
-      | SAssignOp (s, op, e) -> L.const_int i32_t 0
-          (* expr sc builder (t, SAssign (s, (t, SBinop ((t, SId s), op, e)))) *)
-          (* For testing purposes only, will need to combine into one
-             function *)
       | SCall ("print", [e]) -> (
           let t, _ = e in
           match t with

@@ -152,11 +152,11 @@ expr:
   | expr MOD    expr { Binop($1, Mod,   $3)   }
   | expr RANGE  expr { Binop($1, Range, $3)   }
   | expr ASSIGN expr { Assign($1, $3) }
-  // | expr ADDASN expr { AssignOp($1, Add, $3) }
-  // | expr SUBASN expr { AssignOp($1, Sub, $3) }
-  // | expr MULASN expr { AssignOp($1, Mult, $3) }
-  // | expr DIVASN expr { AssignOp($1, Div, $3) }
-  // | expr MODASN expr { AssignOp($1, Mod, $3) }
+  | expr ADDASN expr { Assign($1, Binop($1, Add, $3)) }
+  | expr SUBASN expr { Assign($1, Binop($1, Sub, $3)) }
+  | expr MULASN expr { Assign($1, Binop($1, Mult, $3))  }
+  | expr DIVASN expr { Assign($1, Binop($1, Div, $3))  }
+  | expr MODASN expr { Assign($1, Binop($1, Mod, $3))  }
 
 index:
     expr { Index $1 }
