@@ -29,11 +29,9 @@ type expr =
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
-  | Assign of string * expr
-  | ListAssign of string * expr * expr
-  | AssignOp of string * op * expr
+  | Assign of expr * expr
   | Call of string * expr list
-  | SliceExpr of string * slce
+  | SliceExpr of expr * slce
   | End
   | Noexpr
 
@@ -102,9 +100,9 @@ let rec string_of_expr = function
   | ListLit l -> "[" ^ String.concat "," (List.map string_of_expr l) ^ "]"
   | SliceExpr (e, s) -> (
     match s with
-    | Index i -> e ^ "[" ^ string_of_expr i ^ "]"
+    | Index i -> (string_of_expr e) ^ "[" ^ string_of_expr i ^ "]"
     | Slice (i, j) ->
-        e ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
+        (string_of_expr e) ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
   | Id s -> s
   | Binop (e1, o, e2) -> (
     match o with
@@ -112,10 +110,7 @@ let rec string_of_expr = function
     | _ -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
     )
   | Unop (o, e) -> string_of_uop o ^ string_of_expr e
-  | Assign (v, e) -> v ^ " = " ^ string_of_expr e
-  | ListAssign (s, e1, e2) ->
-      s ^ "[" ^ string_of_expr e1 ^ "] = " ^ string_of_expr e2
-  | AssignOp (s, o, e) -> s ^ " " ^ string_of_op o ^ " = " ^ string_of_expr e
+  | Assign (v, e) -> (string_of_expr v) ^ " = " ^ string_of_expr e
   | Call (f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | End -> ""

@@ -139,38 +139,15 @@ let check (functions, statements) =
         in
         (ty, SUnop (op, (t, e')))
     | Assign (s, e) as ex ->
-        let lt = type_of_identifier scope s and rt, e' = expr scope e in
-        ( check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex))
-        , SAssign (s, (rt, e')) )
-    | ListAssign (s, e1, e2) as ex ->
-        let lt = type_of_identifier scope s
-        and t1, e1' = expr scope e1
-        and t2, e2' = expr scope e2 in
-        let inner_ty =
-          match lt with
-          | List ty -> ty
-          | other -> raise (E.NonListAccess (t1, other, ex))
+        let (lt, s') = expr scope s in
+        let (rt, e') = expr scope e in
+        let _ = match s' with
+          | SId _ | SSliceExpr _ -> ()
+          | _ -> raise (Failure "Can't assign to type")
         in
-        let is_index =
-          match t1 with
-          | Int -> true
-          | other -> raise (E.InvalidIndex (other, ex))
+        let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex))
         in
-        if is_index && inner_ty = t2 then
-          (List inner_ty, SListAssign (s, (t1, e1'), (t2, e2')))
-        else raise (E.MismatchedTypes (inner_ty, t2, ex))
-    | AssignOp (s, op, e) as ex ->
-        let lt = type_of_identifier scope s and rt, e' = expr scope e in
-        let same = lt = rt in
-        let ty =
-          match op with
-          | (Add | Sub | Mult | Div) when same && (lt = Int || lt = Float) ->
-              lt
-          | (Add | Sub | Mult | Div) when lt = Float && rt = Int -> Float
-          | Mod when same && lt = Int -> Int
-          | _ -> raise (E.IllegalAssignment (lt, Some op, rt, ex))
-        in
-        (ty, SAssignOp (s, op, (rt, e')))
+        (lrt, SAssign ((lt, s'), (rt, e')) )
     | Call (fname, args) as call ->
         let fd = find_func fname in
         let param_length = List.length fd.formals in
@@ -227,9 +204,12 @@ let check (functions, statements) =
                 let args' = List.map2 check_call fd.formals args in
                 (fd.typ, SCall (fname, args'))
           in
-          ret
-    | SliceExpr (id, slce) as slice ->
-        let lt = type_of_identifier scope id in
+          (* let args' = List.map2 check_call fd.formals args in
+          (fd.typ, SCall (fname, args')) *)
+        ret
+    | SliceExpr (lexpr, slce) as slice ->
+        (* let lt = type_of_identifier scope id in *)
+        let (lt, lexpr') = expr scope lexpr in
         let check_slice_expr =
           match slce with
           | Index e ->
@@ -240,7 +220,7 @@ let check (functions, statements) =
                 | String -> Char
                 | _ -> raise (E.IllegalSlice (slice, lt))
               in
-              if t = Int then (id_type, SSliceExpr (id, SIndex (t, e')))
+              if t = Int then (id_type, SSliceExpr ((lt, lexpr'), SIndex (t, e')))
               else raise (E.WrongIndex (t, e))
           | Slice (e1, e2) ->
               let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
@@ -251,7 +231,7 @@ let check (functions, statements) =
                 | _ -> raise (E.IllegalSlice (slice, lt))
               in
               if t1 = Int && t1 = t2 then
-                (id_type, SSliceExpr (id, SSlice ((t1, e1'), (t2, e2'))))
+                (id_type, SSliceExpr ((lt, lexpr'), SSlice ((t1, e1'), (t2, e2'))))
               else raise (E.WrongSliceIndex (t1, t2, e1, e2))
         in
         check_slice_expr
