@@ -139,26 +139,15 @@ let check (functions, statements) =
         in
         (ty, SUnop (op, (t, e')))
     | Assign (s, e) as ex ->
-        let lt = type_of_identifier scope s and rt, e' = expr scope e in
-        ( check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex))
-        , SAssign (s, (rt, e')) )
-    | ListAssign (s, e1, e2) as ex ->
-        let lt = type_of_identifier scope s
-        and t1, e1' = expr scope e1
-        and t2, e2' = expr scope e2 in
-        let inner_ty =
-          match lt with
-          | List ty -> ty
-          | other -> raise (E.NonListAccess (t1, other, ex))
+        let (lt, s') = expr scope s in
+        let (rt, e') = expr scope e in
+        let _ = match s' with
+          | SId _ | SSliceExpr _ -> ()
+          | _ -> raise (Failure "Can't assign to type")
         in
-        let is_index =
-          match t1 with
-          | Int -> true
-          | other -> raise (E.InvalidIndex (other, ex))
+        let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex))
         in
-        if is_index && inner_ty = t2 then
-          (List inner_ty, SListAssign (s, (t1, e1'), (t2, e2')))
-        else raise (E.MismatchedTypes (inner_ty, t2, ex))
+        (lrt, SAssign ((lt, s'), (rt, e')) )
     | AssignOp (s, op, e) as ex ->
         let lt = type_of_identifier scope s and rt, e' = expr scope e in
         let same = lt = rt in

@@ -189,30 +189,6 @@ let translate (functions, statements) =
                 L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder
               in
               L.build_load new_list_ptr "new_string" builder ))
-
-      | SListAssign (id, i, value) ->
-          let inner_t = get_list_inner_typ t in
-          let la_func = build_access_function () in
-          let lis = L.build_load (find_variable sc id) "get_list" builder in
-          let item_ptr =
-            L.build_call la_func
-              [|lis; expr sc builder i|]
-              (id ^ "_result") builder
-          in
-          let data_ptr_ptr =
-            L.build_struct_gep item_ptr 0 "data_ptr_ptr" builder
-          in
-          let copy_data_ptr =
-            L.build_malloc (ltype_of_typ inner_t) "copy_ptr" builder
-          in
-          let data = expr sc builder value in
-          let _ = L.build_store data copy_data_ptr builder in
-          let type_casted_copy =
-            L.build_bitcast copy_data_ptr (L.pointer_type i8_t) "cast_copy"
-              builder
-          in
-          let _ = L.build_store type_casted_copy data_ptr_ptr builder in
-          L.const_int i32_t 0
       
       | SBinop (e1, op, e2) ->
           let t1, _ = e1
@@ -301,11 +277,21 @@ let translate (functions, statements) =
           | A.Neg -> L.build_neg
           | A.Not -> L.build_not )
             e' "tmp" builder
-      | SAssign (s, e) ->
-          let _ = update_variable sc s e builder in
-          expr sc builder (t, SId s)
-      | SAssignOp (s, op, e) ->
-          expr sc builder (t, SAssign (s, (t, SBinop ((t, SId s), op, e))))
+      | SAssign (le, re) ->
+          let re' = expr sc builder re in
+          let _ = match le with
+            | (_, SId s) -> update_variable sc s re' builder
+            | (_, SSliceExpr ((lst, ls), slc)) ->
+                (match lst with
+                  | A.List ilst -> let lis = expr sc builder (lst, ls) in
+                      build_asn_list sc builder ilst lis slc re' 
+                  | A.String -> raise (Failure "Not implemented yet")
+                  | _-> raise (Failure "Internal Error"))   
+            | _ -> raise (Failure "Internal Error")  
+          in
+          re'
+      | SAssignOp (s, op, e) -> L.const_int i32_t 0
+          (* expr sc builder (t, SAssign (s, (t, SBinop ((t, SId s), op, e)))) *)
           (* For testing purposes only, will need to combine into one
              function *)
       | SCall ("print", [e]) -> (
@@ -341,12 +327,46 @@ let translate (functions, statements) =
           L.build_call fdef (Array.of_list llargs) result builder
       | SEnd -> raise (Failure "Not Yet Implemented")
       | SNoexpr -> L.const_int i32_t 0
+    
+    and build_asn_list sc builder ilst lis slc re'  = match slc with
+      | SIndex i ->
+          let la_func = build_access_function () in
+          let item_ptr =
+            L.build_call la_func
+              [|lis; expr sc builder i|]
+              "result" builder
+          in
+          let data_ptr_ptr =
+            L.build_struct_gep item_ptr 0 "data_ptpt" builder
+          in
+          let copy_data_ptr =
+            L.build_malloc (ltype_of_typ ilst) "copy_ptr" builder
+          in
+          let _ = L.build_store re' copy_data_ptr builder in
+          let type_casted_copy =
+            L.build_bitcast copy_data_ptr (L.pointer_type i8_t) "ccopy"
+              builder
+          in let _ = L.build_store type_casted_copy data_ptr_ptr builder
+          in ()
+      | SSlice (i, j) ->
+          let la_func = build_access_function () in
+          let lc_func = build_copy_function (A.List ilst) in 
+          let item_ptr =
+            L.build_call la_func [|lis; expr sc builder i|] "result" builder
+          in
+          let end_ptr = L.build_call la_func [|lis; expr sc builder j|] "result" builder in
+          let new_data_ptr_ptr = L.build_struct_gep item_ptr 0 "new" builder in
+          let old_data_ptr = L.build_struct_gep re' 0 "old" builder in
+          let _ = L.build_store (L.build_load old_data_ptr "t" builder) new_data_ptr_ptr builder in
+          let renext = L.build_load (L.build_struct_gep re' 1 "n" builder) "sf" builder in
+          let linext = L.build_struct_gep item_ptr 1 "adsf" builder in 
+          let copy_end = L.build_call lc_func  [|renext; L.const_int i32_t (-1); linext|] "copied" builder in
+          let _ = L.build_store end_ptr copy_end builder in ()
 
     and add_variable_to_scope sc n v =
       sc := {lvariables= StringMap.add n v !sc.lvariables; parent= !sc.parent}
 
-    and update_variable sc n e builder =
-      let e' = expr sc builder e in
+    and update_variable sc (n:string) (e':L.llvalue) builder =
       let l_var =
         try find_variable sc n with Not_found -> raise (E.NotFound n)
       in
@@ -361,7 +381,7 @@ let translate (functions, statements) =
     | Some func -> func
     | None ->
         let lc_func_t =
-          L.function_type void_t
+          L.function_type (L.pointer_type list_struct_ptr)
             [|list_struct_ptr; i32_t; L.pointer_type list_struct_ptr|]
         in
         let lc_func = L.define_function func_name lc_func_t the_module in
@@ -375,7 +395,7 @@ let translate (functions, statements) =
         in
         let bool_val = L.build_or i_cond n_cond "or_conds" lc_builder in
         let then_bb = L.append_block context "then" lc_func in
-        let _ = L.build_ret_void (L.builder_at_end context then_bb) in
+        let _ = L.build_ret (L.param lc_func 2) (L.builder_at_end context then_bb) in
         let else_bb = L.append_block context "else" lc_func in
         let else_builder = L.builder_at_end context else_bb in
         let new_struct_ptr =
@@ -413,12 +433,16 @@ let translate (functions, statements) =
         let ptr_ptr =
           L.build_struct_gep new_struct_ptr 1 "next" else_builder
         in
+        let next_ptr =
+          L.build_struct_gep (L.param lc_func 0) 1 "next_ptr" else_builder
+        in
+        let next = L.build_load next_ptr "next" else_builder in
         let sub =
           L.build_sub (L.param lc_func 1) (L.const_int i32_t 1) "sub"
             else_builder
         in
-        let _ = L.build_call lc_func [|new_struct_ptr; sub; ptr_ptr|] "" else_builder in
-        let _ = L.build_ret_void else_builder in
+        let ret = L.build_call lc_func [|next; sub; ptr_ptr|] "" else_builder in
+        let _ = L.build_ret ret else_builder in
         let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in
         lc_func
 
@@ -477,7 +501,6 @@ let translate (functions, statements) =
       let null_ptr = L.const_pointer_null list_struct_ptr in
       List.fold_left build_link null_ptr (List.rev lis)
     in
-
 
     let add_terminal builder instr =
       match L.block_terminator (L.insertion_block builder) with
