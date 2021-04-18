@@ -358,7 +358,10 @@ let translate (functions, statements) =
           let item_ptr =
             L.build_call la_func [|lis; expr sc builder i|] "result" builder
           in
-          let end_ptr = L.build_call la_func [|lis; expr sc builder j|] "result" builder in
+          let end_ptr = match j with
+            | _, SEnd -> L.const_null list_struct_ptr
+            | _ -> L.build_call la_func [|lis; expr sc builder j|] "result" builder
+          in
           let new_data_ptr_ptr = L.build_struct_gep item_ptr 0 "new" builder in
           let old_data_ptr = L.build_struct_gep re' 0 "old" builder in
           let _ = L.build_store (L.build_load old_data_ptr "t" builder) new_data_ptr_ptr builder in
