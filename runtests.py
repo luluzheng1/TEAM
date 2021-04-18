@@ -14,6 +14,7 @@ class bcolors:
 SCANNER_PARSER_DIR = ("ast_tests", "ast_ref")
 SEMANT_DIR = ("sast_tests", "sast_ref")
 CODEGEN_DIR = ("codegen_tests", "codegen_ref")
+EXTENDED_DIR = ("extended_tests", "extended_ref")
 
 def sortingKey(fileName):
     return fileName.split(".")[0]
@@ -25,6 +26,8 @@ def runTests(testMode):
         dirTuple = SCANNER_PARSER_DIR
     elif testMode == "codegen":
         dirTuple = CODEGEN_DIR
+    elif testMode == "extended":
+        dirTuple = EXTENDED_DIR
     else:
         print(bcolors.FAIL + "Test mode: {} not supported".format(testMode) + bcolors.ENDC)
         sys.exit()
@@ -79,6 +82,8 @@ def runFile(fileName, testMode, userInput=False):
     elif testMode == "sast":
         flag = "-s"
     elif testMode == "codegen":
+        flag = "-l"
+    elif testMode == "extended":
         flag = "-l"
     else:
         print(bcolors.FAIL + "Test mode: {} not supported".format(testMode) + bcolors.ENDC)
@@ -170,9 +175,9 @@ if __name__ == "__main__":
         logFile = runFile(testFile, testMode, True)
         checkResults(logFile, reference)
     else:
-        testMode = [testMode] if testMode != "all" else ["ast", "sast", "codegen"]
+        testMode = [testMode] if testMode != "all" else ["ast", "sast", "codegen", "extended"]
         for m in testMode:
             print(bcolors.WARNING + bcolors.UNDERLINE + "\nTest mode: {}\n".format(m) + bcolors.ENDC)
             runTests(m)
 
-    clean('ocaml')
+    # clean('ocaml')
