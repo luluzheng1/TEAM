@@ -2,7 +2,7 @@ int addTwoElements(int x, int y):
 	return x + y;
 end
 
-list<int> map2(((int->int)->int) function, list<int> arr1, list<int> arr2):
+list<int> map2((int,int)->int function, list<int> arr1, list<int> arr2):
 	list<int> ans = [];
 	int shorterArrLength = 0;
 	if length(arr1) < length(arr2):
