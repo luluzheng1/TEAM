@@ -151,7 +151,7 @@ let translate (functions, statements) =
                   "" builder
               in
               new_str )
-        | _ -> 
+        | A.List _ -> 
           (match slice with
           | SIndex i ->
               let la_func = build_access_function () in
@@ -188,7 +188,8 @@ let translate (functions, statements) =
               let _ =
                 L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder
               in
-              L.build_load new_list_ptr "new_string" builder ))
+              L.build_load new_list_ptr "new_string" builder )
+        | _ -> raise (Failure "Internal error: invalid slice"))
       
       | SBinop (e1, op, e2) ->
           let t1, _ = e1
@@ -290,6 +291,10 @@ let translate (functions, statements) =
             | _ -> raise (Failure "Internal Error")  
           in
           re'
+      | SCall ("length", [((A.List lt), lst)]) -> 
+          let ll_func = build_list_length_function () in
+          L.build_call ll_func [|(expr sc builder ((A.List lt), lst)); (L.const_int i32_t 0)|] "length" builder
+          
       | SCall ("print", [e]) -> (
           let t, _ = e in
           match t with
@@ -442,6 +447,37 @@ let translate (functions, statements) =
         let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in
         lc_func
 
+        and build_list_length_function () =
+        match L.lookup_function "list_length" the_module with
+        | Some func -> func
+        | None ->
+            let ll_func_t =
+              L.function_type i32_t [|list_struct_ptr; i32_t|]
+            in
+            let ll_func = L.define_function "list_length" ll_func_t the_module in
+            let ll_builder = L.builder_at_end context (L.entry_block ll_func) in
+            let bool_val =
+              L.build_is_null (L.param ll_func 0) "ptr_is_null" ll_builder
+            in
+            let then_bb = L.append_block context "then" ll_func in
+            let _ =
+              L.build_ret (L.param ll_func 1) (L.builder_at_end context then_bb)
+            in
+            let else_bb = L.append_block context "else" ll_func in
+            let else_builder = L.builder_at_end context else_bb in
+            let next_ptr =
+              L.build_struct_gep (L.param ll_func 0) 1 "next_ptr" else_builder
+            in
+            let next = L.build_load next_ptr "next" else_builder in
+            let add =
+              L.build_add (L.param ll_func 1) (L.const_int i32_t 1) "add"
+                else_builder
+            in
+            let ret = L.build_call ll_func [|next; add|] "result" else_builder in
+            let _ = L.build_ret ret else_builder in
+            let _ = L.build_cond_br bool_val then_bb else_bb ll_builder in
+            ll_func
+  
     and build_access_function () =
       match L.lookup_function "list_access" the_module with
       | Some func -> func
