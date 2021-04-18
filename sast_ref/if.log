@@ -2,8 +2,10 @@
 int x = (int : 5)
 if (bool : (int : x) == (int : 5)):
 	(void : print((int : x)))
-elif (bool : (int : x) == (int : 6)):
-	(void : print((int : x)))
 else:
-	(void : print((string : "not five")))
+	if (bool : (int : x) == (int : 6)):
+		(void : print((int : x)))
+	else:
+		(void : print((string : "not five")))
+	end
 end

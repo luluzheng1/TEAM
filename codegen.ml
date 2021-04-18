@@ -197,7 +197,7 @@ let translate (functions, statements) =
           and e1' = expr sc builder e1
           and e2' = expr sc builder e2 in
           if t1 = A.Float && t2 = A.Int then
-            let cast_e2' = L.const_sitofp e2' float_t in
+            let cast_e2' = L.build_sitofp e2' float_t "cast" builder in
             match op with
             | A.Add -> L.build_fadd e1' cast_e2' "tmp" builder
             | A.Sub -> L.build_fsub e1' cast_e2' "tmp" builder
@@ -212,7 +212,7 @@ let translate (functions, statements) =
             | A.Geq -> L.build_fcmp L.Fcmp.Oge e1' cast_e2' "tmp" builder
             | _ -> raise E.InvalidFloatBinop
           else if t1 = A.Int && t2 = A.Float then
-            let cast_e1' = L.const_sitofp e1' float_t in
+            let cast_e1' = L.build_sitofp e1' float_t "cast" builder in
             match op with
             | A.Add -> L.build_fadd cast_e1' e2' "tmp" builder
             | A.Sub -> L.build_fsub cast_e1' e2' "tmp" builder
@@ -248,8 +248,8 @@ let translate (functions, statements) =
             | A.Div -> L.build_sdiv e1' e2' "tmp" builder
             | A.Mod -> L.build_srem e1' e2' "tmp" builder
             | A.Exp ->
-                let cast_e1' = L.const_sitofp e1' float_t
-                and cast_e2' = L.const_sitofp e2' float_t in
+                let cast_e1' = L.build_sitofp e1' float_t "cast" builder
+                and cast_e2' = L.build_sitofp e2' float_t "cast" builder in
                 let result =
                   L.build_call pow_func [|cast_e1'; cast_e2'|] "exp" builder
                 in

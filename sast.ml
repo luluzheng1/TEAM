@@ -6,7 +6,8 @@ module StringMap = Map.Make (String)
 type symbol_table =
   { variables: typ StringMap.t
   ; (* Variables bound in current block *)
-    parent: symbol_table option (* Enclosing scope *) }
+    functions: func_decl StringMap.t
+  ; parent: symbol_table option (* Enclosing scope *) }
 
 type sexpr = typ * sx
 

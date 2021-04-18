@@ -1,1 +1,1 @@
-Fatal error: exception Exceptions.TypeError("Expected index of type Int, but got type 'float' in 'int_list[1.5] = [5.1]'")
+Fatal error: exception Exceptions.TypeError("Type Error: Expected index to be an int, but got 'float' in '1.5'")
