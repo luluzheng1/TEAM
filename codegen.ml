@@ -24,6 +24,7 @@ let translate (functions, statements) =
   and the_module = L.create_module context "TEAM" in
   let list_struct_type = L.named_struct_type context "list_item" in
   let list_struct_ptr = L.pointer_type list_struct_type in
+
   let _ =
     L.struct_set_body list_struct_type
       [|L.pointer_type i8_t; list_struct_ptr|]
@@ -39,7 +40,7 @@ let translate (functions, statements) =
     | A.Char -> char_t
     | A.Unknown -> void_t
     | A.Func (args_t, ret_t) -> func_ty args_t ret_t
-    | A.List _ -> list_struct_ptr
+    | A.List _ ->  L.pointer_type list_struct_ptr
     | _ -> void_t
   and func_ty args_t ret_t =
     let llret_type = ltype_of_typ ret_t in
@@ -112,7 +113,9 @@ let translate (functions, statements) =
       | SCharLit c -> L.const_int char_t (Char.code c)
       | SStringLit s -> L.build_global_stringptr s "string" builder
       | SId n -> L.build_load (find_variable sc n) n builder
-      | SListLit l -> build_list t l sc builder
+      | SListLit l -> let lst = L.build_malloc list_struct_ptr "list" builder in
+          let _ = L.build_store (build_list t l sc builder) lst builder in
+          lst      
       | SSliceExpr (lexpr, slice) ->
         (let (lt, _) = lexpr in
         let l = expr sc builder lexpr in
@@ -155,6 +158,7 @@ let translate (functions, statements) =
           (match slice with
           | SIndex i ->
               let la_func = build_access_function () in
+              let l = L.build_load l "ilist" builder in
               let item_ptr =
                 L.build_call la_func
                   [|l; expr sc builder i|]
@@ -172,6 +176,7 @@ let translate (functions, statements) =
               L.build_load type_casted "data" builder
           | SSlice (i, j) ->
               let la_func = build_access_function () in
+              let l = L.build_load l "ilist" builder in
               let i = expr sc builder i in
               let item_ptr =
                 L.build_call la_func [|l; i|] "start" builder
@@ -293,7 +298,9 @@ let translate (functions, statements) =
           re'
       | SCall ("length", [((A.List lt), lst)]) -> 
           let ll_func = build_list_length_function () in
-          L.build_call ll_func [|(expr sc builder ((A.List lt), lst)); (L.const_int i32_t 0)|] "length" builder
+          let lst = expr sc builder ((A.List lt), lst) in
+          let lst = L.build_load lst "ilist" builder in
+          L.build_call ll_func [|lst; (L.const_int i32_t 0)|] "length" builder
       | SCall ("length", [(A.String, st)]) -> 
           let sl_func = build_string_length_function () in
           L.build_call sl_func [|expr sc builder (A.String, st); (L.const_int i32_t 0)|] "length" builder
@@ -335,6 +342,7 @@ let translate (functions, statements) =
     and build_asn_list sc builder ilst lis slc re'  = match slc with
       | SIndex i ->
           let la_func = build_access_function () in
+          let lis = L.build_load lis "ilist" builder in
           let item_ptr =
             L.build_call la_func
               [|lis; expr sc builder i|]
@@ -353,22 +361,24 @@ let translate (functions, statements) =
           in let _ = L.build_store type_casted_copy data_ptr_ptr builder
           in ()
       | SSlice (i, j) ->
+          let lsti = L.build_load lis "ilist" builder in
+          let rei = L.build_load re' "rei" builder in
           let la_func = build_access_function () in
           let lc_func = build_copy_function (A.List ilst) in 
-          let item_ptr =
-            L.build_call la_func [|lis; expr sc builder i|] "result" builder
-          in
           let end_ptr = match j with
             | _, SEnd -> L.const_null list_struct_ptr
-            | _ -> L.build_call la_func [|lis; expr sc builder j|] "result" builder
+            | _ -> L.build_call la_func [|lsti; expr sc builder j|] "result" builder
           in
-          let new_data_ptr_ptr = L.build_struct_gep item_ptr 0 "new" builder in
-          let old_data_ptr = L.build_struct_gep re' 0 "old" builder in
-          let _ = L.build_store (L.build_load old_data_ptr "t" builder) new_data_ptr_ptr builder in
-          let renext = L.build_load (L.build_struct_gep re' 1 "n" builder) "sf" builder in
-          let linext = L.build_struct_gep item_ptr 1 "adsf" builder in 
-          let copy_end = L.build_call lc_func  [|renext; L.const_int i32_t (-1); linext|] "copied" builder in
-          let _ = L.build_store end_ptr copy_end builder in ()
+          let temp = L.build_alloca list_struct_type "temp" builder in
+          let next = L.build_struct_gep temp 1 "next" builder in 
+          let _ = L.build_store lsti next builder in
+          let item_ptr =
+            L.build_call la_func [|temp; expr sc builder i|] "result" builder
+          in
+          let item_next = L.build_struct_gep item_ptr 1 "item_next" builder in
+          let copy_end = L.build_call lc_func [|rei; L.const_int i32_t (-1); item_next|] "copied" builder in
+          let _ = L.build_store end_ptr copy_end builder in
+          let _ = L.build_store (L.build_load next "next" builder) lis builder in ()
 
     and add_variable_to_scope sc n v =
       sc := {lvariables= StringMap.add n v !sc.lvariables; parent= !sc.parent}
