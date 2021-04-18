@@ -88,19 +88,45 @@ let rec string_of_sexpr (t, e) =
     | SNoexpr -> "" )
   ^ ")"
 
+let indent stmts_as_string =
+  let rec take k xs =
+    match k with
+    | 0 -> []
+    | k -> (
+      match xs with [] -> failwith "take" | y :: ys -> y :: take (k - 1) ys )
+  in
+  let l = String.split_on_char '\n' stmts_as_string in
+  let indent_stmt stmts_as_list =
+    List.map (fun stmt_as_string -> "\t" ^ stmt_as_string) stmts_as_list
+  in
+  String.concat "\n" (indent_stmt (take (List.length l - 1) l)) ^ "\n"
+
 let rec string_of_sstmt = function
   | SBlock stmts -> String.concat "" (List.map string_of_sstmt stmts)
   | SExpr expr -> string_of_sexpr expr ^ "\n"
   | SReturn expr -> "return " ^ string_of_sexpr expr ^ "\n"
-  | SIf (e, s1, s2, s3) ->
-      "if " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s1
-      ^ string_of_sstmt s2 ^ "else:\n" ^ string_of_sstmt s3 ^ "end\n"
-  | SElif (e, s) -> "elif " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s
+  | SIf (e, s1, s2, s3) -> (
+    match s3 with
+    | SBlock [] ->
+        "if " ^ string_of_sexpr e ^ ":\n"
+        ^ indent (string_of_sstmt s1)
+        ^ string_of_sstmt s2 ^ "end\n"
+    | _ ->
+        "if " ^ string_of_sexpr e ^ ":\n"
+        ^ indent (string_of_sstmt s1)
+        ^ string_of_sstmt s2 ^ "else:\n"
+        ^ indent (string_of_sstmt s3)
+        ^ "end\n" )
+  | SElif (e, s) ->
+      "elif " ^ string_of_sexpr e ^ ":\n" ^ indent (string_of_sstmt s)
   | SFor (s, e2, st) ->
-      "for " ^ s ^ " in " ^ string_of_sexpr e2 ^ ":\n " ^ string_of_sstmt st
+      "for " ^ s ^ " in " ^ string_of_sexpr e2 ^ ":\n "
+      ^ indent (string_of_sstmt st)
       ^ "end\n"
   | SWhile (e, s) ->
-      "while " ^ string_of_sexpr e ^ ":\n" ^ string_of_sstmt s ^ "end\n"
+      "while " ^ string_of_sexpr e ^ ":\n"
+      ^ indent (string_of_sstmt s)
+      ^ "end\n"
   | SDeclaration (t, id, (tp, e)) -> (
     match e with
     | SNoexpr -> string_of_typ t ^ " " ^ id ^ "\n"
@@ -113,7 +139,7 @@ let string_of_sfdecl fdecl =
   string_of_typ fdecl.styp ^ " " ^ fdecl.sfname ^ "("
   ^ String.concat ", " (List.map snd fdecl.sformals)
   ^ ")\n"
-  ^ String.concat "" (List.map string_of_sstmt fdecl.sbody)
+  ^ indent (String.concat "" (List.map string_of_sstmt fdecl.sbody))
   ^ "end\n"
 
 let string_of_sprogram (funcs, stmts) =
