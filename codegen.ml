@@ -294,7 +294,10 @@ let translate (functions, statements) =
       | SCall ("length", [((A.List lt), lst)]) -> 
           let ll_func = build_list_length_function () in
           L.build_call ll_func [|(expr sc builder ((A.List lt), lst)); (L.const_int i32_t 0)|] "length" builder
-          
+      | SCall ("length", [(A.String, st)]) -> 
+          let sl_func = build_string_length_function () in
+          L.build_call sl_func [|expr sc builder (A.String, st); (L.const_int i32_t 0)|] "length" builder
+  
       | SCall ("print", [e]) -> (
           let t, _ = e in
           match t with
@@ -446,6 +449,36 @@ let translate (functions, statements) =
         let _ = L.build_ret ret else_builder in
         let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in
         lc_func
+
+        and build_string_length_function () =
+        match L.lookup_function "string_length" the_module with
+        | Some func -> func
+        | None ->
+            let sl_func_t =
+              L.function_type i32_t [|string_t; i32_t|]
+            in
+            let sl_func = L.define_function "string_length" sl_func_t the_module in
+            let sl_builder = L.builder_at_end context (L.entry_block sl_func) in
+            let bool_val =
+              L.build_is_null (L.build_load (L.param sl_func 0) "char" sl_builder) "ptr_is_null" sl_builder
+            in
+            let then_bb = L.append_block context "then" sl_func in
+            let _ =
+              L.build_ret (L.param sl_func 1) (L.builder_at_end context then_bb)
+            in
+            let else_bb = L.append_block context "else" sl_func in
+            let else_builder = L.builder_at_end context else_bb in
+            let next =
+              L.build_gep (L.param sl_func 0) [|L.const_int i32_t 1|] "next_ptr" else_builder
+            in
+            let add =
+              L.build_add (L.param sl_func 1) (L.const_int i32_t 1) "add"
+                else_builder
+            in
+            let ret = L.build_call sl_func [|next; add|] "result" else_builder in
+            let _ = L.build_ret ret else_builder in
+            let _ = L.build_cond_br bool_val then_bb else_bb sl_builder in
+            sl_func
 
         and build_list_length_function () =
         match L.lookup_function "list_length" the_module with
