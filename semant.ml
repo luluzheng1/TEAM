@@ -83,12 +83,6 @@ let check (functions, statements) =
         ; functions= !scope.functions
         ; parent= !scope.parent }
   in
-  (* let add_fun_to_scope (scope : symbol_table ref) id fun_decl = try let _
-     = StringMap.find id !scope.functions in raise (E.Duplicate id) with
-     Not_found -> scope := { variables= !scope.variables ; functions=
-     StringMap.add id fun_decl !scope.functions ; parent= !scope.parent } in *)
-  (* Raise an exception if the given rvalue type cannot be assigned to the
-     given lvalue type *)
   let check_assign lvaluet rvaluet err =
     if lvaluet = rvaluet then lvaluet else raise err
   in
@@ -166,15 +160,15 @@ let check (functions, statements) =
         in
         (ty, SUnop (op, (t, e')))
     | Assign (s, e) as ex ->
-        let (lt, s') = expr scope s in
-        let (rt, e') = expr scope e in
-        let _ = match s' with
+        let lt, s' = expr scope s in
+        let rt, e' = expr scope e in
+        let _ =
+          match s' with
           | SId _ | SSliceExpr _ -> ()
           | _ -> raise (Failure "Can't assign to type")
         in
-        let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex))
-        in
-        (lrt, SAssign ((lt, s'), (rt, e')) )
+        let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex)) in
+        (lrt, SAssign ((lt, s'), (rt, e')))
     | Call (fname, args) as call ->
         let fd = find_func scope fname in
         let param_length = List.length fd.formals in
@@ -231,12 +225,12 @@ let check (functions, statements) =
                 let args' = List.map2 check_call fd.formals args in
                 (fd.typ, SCall (fname, args'))
           in
-          (* let args' = List.map2 check_call fd.formals args in
-          (fd.typ, SCall (fname, args')) *)
-        ret
+          (* let args' = List.map2 check_call fd.formals args in (fd.typ, SCall
+             (fname, args')) *)
+          ret
     | SliceExpr (lexpr, slce) as slice ->
         (* let lt = type_of_identifier scope id in *)
-        let (lt, lexpr') = expr scope lexpr in
+        let lt, lexpr' = expr scope lexpr in
         let check_slice_expr =
           match slce with
           | Index e ->
@@ -247,7 +241,8 @@ let check (functions, statements) =
                 | String -> Char
                 | _ -> raise (E.IllegalSlice (slice, lt))
               in
-              if t = Int then (id_type, SSliceExpr ((lt, lexpr'), SIndex (t, e')))
+              if t = Int then
+                (id_type, SSliceExpr ((lt, lexpr'), SIndex (t, e')))
               else raise (E.WrongIndex (t, e))
           | Slice (e1, e2) ->
               let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
@@ -258,7 +253,8 @@ let check (functions, statements) =
                 | _ -> raise (E.IllegalSlice (slice, lt))
               in
               if t1 = Int && t1 = t2 then
-                (id_type, SSliceExpr ((lt, lexpr'), SSlice ((t1, e1'), (t2, e2'))))
+                ( id_type
+                , SSliceExpr ((lt, lexpr'), SSlice ((t1, e1'), (t2, e2'))) )
               else raise (E.WrongSliceIndex (t1, t2, e1, e2))
         in
         check_slice_expr
@@ -320,9 +316,7 @@ let check (functions, statements) =
           | _ -> raise (Failure "Cannot get non list type")
         in
         let _ = add_var_to_scope scope s s_ty in
-        let sexpr =
-          SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl)
-        in
+        let sexpr = SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl) in
         let _ =
           scope :=
             { variables= StringMap.remove s !scope.variables
@@ -347,8 +341,7 @@ let check (functions, statements) =
           in
           SDeclaration (ty, s, (expr_ty, e'))
     | Break -> if loop > 0 then SBreak else raise (E.NotInLoop "Break")
-    | Continue ->
-        if loop > 0 then SContinue else raise (E.NotInLoop "Continue")
+    | Continue -> if loop > 0 then SContinue else raise (E.NotInLoop "Continue")
   in
   let check_functions func =
     let formals' = check_binds func.formals in
@@ -371,16 +364,14 @@ let check (functions, statements) =
           match ty with
           | Func (ts, t) ->
               ( name
-              , List.combine ts
-                  (List.fold_left (fun acc _ -> "x" :: acc) [] ts)
+              , List.combine ts (List.fold_left (fun acc _ -> "x" :: acc) [] ts)
               , t )
               :: acc
           | _ -> acc )
         [] formals
     in
     let func_variable_table =
-      { variables=
-          List.fold_left add_formal StringMap.empty (get_vars formals')
+      { variables= List.fold_left add_formal StringMap.empty (get_vars formals')
       ; functions=
           List.fold_left add_function StringMap.empty (get_funs formals')
       ; parent= Some !global_scope }
