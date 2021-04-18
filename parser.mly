@@ -97,18 +97,12 @@ stmt:
   | CONTINUE SEMI { Continue }
 
 internal_if:
-  expr COLON stmt_list elif_list else_list END { If($1, Block(List.rev $3), Block(List.rev $4), Block(List.rev $5))}
-
-elif_list:
-  /* nothing */ { [] }
-  | elif elif_list { $1 :: $2 }
-
-elif:
-  ELSEIF expr COLON stmt_list { Elif($2, Block(List.rev $4)) }
+  expr COLON stmt_list else_list END { If($1, Block(List.rev $3), $4) }
 
 else_list:
-  /* nothing */ { [] }
-  | ELSE COLON stmt_list { $3 }
+  /* nothing */ { Block([]) }
+  | ELSEIF expr COLON stmt_list else_list { If($2, Block(List.rev $4), $5) }
+  | ELSE COLON stmt_list { Block($3)   }
 
 expr_opt:
   /* nothing */ { Noexpr }
