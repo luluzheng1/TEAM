@@ -1,1 +1,1 @@
-Fatal error: exception Exceptions.TypeError("Type error: Expected value of type 'int', but got a value of type 'list<float>' in 'int_list[0] = [5.1]'")
+Fatal error: exception Exceptions.TypeError("Error: Illegal assignment 'int' ''= 'list<float>' in 'int_list[0] = [5.1]'")

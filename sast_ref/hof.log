@@ -1,0 +1,12 @@
+int addOne(x)
+	return (int : (int : x) + (int : 1))
+end
+list<int> map(function, arr)
+	for i in (list<int> : (int : 0)..(int : length((list<int> : arr)))):
+	 	(int : (int : (list<int> : arr)[(int : i)]) = (int : function((int : (list<int> : arr)[(int : i)]))))
+	end
+	return (list<int> : arr)
+end
+
+list<int> arr = (list<int> : [(int : 1),(int : 2),(int : 3),(int : 4)])
+(list<int> : (list<int> : arr) = (list<int> : map(((int)->int : addOne), (list<int> : arr))))
