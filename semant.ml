@@ -281,14 +281,11 @@ let check (functions, statements) =
           let t, e' = expr scope e in
           if t = fdecl.typ then SReturn (t, e')
           else raise (E.ReturnMismatchedTypes (fdecl.typ, t, return)) )
-    | If (p, b1, b2, b3) ->
+    | If (p, b1, b2) ->
         SIf
           ( check_bool_expr scope p
           , check_stmt scope b1 loop fdecl
-          , check_stmt scope b2 loop fdecl
-          , check_stmt scope b3 loop fdecl )
-    | Elif (p, b1) ->
-        SElif (check_bool_expr scope p, check_stmt scope b1 loop fdecl)
+          , check_stmt scope b2 loop fdecl )
     | For (s, e, st) ->
         let t, e' = expr scope e in
         let s_ty =

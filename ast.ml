@@ -56,8 +56,7 @@ type stmt =
   | Block of stmt list
   | Expr of expr
   | Return of expr
-  | If of expr * stmt * stmt * stmt
-  | Elif of expr * stmt
+  | If of expr * stmt * stmt
   | For of string * expr * stmt
   | While of expr * stmt
   | Declaration of typ * string * expr
@@ -133,20 +132,18 @@ let rec string_of_stmt = function
   | Block stmts -> String.concat "" (List.map string_of_stmt stmts)
   | Expr expr -> string_of_expr expr ^ ";\n"
   | Return expr -> "return " ^ string_of_expr expr ^ ";\n"
-  | If (e, s1, s2, s3) -> (
-    match s3 with
+  | If (e, s1, s2) -> (
+    match s2 with
     | Block [] ->
         "if " ^ string_of_expr e ^ ":\n"
         ^ indent (string_of_stmt s1)
-        ^ string_of_stmt s2 ^ "end\n"
+        ^ "end\n"
     | _ ->
         "if " ^ string_of_expr e ^ ":\n"
         ^ indent (string_of_stmt s1)
-        ^ string_of_stmt s2 ^ "else:\n"
-        ^ indent (string_of_stmt s3)
+        ^ "else:\n"
+        ^ indent (string_of_stmt s2)
         ^ "end\n" )
-  | Elif (e, s) ->
-      "elif " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s)
   | For (s, e2, st) ->
       "for " ^ s ^ " in " ^ string_of_expr e2 ^ ":\n"
       ^ indent (string_of_stmt st)

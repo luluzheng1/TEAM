@@ -524,51 +524,19 @@ let translate (functions, statements) =
             | _ -> L.build_ret (expr scope builder e) builder
           in
           builder
-      | SIf (predicate, then_stmts, else_if_stmts, else_stmts) ->
-          (* Removing the elseifs by recursively replacing the
-             else_statements *)
-          let rec remove_elif (_, _, else_if_stmts, else_stmts) =
-            match else_if_stmts with
-            | SBlock (hd :: tl) ->
-                let new_predicate, new_then =
-                  match hd with
-                  | SElif (predicate, stmts) -> (predicate, stmts)
-                  | _ -> raise (Failure "Corrupted tree - Elseif problem")
-                in
-                let new_else_ifs = SBlock tl in
-                let new_else =
-                  remove_elif
-                    (new_predicate, new_then, new_else_ifs, else_stmts)
-                in
-                SIf (new_predicate, new_then, new_else_ifs, new_else)
-            | SBlock [] -> else_stmts
-            | _ -> else_stmts
-          in
-          let new_else_stmts =
-            remove_elif (predicate, then_stmts, else_if_stmts, else_stmts)
-          in
+      | SIf (predicate, then_stmt, else_stmt) ->
           let bool_val = expr sc builder predicate in
           let merge_bb = L.append_block context "merge" the_function in
-          (* Emit 'then' value. *)
+          let branch_instr = L.build_br merge_bb in
           let then_bb = L.append_block context "then" the_function in
-          let then_builder =
-            build_stmt sc
-              (L.builder_at_end context then_bb)
-              then_stmts loop fdecl
-          in
-          let () = add_terminal then_builder (L.build_br merge_bb) in
-          (* Emit 'else' value. *)
+          let then_builder = build_stmt sc (L.builder_at_end context then_bb) then_stmt loop fdecl in
+          let () = add_terminal then_builder branch_instr in
           let else_bb = L.append_block context "else" the_function in
-          let else_builder =
-            build_stmt sc
-              (L.builder_at_end context else_bb)
-              new_else_stmts loop fdecl
-          in
-          let () = add_terminal else_builder (L.build_br merge_bb) in
-          (* Add the conditional branch. *)
+          let else_builder = build_stmt sc (L.builder_at_end context else_bb) else_stmt loop fdecl in
+          let () = add_terminal else_builder branch_instr in
           let _ = L.build_cond_br bool_val then_bb else_bb builder in
           L.builder_at_end context merge_bb
-      | SElif _ -> raise E.ImpossibleElif
+
       | SFor _ -> builder
       (* | SFor (s, (t, e), sl) ->
           let list_identifier = "for_list" in

@@ -32,8 +32,7 @@ type sstmt =
   | SBlock of sstmt list
   | SExpr of sexpr
   | SReturn of sexpr
-  | SIf of sexpr * sstmt * sstmt * sstmt
-  | SElif of sexpr * sstmt
+  | SIf of sexpr * sstmt * sstmt
   | SFor of string * sexpr * sstmt
   | SWhile of sexpr * sstmt
   | SDeclaration of typ * string * sexpr
@@ -95,20 +94,18 @@ let rec string_of_sstmt = function
   | SBlock stmts -> String.concat "" (List.map string_of_sstmt stmts)
   | SExpr expr -> string_of_sexpr expr ^ "\n"
   | SReturn expr -> "return " ^ string_of_sexpr expr ^ "\n"
-  | SIf (e, s1, s2, s3) -> (
-    match s3 with
+  | SIf (e, s1, s2) -> (
+    match s2 with
     | SBlock [] ->
         "if " ^ string_of_sexpr e ^ ":\n"
         ^ indent (string_of_sstmt s1)
-        ^ string_of_sstmt s2 ^ "end\n"
+        ^ "end\n"
     | _ ->
         "if " ^ string_of_sexpr e ^ ":\n"
         ^ indent (string_of_sstmt s1)
-        ^ string_of_sstmt s2 ^ "else:\n"
-        ^ indent (string_of_sstmt s3)
+        ^ "else:\n"
+        ^ indent (string_of_sstmt s2)
         ^ "end\n" )
-  | SElif (e, s) ->
-      "elif " ^ string_of_sexpr e ^ ":\n" ^ indent (string_of_sstmt s)
   | SFor (s, e2, st) ->
       "for " ^ s ^ " in " ^ string_of_sexpr e2 ^ ":\n "
       ^ indent (string_of_sstmt st)
