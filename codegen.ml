@@ -505,14 +505,14 @@ let translate (functions, statements) =
     in
 
     (* Statements *)
-    let rec build_stmt sc builder stmt loop fdecl =
+    let rec build_stmt sc builder stmt loop =
       match stmt with
       | SBlock sl ->
           let new_scope =
             ref {lvariables= StringMap.empty; parent= Some sc}
           in
           List.fold_left
-            (fun b s -> build_stmt new_scope b s loop fdecl)
+            (fun b s -> build_stmt new_scope b s loop)
             builder sl
       | SExpr e ->
           let _ = expr sc builder e in
@@ -529,14 +529,13 @@ let translate (functions, statements) =
           let merge_bb = L.append_block context "merge" the_function in
           let branch_instr = L.build_br merge_bb in
           let then_bb = L.append_block context "then" the_function in
-          let then_builder = build_stmt sc (L.builder_at_end context then_bb) then_stmt loop fdecl in
+          let then_builder = build_stmt sc (L.builder_at_end context then_bb) then_stmt loop in
           let () = add_terminal then_builder branch_instr in
           let else_bb = L.append_block context "else" the_function in
-          let else_builder = build_stmt sc (L.builder_at_end context else_bb) else_stmt loop fdecl in
+          let else_builder = build_stmt sc (L.builder_at_end context else_bb) else_stmt loop in
           let () = add_terminal else_builder branch_instr in
           let _ = L.build_cond_br bool_val then_bb else_bb builder in
           L.builder_at_end context merge_bb
-
       | SFor _ -> builder
       (* | SFor (s, (t, e), sl) ->
           let list_identifier = "for_list" in
@@ -603,7 +602,6 @@ let translate (functions, statements) =
               (L.builder_at_end context body_bb)
               body
               ((pred_bb, merge_bb) :: loop)
-              fdecl
           in
           let () = add_terminal while_builder (L.build_br pred_bb) in
           let pred_builder = L.builder_at_end context pred_bb in
@@ -619,7 +617,7 @@ let translate (functions, statements) =
     in
     let builder =
       List.fold_left
-        (fun b s -> build_stmt scope b s [] fdecl)
+        (fun b s -> build_stmt scope b s [])
         builder fdecl.sbody
     in
     add_terminal builder
