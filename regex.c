@@ -210,6 +210,7 @@ int find_all(char *target, char *regex)
         switch (rc)
         {
         case PCRE2_ERROR_NOMATCH:
+            // TODO: return empty list
             // printf("No match, found: %d\n", found);
             break;
         /*
@@ -244,6 +245,7 @@ application you might want to do things other than print them. */
     // printf("%2d: %.*s\n", i, (int)substring_length, (char *)substring_start);
     char *sub = (char *)malloc(sizeof(char) * substring_length);
     substr((char *)substring_start, sub, 0, (int)substring_length);
+    // TODO: add sub to list
     found += 1;
     /* See if there are any named substrings, and if so, show them by name. First
 we have to extract the count of named parentheses from the pattern. */
@@ -319,15 +321,6 @@ sequence. */
                 break;
             options = PCRE2_NOTEMPTY_ATSTART | PCRE2_ANCHORED;
         }
-
-        /* If the previous match was not an empty string, there is one tricky case to
-  consider. If a pattern contains \K within a lookbehind assertion at the
-  start, the end of the matched string can be at the offset where the match
-  started. Without special action, this leads to a loop that keeps on matching
-  the same substring. We must detect this case and arrange to move the start on
-  by one character. The pcre2_get_startchar() function returns the starting
-  offset that was passed to pcre2_match(). */
-
         else
         {
             PCRE2_SIZE startchar = pcre2_get_startchar(match_data);
@@ -355,19 +348,6 @@ sequence. */
             options,        /* options */
             match_data,     /* block for storing the result */
             NULL);          /* use default match context */
-
-        /* This time, a result of NOMATCH isn't an error. If the value in "options"
-  is zero, it just means we have found all possible matches, so the loop ends.
-  Otherwise, it means we have failed to find a non-empty-string match at a
-  point where there was a previous empty-string match. In this case, we do what
-  Perl does: advance the matching position by one character, and continue. We
-  do this by setting the "end of previous match" offset, because that is picked
-  up at the top of the loop as the point at which to start again.
-
-  There are two complications: (a) When CRLF is a valid newline sequence, and
-  the current position is just before it, advance by an extra byte. (b)
-  Otherwise we must ensure that we skip an entire UTF character if we are in
-  UTF mode. */
 
         if (rc == PCRE2_ERROR_NOMATCH)
         {
@@ -439,6 +419,7 @@ sequence. */
         // printf("%2d: %.*s\n", i, (int)substring_length, (char *)substring_start);
         char *sub = (char *)malloc(sizeof(char) * substring_length);
         substr((char *)substring_start, sub, 0, (int)substring_length);
+        // TODO: add sub to list
         found += 1;
 
         if (namecount == 0)
@@ -463,7 +444,6 @@ sequence. */
     return 1;
 }
 
-// You must free the result if result is non-NULL.
 char *str_replace(char *orig, char *rep, char *with)
 {
     char *result;  // the return string
@@ -571,328 +551,20 @@ char *replace(char *target, char *regex, char *replc, int count)
     }
     return result;
 }
+
 char *replace_all(char *target, char *regex, char *replc)
 {
-    pcre2_code *re;
-    PCRE2_SPTR name_table;
-    PCRE2_SPTR subject = (const unsigned char *)target;
-    PCRE2_SPTR pattern = (const unsigned char *)regex;
-    int crlf_is_newline;
-    int errornumber;
-    int i;
-    int rc;
-    int utf8;
-
-    uint32_t option_bits;
-    uint32_t namecount;
-    uint32_t name_entry_size;
-    uint32_t newline;
-
-    PCRE2_SIZE erroroffset;
-    PCRE2_SIZE *ovector;
-    PCRE2_SIZE subject_length;
-
-    pcre2_match_data *match_data;
-
-    subject_length = (PCRE2_SIZE)strlen((char *)subject);
-    int found = 0;
-    char *result;
-    /* compile the regular expression pattern, and handle
-       any errors that are detected. */
-
-    re = pcre2_compile(
-        pattern,               /* the pattern */
-        PCRE2_ZERO_TERMINATED, /* indicates pattern is zero-terminated */
-        0,                     /* default options */
-        &errornumber,          /* for error number */
-        &erroroffset,          /* for error offset */
-        NULL);                 /* use default compile context */
-
-    /* Compilation failed: print the error message and exit. */
-
-    if (re == NULL)
-    {
-        PCRE2_UCHAR buffer[256];
-        pcre2_get_error_message(errornumber, buffer, sizeof(buffer));
-        printf("PCRE2 compilation failed at offset %d: %s\n", (int)erroroffset,
-               buffer);
-        return "";
-    }
-
-    match_data = pcre2_match_data_create_from_pattern(re, NULL);
-
-    /* Now run the match. */
-
-    rc = pcre2_match(
-        re,             /* the compiled pattern */
-        subject,        /* the subject string */
-        subject_length, /* the length of the subject */
-        0,              /* start at offset 0 in the subject */
-        0,              /* default options */
-        match_data,     /* block for storing the result */
-        NULL);          /* use default match context */
-
-    /* Matching failed: handle error cases */
-
-    if (rc < 0)
-    {
-        switch (rc)
-        {
-        case PCRE2_ERROR_NOMATCH:
-            printf("No match, found: %d\n", found);
-            break;
-        /*
-    Handle other special cases if you like
-    */
-        default:
-            printf("Matching error %d\n", rc);
-            break;
-        }
-        pcre2_match_data_free(match_data); /* Release memory used for the match */
-        pcre2_code_free(re);               /*   data and the compiled pattern. */
-        return target;
-    }
-
-    /* Match succeeded. Get a pointer to the output vector, where string offsets are
-stored. */
-
-    ovector = pcre2_get_ovector_pointer(match_data);
-    // printf("Match succeeded at offset %d\n", (int)ovector[0]);
-
-    /* The output vector wasn't big enough. This should not happen, because we used
-pcre2_match_data_create_from_pattern() above. */
-
-    if (rc == 0)
-        printf("ovector was not big enough for all the captured substrings\n");
-
-    /* Show substrings stored in the output vector by number. Obviously, in a real
-application you might want to do things other than print them. */
-
-    PCRE2_SPTR substring_start = subject + ovector[0];
-    PCRE2_SIZE substring_length = ovector[1] - ovector[0];
-    // printf("%2d: %.*s\n", i, (int)substring_length, (char *)substring_start);
-    char *sub = (char *)malloc(sizeof(char) * substring_length);
-    substr((char *)substring_start, sub, 0, (int)substring_length);
-    result = str_replace(target, sub, replc);
-
-    found += 1;
-    /* See if there are any named substrings, and if so, show them by name. First
-we have to extract the count of named parentheses from the pattern. */
-
-    (void)pcre2_pattern_info(
-        re,                   /* the compiled pattern */
-        PCRE2_INFO_NAMECOUNT, /* get the number of named substrings */
-        &namecount);          /* where to put the answer */
-
-    if (namecount == 0)
-    {
-    }
-    else
-    {
-        PCRE2_SPTR tabptr;
-
-        /* Before we can access the substrings, we must extract the table for
-  translating names to numbers, and the size of each entry in the table. */
-
-        (void)pcre2_pattern_info(
-            re,                   /* the compiled pattern */
-            PCRE2_INFO_NAMETABLE, /* address of the table */
-            &name_table);         /* where to put the answer */
-
-        (void)pcre2_pattern_info(
-            re,                       /* the compiled pattern */
-            PCRE2_INFO_NAMEENTRYSIZE, /* size of each entry in the table */
-            &name_entry_size);        /* where to put the answer */
-
-        /* Now we can scan the table and, for each entry, print the number, the name,
-  and the substring itself. In the 8-bit library the number is held in two
-  bytes, most significant first. */
-
-        tabptr = name_table;
-        for (i = 0; i < namecount; i++)
-        {
-            int n = (tabptr[0] << 8) | tabptr[1];
-            printf("(%d) %*s: %.*s\n", n, name_entry_size - 3, tabptr + 2,
-                   (int)(ovector[2 * n + 1] - ovector[2 * n]), subject + ovector[2 * n]);
-            tabptr += name_entry_size;
-        }
-    }
-
-    /* Before running the loop, check for UTF-8 and whether CRLF is a valid newline
-sequence. First, find the options with which the regex was compiled and extract
-the UTF state. */
-
-    (void)pcre2_pattern_info(re, PCRE2_INFO_ALLOPTIONS, &option_bits);
-    utf8 = (option_bits & PCRE2_UTF) != 0;
-
-    /* Now find the newline convention and see whether CRLF is a valid newline
-sequence. */
-
-    (void)pcre2_pattern_info(re, PCRE2_INFO_NEWLINE, &newline);
-    crlf_is_newline = newline == PCRE2_NEWLINE_ANY ||
-                      newline == PCRE2_NEWLINE_CRLF ||
-                      newline == PCRE2_NEWLINE_ANYCRLF;
-
-    /* Loop for second and subsequent matches */
-
+    char *result = malloc(sizeof(char) * strlen(target));
+    strcpy(result, target);
     for (;;)
     {
-        uint32_t options = 0;                 /* Normally no options */
-        PCRE2_SIZE start_offset = ovector[1]; /* Start at end of previous match */
-
-        /* If the previous match was for an empty string, we are finished if we are
-  at the end of the subject. Otherwise, arrange to run another match at the
-  same point to see if a non-empty match can be found. */
-
-        if (ovector[0] == ovector[1])
+        char *sub = find(result, regex);
+        if (strcmp(sub, "") == 0)
         {
-            if (ovector[0] == subject_length)
-                break;
-            options = PCRE2_NOTEMPTY_ATSTART | PCRE2_ANCHORED;
+            break;
         }
-
-        /* If the previous match was not an empty string, there is one tricky case to
-  consider. If a pattern contains \K within a lookbehind assertion at the
-  start, the end of the matched string can be at the offset where the match
-  started. Without special action, this leads to a loop that keeps on matching
-  the same substring. We must detect this case and arrange to move the start on
-  by one character. The pcre2_get_startchar() function returns the starting
-  offset that was passed to pcre2_match(). */
-
-        else
-        {
-            PCRE2_SIZE startchar = pcre2_get_startchar(match_data);
-            if (start_offset <= startchar)
-            {
-                if (startchar >= subject_length)
-                    break;                    /* Reached end of subject.   */
-                start_offset = startchar + 1; /* Advance by one character. */
-                if (utf8)                     /* If UTF-8, it may be more  */
-                {                             /*   than one code unit.     */
-                    for (; start_offset < subject_length; start_offset++)
-                        if ((subject[start_offset] & 0xc0) != 0x80)
-                            break;
-                }
-            }
-        }
-
-        /* Run the next matching operation */
-
-        rc = pcre2_match(
-            re,             /* the compiled pattern */
-            subject,        /* the subject string */
-            subject_length, /* the length of the subject */
-            start_offset,   /* starting offset in the subject */
-            options,        /* options */
-            match_data,     /* block for storing the result */
-            NULL);          /* use default match context */
-
-        /* This time, a result of NOMATCH isn't an error. If the value in "options"
-  is zero, it just means we have found all possible matches, so the loop ends.
-  Otherwise, it means we have failed to find a non-empty-string match at a
-  point where there was a previous empty-string match. In this case, we do what
-  Perl does: advance the matching position by one character, and continue. We
-  do this by setting the "end of previous match" offset, because that is picked
-  up at the top of the loop as the point at which to start again.
-
-  There are two complications: (a) When CRLF is a valid newline sequence, and
-  the current position is just before it, advance by an extra byte. (b)
-  Otherwise we must ensure that we skip an entire UTF character if we are in
-  UTF mode. */
-
-        if (rc == PCRE2_ERROR_NOMATCH)
-        {
-            if (options == 0)
-            {
-                // printf("found: %d\n", found);
-                return result;
-                break;
-            }
-            /* All matches found */
-            ovector[1] = start_offset + 1;           /* Advance one code unit */
-            if (crlf_is_newline &&                   /* If CRLF is a newline & */
-                start_offset < subject_length - 1 && /* we are at CRLF, */
-                subject[start_offset] == '\r' &&
-                subject[start_offset + 1] == '\n')
-                ovector[1] += 1;                    /* Advance by one more. */
-            else if (utf8)                          /* Otherwise, ensure we */
-            {                                       /* advance a whole UTF-8 */
-                while (ovector[1] < subject_length) /* character. */
-                {
-                    if ((subject[ovector[1]] & 0xc0) != 0x80)
-                        break;
-                    ovector[1] += 1;
-                }
-            }
-            continue; /* Go round the loop again */
-        }
-
-        /* Other matching errors are not recoverable. */
-
-        if (rc < 0)
-        {
-            printf("Matching error %d\n", rc);
-            pcre2_match_data_free(match_data);
-            pcre2_code_free(re);
-            return "";
-        }
-
-        /* Match succeeded */
-
-        // printf("\nMatch succeeded again at offset %d\n", (int)ovector[0]);
-
-        /* The match succeeded, but the output vector wasn't big enough. This
-  should not happen. */
-
-        if (rc == 0)
-            printf("ovector was not big enough for all the captured substrings\n");
-
-        /* We must guard against patterns such as /(?=.\K)/ that use \K in an
-  assertion to set the start of a match later than its end. In this
-  demonstration program, we just detect this case and give up. */
-
-        if (ovector[0] > ovector[1])
-        {
-            printf("\\K was used in an assertion to set the match start after its end.\n"
-                   "From end to start the match was: %.*s\n",
-                   (int)(ovector[0] - ovector[1]),
-                   (char *)(subject + ovector[1]));
-            printf("Run abandoned\n");
-            pcre2_match_data_free(match_data);
-            pcre2_code_free(re);
-            return "";
-        }
-
-        /* As before, show substrings stored in the output vector by number, and then
-  also any named substrings. */
-
-        PCRE2_SPTR substring_start = subject + ovector[0];
-        size_t substring_length = ovector[1] - ovector[0];
-        // printf("%2d: %.*s\n", i, (int)substring_length, (char *)substring_start);
-        char *sub = (char *)malloc(sizeof(char) * substring_length);
-        substr((char *)substring_start, sub, 0, (int)substring_length);
         result = str_replace(result, sub, replc);
-        found += 1;
-
-        if (namecount == 0)
-        {
-        }
-        else
-        {
-            PCRE2_SPTR tabptr = name_table;
-            for (i = 0; i < namecount; i++)
-            {
-                int n = (tabptr[0] << 8) | tabptr[1];
-                printf("(%d) %*s: %.*s\n", n, name_entry_size - 3, tabptr + 2,
-                       (int)(ovector[2 * n + 1] - ovector[2 * n]), subject + ovector[2 * n]);
-                tabptr += name_entry_size;
-            }
-        }
-    } /* End of loop to find second and subsequent matches */
-
-    printf("\n");
-    pcre2_match_data_free(match_data);
-    pcre2_code_free(re);
+    }
     return result;
 }
 
