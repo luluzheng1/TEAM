@@ -26,7 +26,16 @@ let check (functions, statements) =
         , List Unknown )
       ; ("length", [(Unknown, "input_list")], Int)
       ; ("match", [(String, "target"); (String, "regex")], Bool)
-      ; ("find", [(String, "target"); (String, "regex")], String) ]
+      ; ("find", [(String, "target"); (String, "regex")], String)
+      ; ( "replace"
+        , [ (String, "target")
+          ; (String, "regex")
+          ; (String, "replace")
+          ; (Int, "count") ]
+        , String )
+      ; ( "replaceall"
+        , [(String, "target"); (String, "regex"); (String, "replace")]
+        , String ) ]
   in
   let add_func map fd =
     let n = fd.fname in

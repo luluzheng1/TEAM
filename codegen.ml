@@ -57,6 +57,18 @@ let translate (functions, statements) =
   let match_func : L.llvalue = L.declare_function "match" match_t the_module in
   let find_t : L.lltype = L.function_type string_t [|string_t; string_t|] in
   let find_func : L.llvalue = L.declare_function "find" find_t the_module in
+  let replace_t : L.lltype =
+    L.function_type string_t [|string_t; string_t; string_t; i32_t|]
+  in
+  let replace_func : L.llvalue =
+    L.declare_function "replace" replace_t the_module
+  in
+  let replaceall_t : L.lltype =
+    L.function_type string_t [|string_t; string_t; string_t|]
+  in
+  let replaceall_func : L.llvalue =
+    L.declare_function "replace_all" replaceall_t the_module
+  in
   let var_table = {lvariables= StringMap.empty; parent= None} in
   let globals = ref var_table in
   let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
@@ -333,6 +345,22 @@ let translate (functions, statements) =
           L.build_call find_func
             [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
             "find" builder
+      | SCall
+          ( "replace"
+          , [(A.String, st); (A.String, st2); (A.String, st3); (A.Int, i)] ) ->
+          L.build_call replace_func
+            [| expr sc builder (A.String, st)
+             ; expr sc builder (A.String, st2)
+             ; expr sc builder (A.String, st3)
+             ; expr sc builder (A.Int, i) |]
+            "replace" builder
+      | SCall ("replaceall", [(A.String, st); (A.String, st2); (A.String, st3)])
+        ->
+          L.build_call replaceall_func
+            [| expr sc builder (A.String, st)
+             ; expr sc builder (A.String, st2)
+             ; expr sc builder (A.String, st3) |]
+            "replaceall" builder
       | SCall (f, args) ->
           let fdef, fdecl = StringMap.find f function_decls in
           let llargs = List.rev (List.map (expr sc builder) (List.rev args)) in
