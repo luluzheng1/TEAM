@@ -35,8 +35,7 @@ type expr =
   | End
   | Noexpr
 
-and slce = Slice of expr * expr
-and index =  Index of expr
+and slce = Index of expr | Slice of expr * expr
 
 type typ =
   | Int
@@ -100,19 +99,9 @@ let rec string_of_expr = function
   | ListLit l -> "[" ^ String.concat "," (List.map string_of_expr l) ^ "]"
   | SliceExpr (e, s) -> (
     match s with
-<<<<<<< HEAD
-    (* | Index i -> e ^ "[" ^ string_of_expr i ^ "]" *)
-    | Slice (i, j) ->
-        e ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
-  | IndexExpr (e, s) -> (
-    match s with
-    | Index i -> string_of_expr e ^ "[" ^ string_of_expr i ^ "]"
-  )
-=======
     | Index i -> (string_of_expr e) ^ "[" ^ string_of_expr i ^ "]"
     | Slice (i, j) ->
         (string_of_expr e) ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
->>>>>>> b8285fa450d6671f91abbe3248e2af39b08df608
   | Id s -> s
   | Binop (e1, o, e2) -> (
     match o with

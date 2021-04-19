@@ -27,8 +27,7 @@ and sx =
   | SEnd
   | SNoexpr
 
-and sslce = SSlice of sexpr * sexpr
-and sindex =  SIndex of sexpr
+and sslce = SIndex of sexpr | SSlice of sexpr * sexpr
 
 type sstmt =
   | SBlock of sstmt list
@@ -61,17 +60,9 @@ let rec string_of_sexpr (t, e) =
         "[" ^ String.concat "," (List.map string_of_sexpr l) ^ "]"
     | SSliceExpr (e, s) -> (
       match s with
-<<<<<<< HEAD
-      | SSlice (i, j) ->
-          e ^ "[" ^ string_of_sexpr i ^ ":" ^ string_of_sexpr j ^ "]" )
-    | SIndexExpr (e, i) -> (
-      match i with
-      | SIndex i -> string_of_sexpr e ^ "[" ^ string_of_sexpr i ^ "]")
-=======
       | SIndex i -> (string_of_sexpr e) ^ "[" ^ string_of_sexpr i ^ "]"
       | SSlice (i, j) ->
           (string_of_sexpr e) ^ "[" ^ string_of_sexpr i ^ ":" ^ string_of_sexpr j ^ "]" )
->>>>>>> b8285fa450d6671f91abbe3248e2af39b08df608
     | SId s -> s
     | SBinop (e1, o, e2) -> (
       match o with
