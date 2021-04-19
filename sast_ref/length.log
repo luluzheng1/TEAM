@@ -2,4 +2,4 @@
 list<string> strlist = (list<string> : [(string : "hello")])
 int i = (int : length((list<string> : strlist)))
 string s = (string : "hello")
-(int : i = (int : length((string : s))))
+(int : (int : i) = (int : length((string : s))))

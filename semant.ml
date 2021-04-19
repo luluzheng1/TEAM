@@ -37,11 +37,9 @@ let check (functions, statements) =
     | _ -> StringMap.add n fd map
   in
   let function_decls = List.fold_left add_func built_in_decls functions in
-  let find_func s =
-    try StringMap.find s function_decls
-    with Not_found -> raise (E.UndefinedFunction s)
+  let variable_table =
+    {variables= StringMap.empty; functions= function_decls; parent= None}
   in
-  let variable_table = {variables= StringMap.empty; parent= None} in
   (* Create a reference to the global table. The scope will be passed through
      recurisve calls and be mutated when we need to add a new variable *)
   let global_scope = ref variable_table in
@@ -68,6 +66,13 @@ let check (functions, statements) =
       | Some parent -> type_of_identifier (ref parent) name
       | _ -> raise (E.UndefinedId name) )
   in
+  let rec find_func (scope : symbol_table ref) name =
+    try StringMap.find name !scope.functions
+    with Not_found -> (
+      match !scope.parent with
+      | Some parent -> find_func (ref parent) name
+      | _ -> raise (E.UndefinedFunction name) )
+  in
   let add_var_to_scope (scope : symbol_table ref) id ty =
     try
       let _ = StringMap.find id !scope.variables in
@@ -75,10 +80,9 @@ let check (functions, statements) =
     with Not_found ->
       scope :=
         { variables= StringMap.add id ty !scope.variables
+        ; functions= !scope.functions
         ; parent= !scope.parent }
   in
-  (* Raise an exception if the given rvalue type cannot be assigned to the
-     given lvalue type *)
   let check_assign lvaluet rvaluet err =
     if lvaluet = rvaluet then lvaluet else raise err
   in
@@ -102,7 +106,24 @@ let check (functions, statements) =
               else raise (E.NonUniformTypeContainer (ty, ty'))
             in
             (List x, SListLit (List.map check_type es)) )
-    | Id s -> (type_of_identifier scope s, SId s)
+    | Id s ->
+        let fd =
+          try find_func scope s
+          with E.UndefinedFunction _ ->
+            {typ= Unknown; fname= "notFound"; formals= []; body= []}
+        in
+        let ret =
+          match fd with
+          | {typ= Unknown; fname= "notFound"; formals= []; body= []} ->
+              (type_of_identifier scope s, SId s)
+          | _ ->
+              let formalTypes, returnType =
+                (fst (List.split fd.formals), fd.typ)
+              in
+              (Func (formalTypes, returnType), SId s)
+        in
+        ret
+    (* (type_of_identifier scope s, SId s) *)
     | Binop (e1, op, e2) as e ->
         let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
         let same = t1 = t2 in
@@ -139,40 +160,17 @@ let check (functions, statements) =
         in
         (ty, SUnop (op, (t, e')))
     | Assign (s, e) as ex ->
-        let lt = type_of_identifier scope s and rt, e' = expr scope e in
-        ( check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex))
-        , SAssign (s, (rt, e')) )
-    | ListAssign (s, e1, e2) as ex ->
-        let lt = type_of_identifier scope s
-        and t1, e1' = expr scope e1
-        and t2, e2' = expr scope e2 in
-        let inner_ty =
-          match lt with
-          | List ty -> ty
-          | other -> raise (E.NonListAccess (t1, other, ex))
+        let lt, s' = expr scope s in
+        let rt, e' = expr scope e in
+        let _ =
+          match s' with
+          | SId _ | SSliceExpr _ -> ()
+          | _ -> raise (Failure "Can't assign to type")
         in
-        let is_index =
-          match t1 with
-          | Int -> true
-          | other -> raise (E.InvalidIndex (other, ex))
-        in
-        if is_index && inner_ty = t2 then
-          (List inner_ty, SListAssign (s, (t1, e1'), (t2, e2')))
-        else raise (E.MismatchedTypes (inner_ty, t2, ex))
-    | AssignOp (s, op, e) as ex ->
-        let lt = type_of_identifier scope s and rt, e' = expr scope e in
-        let same = lt = rt in
-        let ty =
-          match op with
-          | (Add | Sub | Mult | Div) when same && (lt = Int || lt = Float) ->
-              lt
-          | (Add | Sub | Mult | Div) when lt = Float && rt = Int -> Float
-          | Mod when same && lt = Int -> Int
-          | _ -> raise (E.IllegalAssignment (lt, Some op, rt, ex))
-        in
-        (ty, SAssignOp (s, op, (rt, e')))
+        let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex)) in
+        (lrt, SAssign ((lt, s'), (rt, e')))
     | Call (fname, args) as call ->
-        let fd = find_func fname in
+        let fd = find_func scope fname in
         let param_length = List.length fd.formals in
         if List.length args != param_length then
           raise (E.WrongNumberOfArgs (param_length, List.length args, call))
@@ -227,11 +225,25 @@ let check (functions, statements) =
                 let args' = List.map2 check_call fd.formals args in
                 (fd.typ, SCall (fname, args'))
           in
+          (* let args' = List.map2 check_call fd.formals args in (fd.typ, SCall
+             (fname, args')) *)
           ret
-    | SliceExpr (id, slce) as slice ->
-        let lt = type_of_identifier scope id in
+    | SliceExpr (lexpr, slce) as slice ->
+        (* let lt = type_of_identifier scope id in *)
+        let lt, lexpr' = expr scope lexpr in
         let check_slice_expr =
           match slce with
+          | Index e ->
+              let t, e' = expr scope e in
+              let id_type =
+                match lt with
+                | List ty -> ty
+                | String -> Char
+                | _ -> raise (E.IllegalSlice (slice, lt))
+              in
+              if t = Int then
+                (id_type, SSliceExpr ((lt, lexpr'), SIndex (t, e')))
+              else raise (E.WrongIndex (t, e))
           | Slice (e1, e2) ->
               let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
               let id_type =
@@ -241,7 +253,8 @@ let check (functions, statements) =
                 | _ -> raise (E.IllegalSlice (slice, lt))
               in
               if t1 = Int && t1 = t2 then
-                (id_type, SSliceExpr (id, SSlice ((t1, e1'), (t2, e2'))))
+                ( id_type
+                , SSliceExpr ((lt, lexpr'), SSlice ((t1, e1'), (t2, e2'))) )
               else raise (E.WrongSliceIndex (t1, t2, e1, e2))
         in
         check_slice_expr
@@ -277,22 +290,21 @@ let check (functions, statements) =
   (* Checks if there are any statements after return *)
   let rec check_return sl typ =
     match sl with
+    | [] -> if typ != Void then raise E.NoReturnInNonVoidFunction else ()
     | [Return _] -> ()
     | Return _ :: _ -> raise E.ReturnNotLast
     | _ :: ss -> check_return ss typ
-    | [] -> if typ != Void then raise E.NoReturnInNonVoidFunction else ()
   in
   (* Return a semantically-checked statement containing exprs *)
   let rec check_stmt scope stmt loop fdecl =
     match stmt with
     | Expr e -> SExpr (expr scope e)
     | Block sl ->
-        let _ =
-          match fdecl.fname with
-          | "toplevel" -> ()
-          | _ -> check_return sl fdecl.typ
+        let new_scope =
+          { variables= StringMap.empty
+          ; functions= StringMap.empty
+          ; parent= Some !scope }
         in
-        let new_scope = {variables= StringMap.empty; parent= Some !scope} in
         let new_scope_ref = ref new_scope in
         let rec check_stmt_list = function
           | Block sl :: ss -> check_stmt_list (sl @ ss)
@@ -308,14 +320,11 @@ let check (functions, statements) =
           let t, e' = expr scope e in
           if t = fdecl.typ then SReturn (t, e')
           else raise (E.ReturnMismatchedTypes (fdecl.typ, t, return)) )
-    | If (p, b1, b2, b3) ->
+    | If (p, b1, b2) ->
         SIf
           ( check_bool_expr scope p
           , check_stmt scope b1 loop fdecl
-          , check_stmt scope b2 loop fdecl
-          , check_stmt scope b3 loop fdecl )
-    | Elif (p, b1) ->
-        SElif (check_bool_expr scope p, check_stmt scope b1 loop fdecl)
+          , check_stmt scope b2 loop fdecl )
     | For (s, e, st) ->
         let t, e' = expr scope e in
         let s_ty =
@@ -324,12 +333,11 @@ let check (functions, statements) =
           | _ -> raise (Failure "Cannot get non list type")
         in
         let _ = add_var_to_scope scope s s_ty in
-        let sexpr =
-          SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl)
-        in
+        let sexpr = SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl) in
         let _ =
           scope :=
             { variables= StringMap.remove s !scope.variables
+            ; functions= !scope.functions
             ; parent= !scope.parent }
         in
         sexpr
@@ -350,17 +358,43 @@ let check (functions, statements) =
           in
           SDeclaration (ty, s, (expr_ty, e'))
     | Break -> if loop > 0 then SBreak else raise (E.NotInLoop "Break")
-    | Continue ->
-        if loop > 0 then SContinue else raise (E.NotInLoop "Continue")
+    | Continue -> if loop > 0 then SContinue else raise (E.NotInLoop "Continue")
   in
   let check_functions func =
     let formals' = check_binds func.formals in
     let add_formal map (ty, name) = StringMap.add name ty map in
+    let add_function map (name, formalTypes, returnType) =
+      StringMap.add name
+        {typ= returnType; fname= name; formals= formalTypes; body= []}
+        map
+    in
+    let get_vars formals =
+      List.fold_left
+        (fun acc (ty, name) ->
+          match ty with Func _ -> acc | _ -> (ty, name) :: acc )
+        (* TODO: might need reverse *)
+        [] formals
+    in
+    let get_funs formals =
+      List.fold_left
+        (fun acc (ty, name) ->
+          match ty with
+          | Func (ts, t) ->
+              ( name
+              , List.combine ts (List.fold_left (fun acc _ -> "x" :: acc) [] ts)
+              , t )
+              :: acc
+          | _ -> acc )
+        [] formals
+    in
     let func_variable_table =
-      { variables= List.fold_left add_formal StringMap.empty formals'
+      { variables= List.fold_left add_formal StringMap.empty (get_vars formals')
+      ; functions=
+          List.fold_left add_function StringMap.empty (get_funs formals')
       ; parent= Some !global_scope }
     in
     let func_scope = ref func_variable_table in
+    let _ = check_return func.body func.typ in
     let body' = check_stmt func_scope (Block func.body) 0 func in
     {styp= func.typ; sfname= func.fname; sformals= formals'; sbody= [body']}
   in

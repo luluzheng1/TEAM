@@ -6,7 +6,8 @@ module StringMap = Map.Make (String)
 type symbol_table =
   { variables: typ StringMap.t
   ; (* Variables bound in current block *)
-    parent: symbol_table option (* Enclosing scope *) }
+    functions: func_decl StringMap.t
+  ; parent: symbol_table option (* Enclosing scope *) }
 
 type sexpr = typ * sx
 
@@ -20,12 +21,9 @@ and sx =
   | SId of string
   | SBinop of sexpr * op * sexpr
   | SUnop of uop * sexpr
-  | SAssign of string * sexpr
-  | SListAssign of string * sexpr * sexpr
-  | SAssignOp of string * op * sexpr
+  | SAssign of sexpr * sexpr
   | SCall of string * sexpr list
-  | SSliceExpr of string * sslce
-  | SIndexExpr of sexpr * sindex
+  | SSliceExpr of sexpr * sslce
   | SEnd
   | SNoexpr
 
@@ -36,8 +34,7 @@ type sstmt =
   | SBlock of sstmt list
   | SExpr of sexpr
   | SReturn of sexpr
-  | SIf of sexpr * sstmt * sstmt * sstmt
-  | SElif of sexpr * sstmt
+  | SIf of sexpr * sstmt * sstmt
   | SFor of string * sexpr * sstmt
   | SWhile of sexpr * sstmt
   | SDeclaration of typ * string * sexpr
@@ -64,11 +61,17 @@ let rec string_of_sexpr (t, e) =
         "[" ^ String.concat "," (List.map string_of_sexpr l) ^ "]"
     | SSliceExpr (e, s) -> (
       match s with
+<<<<<<< HEAD
       | SSlice (i, j) ->
           e ^ "[" ^ string_of_sexpr i ^ ":" ^ string_of_sexpr j ^ "]" )
     | SIndexExpr (e, i) -> (
       match i with
       | SIndex i -> string_of_sexpr e ^ "[" ^ string_of_sexpr i ^ "]")
+=======
+      | SIndex i -> (string_of_sexpr e) ^ "[" ^ string_of_sexpr i ^ "]"
+      | SSlice (i, j) ->
+          (string_of_sexpr e) ^ "[" ^ string_of_sexpr i ^ ":" ^ string_of_sexpr j ^ "]" )
+>>>>>>> b8285fa450d6671f91abbe3248e2af39b08df608
     | SId s -> s
     | SBinop (e1, o, e2) -> (
       match o with
@@ -77,11 +80,7 @@ let rec string_of_sexpr (t, e) =
           string_of_sexpr e1 ^ " " ^ string_of_op o ^ " "
           ^ string_of_sexpr e2 )
     | SUnop (o, e) -> string_of_uop o ^ string_of_sexpr e
-    | SAssign (v, e) -> v ^ " = " ^ string_of_sexpr e
-    | SListAssign (s, e1, e2) ->
-        s ^ " [ " ^ string_of_sexpr e1 ^ " ] = " ^ string_of_sexpr e2
-    | SAssignOp (s, o, e) ->
-        s ^ " " ^ string_of_op o ^ " = " ^ string_of_sexpr e
+    | SAssign (v, e) -> (string_of_sexpr v) ^ " = " ^ string_of_sexpr e
     | SCall (f, el) ->
         f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
     | SEnd -> ""
@@ -105,20 +104,18 @@ let rec string_of_sstmt = function
   | SBlock stmts -> String.concat "" (List.map string_of_sstmt stmts)
   | SExpr expr -> string_of_sexpr expr ^ "\n"
   | SReturn expr -> "return " ^ string_of_sexpr expr ^ "\n"
-  | SIf (e, s1, s2, s3) -> (
-    match s3 with
+  | SIf (e, s1, s2) -> (
+    match s2 with
     | SBlock [] ->
         "if " ^ string_of_sexpr e ^ ":\n"
         ^ indent (string_of_sstmt s1)
-        ^ string_of_sstmt s2 ^ "end\n"
+        ^ "end\n"
     | _ ->
         "if " ^ string_of_sexpr e ^ ":\n"
         ^ indent (string_of_sstmt s1)
-        ^ string_of_sstmt s2 ^ "else:\n"
-        ^ indent (string_of_sstmt s3)
+        ^ "else:\n"
+        ^ indent (string_of_sstmt s2)
         ^ "end\n" )
-  | SElif (e, s) ->
-      "elif " ^ string_of_sexpr e ^ ":\n" ^ indent (string_of_sstmt s)
   | SFor (s, e2, st) ->
       "for " ^ s ^ " in " ^ string_of_sexpr e2 ^ ":\n "
       ^ indent (string_of_sstmt st)

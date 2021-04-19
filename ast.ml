@@ -29,12 +29,9 @@ type expr =
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
-  | Assign of string * expr
-  | ListAssign of string * expr * expr
-  | AssignOp of string * op * expr
+  | Assign of expr * expr
   | Call of string * expr list
-  | SliceExpr of string * slce
-  | IndexExpr of expr * index
+  | SliceExpr of expr * slce
   | End
   | Noexpr
 
@@ -60,8 +57,7 @@ type stmt =
   | Block of stmt list
   | Expr of expr
   | Return of expr
-  | If of expr * stmt * stmt * stmt
-  | Elif of expr * stmt
+  | If of expr * stmt * stmt
   | For of string * expr * stmt
   | While of expr * stmt
   | Declaration of typ * string * expr
@@ -104,6 +100,7 @@ let rec string_of_expr = function
   | ListLit l -> "[" ^ String.concat "," (List.map string_of_expr l) ^ "]"
   | SliceExpr (e, s) -> (
     match s with
+<<<<<<< HEAD
     (* | Index i -> e ^ "[" ^ string_of_expr i ^ "]" *)
     | Slice (i, j) ->
         e ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
@@ -111,6 +108,11 @@ let rec string_of_expr = function
     match s with
     | Index i -> string_of_expr e ^ "[" ^ string_of_expr i ^ "]"
   )
+=======
+    | Index i -> (string_of_expr e) ^ "[" ^ string_of_expr i ^ "]"
+    | Slice (i, j) ->
+        (string_of_expr e) ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
+>>>>>>> b8285fa450d6671f91abbe3248e2af39b08df608
   | Id s -> s
   | Binop (e1, o, e2) -> (
     match o with
@@ -118,10 +120,7 @@ let rec string_of_expr = function
     | _ -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
     )
   | Unop (o, e) -> string_of_uop o ^ string_of_expr e
-  | Assign (v, e) -> v ^ " = " ^ string_of_expr e
-  | ListAssign (s, e1, e2) ->
-      s ^ "[" ^ string_of_expr e1 ^ "] = " ^ string_of_expr e2
-  | AssignOp (s, o, e) -> s ^ " " ^ string_of_op o ^ " = " ^ string_of_expr e
+  | Assign (v, e) -> (string_of_expr v) ^ " = " ^ string_of_expr e
   | Call (f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | End -> ""
@@ -144,20 +143,18 @@ let rec string_of_stmt = function
   | Block stmts -> String.concat "" (List.map string_of_stmt stmts)
   | Expr expr -> string_of_expr expr ^ ";\n"
   | Return expr -> "return " ^ string_of_expr expr ^ ";\n"
-  | If (e, s1, s2, s3) -> (
-    match s3 with
+  | If (e, s1, s2) -> (
+    match s2 with
     | Block [] ->
         "if " ^ string_of_expr e ^ ":\n"
         ^ indent (string_of_stmt s1)
-        ^ string_of_stmt s2 ^ "end\n"
+        ^ "end\n"
     | _ ->
         "if " ^ string_of_expr e ^ ":\n"
         ^ indent (string_of_stmt s1)
-        ^ string_of_stmt s2 ^ "else:\n"
-        ^ indent (string_of_stmt s3)
+        ^ "else:\n"
+        ^ indent (string_of_stmt s2)
         ^ "end\n" )
-  | Elif (e, s) ->
-      "elif " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s)
   | For (s, e2, st) ->
       "for " ^ s ^ " in " ^ string_of_expr e2 ^ ":\n"
       ^ indent (string_of_stmt st)

@@ -1,1 +1,1 @@
-Fatal error: exception Exceptions.TypeError("Error: Illegal assignment 'int' '+'= 'float' in 'i + = 5.1'")
+Fatal error: exception Exceptions.TypeError("Error: Illegal assignment 'int' ''= 'float' in 'i = i + 5.1'")
