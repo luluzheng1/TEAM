@@ -24,8 +24,9 @@ let check (functions, statements) =
       ; ( "append"
         , [(List Unknown, "input_list"); (Unknown, "element")]
         , List Unknown )
-      ; (* TODO: length and append has to be checked as special cases. *)
-        ("length", [(Unknown, "input_list")], Int) ]
+      ; ("length", [(Unknown, "input_list")], Int)
+      ; ("match", [(String, "target"); (String, "regex")], Bool)
+      ; ("find", [(String, "target"); (String, "regex")], String) ]
   in
   let add_func map fd =
     let n = fd.fname in
