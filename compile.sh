@@ -2,7 +2,7 @@
 export PATH=$PATH:/usr/local/opt/llvm/bin
 # needed for compilation
 CC="gcc"
-LIBS="-g -Wall"
+LIBS="-g -Wall -lpcreposix -lpcre2-8"
 # file is command line argument, filename is file without extension
 file=$1
 filename=$(echo "$file" | cut -f 1 -d ".")
@@ -13,7 +13,7 @@ create() {
     # generate code, need to pass in file since it could be modified
     ./team.native -l "$1" > "$filename".ll
     llc "$2".ll
-    eval "$CC $LIBS -o $filename.exe $filename.s"
+    eval "$CC $LIBS -o $filename.exe $filename.s regex.o"
     echo "$filename.exe created"
 }
 
