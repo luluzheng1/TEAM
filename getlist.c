@@ -44,7 +44,7 @@ list_item **add_list(char *s, list_item **curr)
     (*curr)->next = node;
     return curr;
 }
-// #ifdef BUILD_TEST
+#ifdef BUILD_TEST
 int main()
 {
     list_item **l = get_list();
@@ -54,4 +54,4 @@ int main()
     s = (char *)((*l)->next->dat);
     printf("%s\n", s);
 }
-// #endif
+#endif
