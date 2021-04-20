@@ -198,7 +198,7 @@ let translate (functions, statements) =
               let _ =
                 L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder
               in
-              L.build_load new_list_ptr "new_string" builder )
+              new_list_ptr)
         | _ -> raise (Failure "Internal error: invalid slice"))
       
       | SBinop (e1, op, e2) ->
