@@ -121,7 +121,7 @@ primary:
 bracket_expr:
     primary {$1}
   | bracket_expr LSQUARE index RSQUARE {SliceExpr($1, $3)}
-  | ID LPAREN args_opt RPAREN { Call($1, $3) }
+  | bracket_expr LPAREN args_opt RPAREN { Call($1, $3) }
 
 unary_expr:
     bracket_expr {$1}

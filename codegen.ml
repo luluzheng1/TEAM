@@ -59,7 +59,7 @@ let translate (functions, statements) =
   let pow_func : L.llvalue = L.declare_function "pow" pow_t the_module in
   let var_table = {lvariables= StringMap.empty; parent= None} in
   let globals = ref var_table in
-  let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
+  let function_decls : L.llvalue StringMap.t =
     let function_decl m fdecl =
       let name = fdecl.sfname
       and formal_types =
@@ -67,21 +67,21 @@ let translate (functions, statements) =
           (List.map (fun (t, _) -> ltype_of_typ t) fdecl.sformals)
       in
       let ftype = L.function_type (ltype_of_typ fdecl.styp) formal_types in
-      StringMap.add name (L.define_function name ftype the_module, fdecl) m
+      StringMap.add name (L.define_function name ftype the_module) m
     in
     List.fold_left function_decl StringMap.empty functions
   in
   let build_function_body scope fdecl =
-    let the_function, _ = StringMap.find fdecl.sfname function_decls in
+    let the_function = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
     and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
     let rec find_variable sc n =
-      try StringMap.find n !sc.lvariables
+      try Some (StringMap.find n !sc.lvariables)
       with Not_found -> (
         match !sc.parent with
-        | None -> raise (E.NotFound n)
-        | Some t -> find_variable t n )
+        | None -> None
+        | Some t -> find_variable t n)
     in
     let formals =
       let add_formal m (t, n) p =
@@ -112,7 +112,12 @@ let translate (functions, statements) =
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SCharLit c -> L.const_int char_t (Char.code c)
       | SStringLit s -> L.build_global_stringptr s "string" builder
-      | SId n -> L.build_load (find_variable sc n) n builder
+      | SId n -> let var = find_variable sc n in
+          (match var with
+            | Some vv -> L.build_load vv n builder
+            | None -> (match t with
+                | A.Func _ -> StringMap.find  n function_decls
+                | _ -> raise (E.NotFound n)))
       | SListLit l -> let lst = L.build_malloc list_struct_ptr "list" builder in
           let _ = L.build_store (build_list t l sc builder) lst builder in
           lst      
@@ -296,16 +301,16 @@ let translate (functions, statements) =
             | _ -> raise (Failure "Internal Error")  
           in
           re'
-      | SCall ("length", [((A.List lt), lst)]) -> 
+      | SCall ((_, SId "length"), [((A.List lt), lst)]) -> 
           let ll_func = build_list_length_function () in
           let lst = expr sc builder ((A.List lt), lst) in
           let lst = L.build_load lst "ilist" builder in
           L.build_call ll_func [|lst; (L.const_int i32_t 0)|] "length" builder
-      | SCall ("length", [(A.String, st)]) -> 
+      | SCall ((_, SId "length"), [(A.String, st)]) -> 
           let sl_func = build_string_length_function () in
           L.build_call sl_func [|expr sc builder (A.String, st); (L.const_int i32_t 0)|] "length" builder
   
-      | SCall ("print", [e]) -> (
+      | SCall ((_, SId "print"), [e]) -> (
           let t, _ = e in
           match t with
           | A.String ->
@@ -328,14 +333,14 @@ let translate (functions, statements) =
                    ( "Print for type " ^ A.string_of_typ t
                    ^ " not supported yet" ) ) )
       | SCall (f, args) ->
-          let fdef, fdecl = StringMap.find f function_decls in
-          let llargs =
-            List.rev (List.map (expr sc builder) (List.rev args))
+          let fdef = expr sc builder f in
+          let llarg = List.rev (List.map (expr sc builder) (List.rev args)) in
+          let ret_type = match f with
+            | (A.Func (_, rett), _) -> rett
+            | _ -> raise (Failure "Internal Error")
           in
-          let result =
-            match fdecl.styp with A.Void -> "" | _ -> f ^ "_result"
-          in
-          L.build_call fdef (Array.of_list llargs) result builder
+          let result = match ret_type with A.Void -> "" | _ -> "_result" in
+          L.build_call fdef (Array.of_list llarg) result builder
       | SEnd -> raise (Failure "Not Yet Implemented")
       | SNoexpr -> L.const_int i32_t 0
     
@@ -384,8 +389,9 @@ let translate (functions, statements) =
       sc := {lvariables= StringMap.add n v !sc.lvariables; parent= !sc.parent}
 
     and update_variable sc (n:string) (e':L.llvalue) builder =
-      let l_var =
-        try find_variable sc n with Not_found -> raise (E.NotFound n)
+      let l_var = (match (find_variable sc n) with
+          | None -> raise (E.NotFound n)
+          | Some t -> t)
       in
       let _ = L.build_store e' l_var builder in
       sc :=
@@ -603,7 +609,7 @@ let translate (functions, statements) =
           let _ =
             match fdecl.styp with
             | A.Void -> L.build_ret_void builder
-            | _ -> L.build_ret (expr scope builder e) builder
+            | _ -> L.build_ret (expr sc builder e) builder
           in
           builder
       | SIf (predicate, then_stmt, else_stmt) ->
