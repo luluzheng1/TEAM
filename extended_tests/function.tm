@@ -1,38 +1,22 @@
-/*
-list<string> test((int)->int hi, list<string> a):
-  int i = 0;
-  while i < 10:
-    print("hi");
-    i += 1;
-  end
-
-  return a;
-end
-*/
-
-
-list<string> test2(list<string> a):
-  int i = 0;
-  while i < 10:
-    print("hi");
-    i += 1;
-  end
-
-  return a;
-end
-
-
-/*
-float getAverage(list<int> nums):
+int getAverage(list<int> nums, int length):
   int sum = 0;
-  for (int i = 0; i < len(nums); i++):
+  int i = 0;
+  while (i < length):
     sum += nums[i];
+    i += 1;
   end
 
-  return sum / len(nums);
+  return sum / length;
 end
 
-list<int> nums = [4, 5, 8, 1, 4, 10];
-float avg = getAverage(nums);
+list<int> duplicateIntList(list<int> intList):
+  return intList;
+end
+
+list<int> nums = [10, 5, 8, 1, 4, 14];
+int avg = getAverage(nums, 6);
 print(avg);
-*/
+
+list<int> result = duplicateIntList(nums);
+result[0] = 4;
+print(nums[0]);
