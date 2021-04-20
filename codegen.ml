@@ -9,6 +9,7 @@ type var_table =
   parent: var_table ref option}
   
 let translate (functions, statements) =
+  (* defining main function *)
   let main_func =
     {styp= A.Int; sfname= "main"; sformals= []; sbody= statements}
   in
@@ -24,13 +25,13 @@ let translate (functions, statements) =
   and the_module = L.create_module context "TEAM" in
   let list_struct_type = L.named_struct_type context "list_item" in
   let list_struct_ptr = L.pointer_type list_struct_type in
-
+  (* list is a linked list with a ptr to the data and the next ptr *)
   let _ =
     L.struct_set_body list_struct_type
       [|L.pointer_type i8_t; list_struct_ptr|]
       true
   in
-  (* Convert MicroC types to LLVM types *)
+  (* Convert TEAM types to LLVM types *)
   let rec ltype_of_typ = function
     | A.Int -> i32_t
     | A.String -> string_t
@@ -42,6 +43,7 @@ let translate (functions, statements) =
     | A.Func (args_t, ret_t) -> func_ty args_t ret_t
     | A.List _ ->  L.pointer_type list_struct_ptr
     | _ -> void_t
+  (* get the ptr to the function *)
   and func_ty args_t ret_t =
     let llret_type = ltype_of_typ ret_t in
     let llargs =
@@ -49,12 +51,14 @@ let translate (functions, statements) =
     in
     L.pointer_type (L.function_type llret_type llargs)
   in
+  (* print function *)
   let printf_t : L.lltype =
     L.var_arg_function_type i32_t [|L.pointer_type i8_t|]
   in
   let printf_func : L.llvalue =
     L.declare_function "printf" printf_t the_module
   in
+  (* power function *)
   let pow_t : L.lltype = L.function_type float_t [|float_t; float_t|] in
   let pow_func : L.llvalue = L.declare_function "pow" pow_t the_module in
   let var_table = {lvariables= StringMap.empty; parent= None} in
@@ -309,7 +313,24 @@ let translate (functions, statements) =
       | SCall ((_, SId "length"), [(A.String, st)]) -> 
           let sl_func = build_string_length_function () in
           L.build_call sl_func [|expr sc builder (A.String, st); (L.const_int i32_t 0)|] "length" builder
-  
+
+      | Scall ("append", [((A.List lt), lst), e]) ->
+
+          let last_item_ptr = 
+          let ll_func = build_list_length_function () in
+          let la_func = build_access_function () in 
+
+          let lst = expr sc builder ((A.List lt), lst) in
+          let lst = L.build_load lst "ilist" builder in
+
+          let l_length = L.build_call ll_func [|lst; (L.const_int i32_t 0)|] "length" builder in
+
+          let l_last_index = L.build_sub l_length (L.const_int i32_t 1) "lastIndex" builder in 
+          let item_ptr = L.build_call la_func [|(expr sc builder ((A.List lt), lst)); l_last_index|] "result" builder in 
+          (* here *)
+          let lappend_func = build_append_function (A.List lt) in 
+          L.build_call lappend_func [|item_ptr; expr sc builder e|] "append" builder
+
       | SCall ((_, SId "print"), [e]) -> (
           let t, _ = e in
           match t with
@@ -468,6 +489,54 @@ let translate (functions, statements) =
         let _ = L.build_ret ret else_builder in
         let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in
         lc_func
+
+        (* typ is A.List(t) *)
+        and build_append_function typ = 
+        match L.lookup_function "append" the_module with 
+        | Some func -> func
+        | None -> 
+          let t = get_list_inner_typ typ in
+          let append_func_t = 
+            L.function_type (L.pointer_type list_struct_ptr)
+            [|list_struct_ptr; ltype_of_typ t|] 
+          in
+          let append_func = L.define_function "append" append_func_t the_module in
+          let append_builder = L.builder_at_end context (L.entry_block append_func) in
+
+          let new_struct_ptr =
+            L.build_malloc list_struct_type "new_struct_ptr" append_builder
+          in
+          let _ = L.build_store (L.const_null list_struct_type)
+             new_struct_ptr append_builder 
+          in
+
+          let data_ptr_ptr =
+            L.build_struct_gep new_struct_ptr 0 "data_ptpt" append_builder
+          in
+          
+          let new_data_ptr =
+            L.build_malloc (ltype_of_typ t) "new_ptr" append_builder
+          in
+          let _ = 
+            L.build_store (L.param append_func 1) new_data_ptr append_builder 
+          in
+
+          let _ = 
+            L.build_store new_data_ptr data_ptr_ptr append_builder
+          in
+
+          let data_ptr_cast =
+            L.build_bitcast data_ptr (L.pointer_type i8_t) "data_ptr_cast"
+            append_builder
+          in
+
+          let next_ptr =
+            L.build_struct_gep (L.param lc_func 0) 1 "next_ptr" append_builder
+          in
+
+          let _ = L.build_store type_casted_copy data_ptr_ptr builder in
+
+            append_func
 
         and build_string_length_function () =
         match L.lookup_function "string_length" the_module with
@@ -719,3 +788,8 @@ let translate (functions, statements) =
     with e -> E.handle_error e
   in
   functions' ; the_module
+
+
+
+  (* copy now returns the ptr to the last item *)
+  (* calling append does not mutate the original list *)
