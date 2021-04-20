@@ -4,10 +4,8 @@ open Ast
 module StringMap = Map.Make (String)
 
 type symbol_table =
-  { variables: typ StringMap.t
-  ; (* Variables bound in current block *)
-    functions: func_decl StringMap.t
-  ; parent: symbol_table option (* Enclosing scope *) }
+  { variables: typ StringMap.t; (* Variables bound in current block *)
+    parent: symbol_table option (* Enclosing scope *) }
 
 type sexpr = typ * sx
 
@@ -22,7 +20,7 @@ and sx =
   | SBinop of sexpr * op * sexpr
   | SUnop of uop * sexpr
   | SAssign of sexpr * sexpr
-  | SCall of string * sexpr list
+  | SCall of sexpr * sexpr list
   | SSliceExpr of sexpr * sslce
   | SEnd
   | SNoexpr
@@ -73,7 +71,7 @@ let rec string_of_sexpr (t, e) =
     | SUnop (o, e) -> string_of_uop o ^ string_of_sexpr e
     | SAssign (v, e) -> (string_of_sexpr v) ^ " = " ^ string_of_sexpr e
     | SCall (f, el) ->
-        f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
+        (string_of_sexpr f) ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
     | SEnd -> ""
     | SNoexpr -> "" )
   ^ ")"
