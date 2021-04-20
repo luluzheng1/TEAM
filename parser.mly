@@ -157,6 +157,7 @@ index:
   | expr COLON expr { Slice($1, $3) }
   | COLON expr { Slice(IntLit 0, $2) }
   | expr COLON { Slice($1, End) }
+  | COLON { Slice(IntLit 0, End) }
 
 list_literal:
   /* nothing */ { [] }
