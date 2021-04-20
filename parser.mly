@@ -121,7 +121,7 @@ primary:
 bracket_expr:
     primary {$1}
   | bracket_expr LSQUARE index RSQUARE {SliceExpr($1, $3)}
-  | ID LPAREN args_opt RPAREN { Call($1, $3) }
+  | bracket_expr LPAREN args_opt RPAREN { Call($1, $3) }
 
 unary_expr:
     bracket_expr {$1}
@@ -157,6 +157,7 @@ index:
   | expr COLON expr { Slice($1, $3) }
   | COLON expr { Slice(IntLit 0, $2) }
   | expr COLON { Slice($1, End) }
+  | COLON { Slice(IntLit 0, End) }
 
 list_literal:
   /* nothing */ { [] }
