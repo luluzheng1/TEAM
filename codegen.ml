@@ -69,6 +69,12 @@ let translate (functions, statements) =
   let replaceall_func : L.llvalue =
     L.declare_function "replace_all" replaceall_t the_module
   in
+  let getlist_t : L.lltype =
+    L.function_type (L.pointer_type list_struct_ptr) [||]
+  in
+  let getlist_func : L.llvalue =
+    L.declare_function "get_list" getlist_t the_module
+  in
   let var_table = {lvariables= StringMap.empty; parent= None} in
   let globals = ref var_table in
   let function_decls : L.llvalue StringMap.t =
@@ -347,16 +353,16 @@ let translate (functions, statements) =
                 (Failure
                    ("Print for type " ^ A.string_of_typ t ^ " not supported yet")
                 ) )
-      | SCall ("match", [(A.String, st); (A.String, st2)]) ->
+      | SCall ((_, SId "match"), [(A.String, st); (A.String, st2)]) ->
           L.build_call match_func
             [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
             "match" builder
-      | SCall ("find", [(A.String, st); (A.String, st2)]) ->
+      | SCall ((_, SId "find"), [(A.String, st); (A.String, st2)]) ->
           L.build_call find_func
             [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
             "find" builder
       | SCall
-          ( "replace"
+          ( (_, SId "replace")
           , [(A.String, st); (A.String, st2); (A.String, st3); (A.Int, i)] ) ->
           L.build_call replace_func
             [| expr sc builder (A.String, st)
@@ -364,13 +370,16 @@ let translate (functions, statements) =
              ; expr sc builder (A.String, st3)
              ; expr sc builder (A.Int, i) |]
             "replace" builder
-      | SCall ("replaceall", [(A.String, st); (A.String, st2); (A.String, st3)])
-        ->
+      | SCall
+          ( (_, SId "replaceall")
+          , [(A.String, st); (A.String, st2); (A.String, st3)] ) ->
           L.build_call replaceall_func
             [| expr sc builder (A.String, st)
              ; expr sc builder (A.String, st2)
              ; expr sc builder (A.String, st3) |]
             "replaceall" builder
+      | SCall ((_, SId "getlist"), []) ->
+          L.build_call getlist_func [||] "getlist" builder
       | SCall (f, args) ->
           let fdef = expr sc builder f in
           let llarg = List.rev (List.map (expr sc builder) (List.rev args)) in
