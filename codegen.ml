@@ -196,13 +196,13 @@ let translate (functions, statements) =
                 | _ -> L.build_sub (expr sc builder j) i "difference" builder
               in
               let lc_func = build_copy_function t in
-              let new_list_ptr =
-                L.build_malloc list_struct_ptr "new_list_ptr" builder
+              let new_list_ptr_ptr =
+                L.build_malloc list_struct_ptr "new_list_ptr_ptr" builder
               in
               let _ =
-                L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder
+                L.build_call lc_func [|item_ptr; j; new_list_ptr_ptr|] "" builder
               in
-              L.build_load new_list_ptr "new_list" builder )
+              new_list_ptr_ptr)
         | _ -> raise (Failure "Internal error: invalid slice"))
       
       | SBinop (e1, op, e2) ->
@@ -321,7 +321,7 @@ let translate (functions, statements) =
           let new_list_ptr_ptr = L.build_malloc list_struct_ptr "new_list_ptr" builder in
           (* make copy function *)
           let lc_func = build_copy_function t in  
-          (* evaluate list *)
+          (* evaluate old list *)
           let lst = expr sc builder ((A.List lt), lst) in
           let lst = L.build_load lst "ilist" builder in
           (* get ptr to last node *)
@@ -345,10 +345,10 @@ let translate (functions, statements) =
             L.build_bitcast new_data_ptr (L.pointer_type i8_t) "casted_new_data_ptr" builder
           in 
           let _ = L.build_store type_casted_new_data_ptr data_ptr_ptr builder in 
-          let _ = L.build_store new_node_ptr last_next_ptr_ptr builder in
-          
-          let new_list_ptr = L.build_load new_list_ptr_ptr "new_list_ptr" builder in
-          L.build_load new_list_ptr "new_list" builder
+          let new_node = L.build_load new_node_ptr "new_node" builder in
+          let last_next_ptr = L.build_load last_next_ptr_ptr "last_next_ptr" builder in
+          let _ = L.build_store new_node last_next_ptr builder in
+          new_list_ptr_ptr
 
       | SCall ((_, SId "print"), [e]) -> (
           let t, _ = e in
@@ -620,9 +620,9 @@ let translate (functions, statements) =
         let _ = L.build_store typcast_ptr data_ptr_container builder in
         let next = L.build_struct_gep entry_ptr 1 "next" builder in
         let _ = L.build_store prev next builder in
-        entry_ptr
-      in
-      let null_ptr = L.const_pointer_null list_struct_ptr in
+          entry_ptr
+        in
+        let null_ptr = L.const_pointer_null list_struct_ptr in
       List.fold_left build_link null_ptr (List.rev lis)
     in
 
