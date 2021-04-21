@@ -202,7 +202,7 @@ let translate (functions, statements) =
               let _ =
                 L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder
               in
-              L.build_load new_list_ptr "new_string" builder )
+              L.build_load new_list_ptr "new_list" builder )
         | _ -> raise (Failure "Internal error: invalid slice"))
       
       | SBinop (e1, op, e2) ->
@@ -314,22 +314,45 @@ let translate (functions, statements) =
           let sl_func = build_string_length_function () in
           L.build_call sl_func [|expr sc builder (A.String, st); (L.const_int i32_t 0)|] "length" builder
 
-      | Scall ("append", [((A.List lt), lst), e]) ->
-
-          let last_item_ptr = 
-          let ll_func = build_list_length_function () in
-          let la_func = build_access_function () in 
-
+      | SCall ((_, SId "append"), [((A.List lt), lst); e]) -> 
+          (* evaluate expression *)
+          let e' = expr sc builder e in 
+          (* make copy function *)
+          let lc_func = build_copy_function t in  
+          (* evaluate list *)
           let lst = expr sc builder ((A.List lt), lst) in
           let lst = L.build_load lst "ilist" builder in
-
+          (* get the list length *)
+          let ll_func = build_list_length_function () in
           let l_length = L.build_call ll_func [|lst; (L.const_int i32_t 0)|] "length" builder in
-
           let l_last_index = L.build_sub l_length (L.const_int i32_t 1) "lastIndex" builder in 
-          let item_ptr = L.build_call la_func [|(expr sc builder ((A.List lt), lst)); l_last_index|] "result" builder in 
-          (* here *)
-          let lappend_func = build_append_function (A.List lt) in 
-          L.build_call lappend_func [|item_ptr; expr sc builder e|] "append" builder
+          (* make a new list *)
+          let new_list_ptr = L.build_malloc list_struct_ptr "new_list_ptr" builder in
+          let _ = L.build_store (L.const_null list_struct_type) new_list_ptr builder in
+          (* get ptr to last node *)
+          let last_node_ptr_ptr = L.build_call lc_func [|lst; l_last_index; new_list_ptr|] "last_node_ptr_ptr" builder in 
+          let last_node_ptr = L.build_load last_node_ptr_ptr "last_node_ptr" builder in
+          (* get ptr to last node's next ptr *)
+          let last_next_ptr_ptr = L.build_struct_gep last_node_ptr 0 "last_next_ptr_ptr" builder in
+          (* make a new node *)
+          let new_node_ptr = L.build_malloc list_struct_ptr "new_list_ptr" builder in
+          let _ = L.build_store (L.const_null list_struct_type) new_node_ptr builder in
+          (* store the value in the new node *)
+          let data_ptr_ptr =
+            L.build_struct_gep new_node_ptr 0 "data_ptr_ptr" builder
+          in
+          let new_data_ptr =
+            L.build_malloc (ltype_of_typ (get_list_inner_typ t)) "new_data_ptr" builder
+          in
+          let _ = L.build_store e' new_data_ptr builder in
+
+          let type_casted_new_data_ptr =
+            L.build_bitcast new_data_ptr (L.pointer_type i8_t) "casted_new_data_ptr" builder
+          in 
+          let _ = L.build_store type_casted_new_data_ptr data_ptr_ptr builder in 
+          let _ = L.build_store (L.build_load new_node_ptr "" builder) last_next_ptr_ptr builder in
+
+          L.build_load new_list_ptr "new_list" builder 
 
       | SCall ((_, SId "print"), [e]) -> (
           let t, _ = e in
@@ -489,54 +512,6 @@ let translate (functions, statements) =
         let _ = L.build_ret ret else_builder in
         let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in
         lc_func
-
-        (* typ is A.List(t) *)
-        and build_append_function typ = 
-        match L.lookup_function "append" the_module with 
-        | Some func -> func
-        | None -> 
-          let t = get_list_inner_typ typ in
-          let append_func_t = 
-            L.function_type (L.pointer_type list_struct_ptr)
-            [|list_struct_ptr; ltype_of_typ t|] 
-          in
-          let append_func = L.define_function "append" append_func_t the_module in
-          let append_builder = L.builder_at_end context (L.entry_block append_func) in
-
-          let new_struct_ptr =
-            L.build_malloc list_struct_type "new_struct_ptr" append_builder
-          in
-          let _ = L.build_store (L.const_null list_struct_type)
-             new_struct_ptr append_builder 
-          in
-
-          let data_ptr_ptr =
-            L.build_struct_gep new_struct_ptr 0 "data_ptpt" append_builder
-          in
-          
-          let new_data_ptr =
-            L.build_malloc (ltype_of_typ t) "new_ptr" append_builder
-          in
-          let _ = 
-            L.build_store (L.param append_func 1) new_data_ptr append_builder 
-          in
-
-          let _ = 
-            L.build_store new_data_ptr data_ptr_ptr append_builder
-          in
-
-          let data_ptr_cast =
-            L.build_bitcast data_ptr (L.pointer_type i8_t) "data_ptr_cast"
-            append_builder
-          in
-
-          let next_ptr =
-            L.build_struct_gep (L.param lc_func 0) 1 "next_ptr" append_builder
-          in
-
-          let _ = L.build_store type_casted_copy data_ptr_ptr builder in
-
-            append_func
 
         and build_string_length_function () =
         match L.lookup_function "string_length" the_module with
