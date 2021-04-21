@@ -1,9 +1,2 @@
-if 1==2:
-    print("Saurav");
-elif 1 == 2:
-    print("hello");
-elif 1 == 2:
-    print("sup");
-else:
-    print("adsf");
-end
+list<int> a = [1,2,3,4,5];
+list<int> b = append(a, 6);
