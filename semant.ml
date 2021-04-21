@@ -193,6 +193,15 @@ let check (functions, statements) =
               | _ -> raise (E.LengthWrongArgument et1)
             in
             (Int, SCall (((Func ([List(Int)], Int)), (SId "length")), args'))
+        | (Id "open") ->
+            let args' = List.map (expr scope) args in
+            let et1, _ = hd args' in
+            let _ =
+              match et1 with
+              | String -> ()
+              | _ -> raise (E.LengthWrongArgument et1)
+            in
+            (Void, SCall(((Func ([String; String], File)), (SId "open")), args'))
         | _ ->
           let (fty, fname') = expr scope fname in
           let formals, ret_type = match fty with
