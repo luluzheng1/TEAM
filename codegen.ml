@@ -324,11 +324,8 @@ let translate (functions, statements) =
           (* evaluate old list *)
           let lst = expr sc builder ((A.List lt), lst) in
           let lst = L.build_load lst "ilist" builder in
-          (* get ptr to last node *)
-          let last_node_ptr_ptr = L.build_call lc_func [|lst; L.const_int i32_t (-1); new_list_ptr_ptr|] "last_node_ptr_ptr" builder in 
-          let last_node_ptr = L.build_load last_node_ptr_ptr "last_node_ptr" builder in
-          (* get ptr to last node's next ptr *)
-          let last_next_ptr_ptr = L.build_struct_gep last_node_ptr 1 "last_next_ptr_ptr" builder in
+          (* get last_next_ptr_ptr *)
+          let last_next_ptr_ptr = L.build_call lc_func [|lst; L.const_int i32_t (-1); new_list_ptr_ptr|] "last_node_ptr_ptr" builder in 
           (* make a new node *)
           let new_node_ptr = L.build_malloc list_struct_type "new_node_ptr" builder in
           let _ = L.build_store (L.const_null list_struct_type) new_node_ptr builder in
@@ -345,9 +342,7 @@ let translate (functions, statements) =
             L.build_bitcast new_data_ptr (L.pointer_type i8_t) "casted_new_data_ptr" builder
           in 
           let _ = L.build_store type_casted_new_data_ptr data_ptr_ptr builder in 
-          let new_node = L.build_load new_node_ptr "new_node" builder in
-          let last_next_ptr = L.build_load last_next_ptr_ptr "last_next_ptr" builder in
-          let _ = L.build_store new_node last_next_ptr builder in
+          let _ = L.build_store new_node_ptr last_next_ptr_ptr builder in
           new_list_ptr_ptr
 
       | SCall ((_, SId "print"), [e]) -> (

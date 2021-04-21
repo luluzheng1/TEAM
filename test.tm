@@ -1,5 +1,3 @@
-void test(list<int> a):
-    list<int> c = append(a, 5);
-    end
-
-test([1,2,3]);
+list<int> a = [1,2,3,4];
+list<int> b = append(a, 5);
+print(b[4]);
