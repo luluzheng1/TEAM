@@ -203,6 +203,7 @@ let translate (functions, statements) =
                 L.build_call lc_func [|item_ptr; j; new_list_ptr_ptr|] "" builder
               in
               new_list_ptr_ptr)
+
         | _ -> raise (Failure "Internal error: invalid slice"))
       
       | SBinop (e1, op, e2) ->
@@ -754,8 +755,3 @@ let translate (functions, statements) =
     with e -> E.handle_error e
   in
   functions' ; the_module
-
-
-
-  (* copy now returns the ptr to the last item *)
-  (* calling append does not mutate the original list *)
