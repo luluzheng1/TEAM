@@ -17,4 +17,4 @@ list<int> map2((int,int)->int function, list<int> arr1, list<int> arr2):
 end
 list<int> arr1 = [1,2,3,4];
 list<int> arr2 = [4,3,2,1];
-arr = map2(addTwoElements, arr1, arr2);
+list<int> arr = map2(addTwoElements, arr1, arr2);

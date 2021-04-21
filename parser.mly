@@ -97,24 +97,18 @@ stmt:
   | CONTINUE SEMI { Continue }
 
 internal_if:
-  expr COLON stmt_list elif_list else_list END { If($1, Block(List.rev $3), Block(List.rev $4), Block(List.rev $5))}
-
-elif_list:
-  /* nothing */ { [] }
-  | elif elif_list { $1 :: $2 }
-
-elif:
-  ELSEIF expr COLON stmt_list { Elif($2, Block(List.rev $4)) }
+  expr COLON stmt_list else_list END { If($1, Block(List.rev $3), $4) }
 
 else_list:
-  /* nothing */ { [] }
-  | ELSE COLON stmt_list { $3 }
+  /* nothing */ { Block([]) }
+  | ELSEIF expr COLON stmt_list else_list { If($2, Block(List.rev $4), $5) }
+  | ELSE COLON stmt_list { Block($3)   }
 
 expr_opt:
   /* nothing */ { Noexpr }
   | expr { $1 }
 
-expr:
+primary:
     LITERAL { IntLit($1) }
   | BLIT    { BoolLit($1) }
   | FLIT    { FloatLit($1) }
@@ -122,6 +116,20 @@ expr:
   | SLIT    { StringLit($1) }
   | ID      { Id($1) }
   | LSQUARE list_literal RSQUARE { ListLit(List.rev $2) }
+  | LPAREN expr RPAREN   { $2 }
+
+bracket_expr:
+    primary {$1}
+  | bracket_expr LSQUARE index RSQUARE {SliceExpr($1, $3)}
+  | bracket_expr LPAREN args_opt RPAREN { Call($1, $3) }
+
+unary_expr:
+    bracket_expr {$1}
+  | MINUS unary_expr {Unop(Neg, $2)}
+  | NOT unary_expr {Unop(Not, $2)}
+
+expr:
+    unary_expr {$1}
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr TIMES  expr { Binop($1, Mult,  $3)   }
@@ -136,22 +144,20 @@ expr:
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
   | expr MOD    expr { Binop($1, Mod,   $3)   }
-  | expr RANGE  expr { Binop($1, Range, $3) }
-  | MINUS expr %prec NOT { Unop(Neg, $2)      }
-  | NOT   expr           { Unop(Not, $2)      }
-  | LPAREN expr RPAREN   { $2                 }
-  | ID ASSIGN expr { Assign($1, $3) }
-  | ID ADDASN expr { AssignOp($1, Add, $3) }
-  | ID SUBASN expr { AssignOp($1, Sub, $3) }
-  | ID MULASN expr { AssignOp($1, Mult, $3) }
-  | ID DIVASN expr { AssignOp($1, Div, $3) }
-  | ID MODASN expr { AssignOp($1, Mod, $3) }
-  | ID LSQUARE expr RSQUARE ASSIGN expr { ListAssign($1, $3, $6)}
-  | ID LPAREN args_opt RPAREN { Call($1, $3) }
-  | ID LSQUARE expr RSQUARE { IndexExpr($1, Index($3)) }
-  | ID LSQUARE expr COLON expr RSQUARE { SliceExpr($1, Slice($3, $5)) }
-  | ID LSQUARE COLON expr RSQUARE { SliceExpr($1, Slice(IntLit 0, $4)) }
-  | ID LSQUARE expr COLON RSQUARE { SliceExpr($1, Slice($3, End)) }
+  | expr RANGE  expr { Binop($1, Range, $3)   }
+  | expr ASSIGN expr { Assign($1, $3) }
+  | expr ADDASN expr { Assign($1, Binop($1, Add, $3)) }
+  | expr SUBASN expr { Assign($1, Binop($1, Sub, $3)) }
+  | expr MULASN expr { Assign($1, Binop($1, Mult, $3))  }
+  | expr DIVASN expr { Assign($1, Binop($1, Div, $3))  }
+  | expr MODASN expr { Assign($1, Binop($1, Mod, $3))  }
+
+index:
+    expr { Index $1 }
+  | expr COLON expr { Slice($1, $3) }
+  | COLON expr { Slice(IntLit 0, $2) }
+  | expr COLON { Slice($1, End) }
+  | COLON { Slice(IntLit 0, End) }
 
 list_literal:
   /* nothing */ { [] }
