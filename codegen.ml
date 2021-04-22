@@ -108,7 +108,12 @@ let translate (functions, statements) =
       A.List(t) -> t
       | _         -> raise(Failure "Internal error: Not a list type")
     in
-
+    let add_terminal builder instr =
+      match L.block_terminator (L.insertion_block builder) with
+      | Some _ -> ()
+      | None -> ignore (instr builder)
+    in
+(* here *)
     let rec expr sc builder ((t, e) : sexpr) =
       match e with
       | SIntLit i -> L.const_int i32_t i
@@ -352,9 +357,11 @@ let translate (functions, statements) =
           | A.String ->
               L.build_call printf_func [|expr sc builder e|] "printf" builder
           | A.Bool ->
-              L.build_call printf_func
-                [|int_format_str; expr sc builder e|]
-                "printf" builder
+              let bool_val = expr sc builder e in
+              let true_str = L.build_global_stringptr "true" "string" builder in
+              let false_str = L.build_global_stringptr "false" "string" builder in
+              let to_print = L.build_select bool_val true_str false_str "bool_to_str" builder in
+              L.build_call printf_func [|to_print|] "printf" builder
           | A.Float ->
               L.build_call printf_func
                 [|float_format_str; expr sc builder e|]
@@ -622,11 +629,7 @@ let translate (functions, statements) =
       List.fold_left build_link null_ptr (List.rev lis)
     in
 
-    let add_terminal builder instr =
-      match L.block_terminator (L.insertion_block builder) with
-      | Some _ -> ()
-      | None -> ignore (instr builder)
-    in
+
 
     (* Statements *)
     let rec build_stmt sc builder stmt loop =
