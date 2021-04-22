@@ -357,24 +357,11 @@ let translate (functions, statements) =
           | A.String ->
               L.build_call printf_func [|expr sc builder e|] "printf" builder
           | A.Bool ->
-              let e = expr sc builder e in 
-              if e == L.const_int i1_t 1 then  
-                L.build_call printf_func [|expr sc builder (A.String, SStringLit("true"))|] "printf" builder
-              else
-                L.build_call printf_func [|expr sc builder (A.String, SStringLit("false"))|] "printf" builder
-
-              (* let bool_val = expr sc builder e in
-              let merge_bb = L.append_block context "merge" the_function in
-              let branch_instr = L.build_br merge_bb in
-              let then_bb = L.append_block context "then" the_function in
-              let then_builder = L.builder_at_end context then_bb in
-              let _ = L.build_call printf_func [|expr sc then_builder (A.String, SStringLit("true"))|] "printf" then_builder in
-              let () = add_terminal then_builder branch_instr in
-              let else_bb = L.append_block context "else" the_function in
-              let else_builder = L.builder_at_end context else_bb in
-              let _ = L.build_call printf_func [|expr sc else_builder (A.String, SStringLit("false"))|] "printf" else_builder in
-              let () = add_terminal else_builder branch_instr in
-              L.build_cond_br bool_val then_bb else_bb builder *)
+              let bool_val = expr sc builder e in
+              let true_str = L.build_global_stringptr "true" "string" builder in
+              let false_str = L.build_global_stringptr "false" "string" builder in
+              let to_print = L.build_select bool_val true_str false_str "bool_to_str" builder in
+              L.build_call printf_func [|to_print|] "printf" builder
           | A.Float ->
               L.build_call printf_func
                 [|float_format_str; expr sc builder e|]
