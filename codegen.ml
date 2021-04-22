@@ -108,7 +108,12 @@ let translate (functions, statements) =
       A.List(t) -> t
       | _         -> raise(Failure "Internal error: Not a list type")
     in
-
+    let add_terminal builder instr =
+      match L.block_terminator (L.insertion_block builder) with
+      | Some _ -> ()
+      | None -> ignore (instr builder)
+    in
+(* here *)
     let rec expr sc builder ((t, e) : sexpr) =
       match e with
       | SIntLit i -> L.const_int i32_t i
@@ -352,9 +357,24 @@ let translate (functions, statements) =
           | A.String ->
               L.build_call printf_func [|expr sc builder e|] "printf" builder
           | A.Bool ->
-              L.build_call printf_func
-                [|int_format_str; expr sc builder e|]
-                "printf" builder
+              let e = expr sc builder e in 
+              if e == L.const_int i1_t 1 then  
+                L.build_call printf_func [|expr sc builder (A.String, SStringLit("true"))|] "printf" builder
+              else
+                L.build_call printf_func [|expr sc builder (A.String, SStringLit("false"))|] "printf" builder
+
+              (* let bool_val = expr sc builder e in
+              let merge_bb = L.append_block context "merge" the_function in
+              let branch_instr = L.build_br merge_bb in
+              let then_bb = L.append_block context "then" the_function in
+              let then_builder = L.builder_at_end context then_bb in
+              let _ = L.build_call printf_func [|expr sc then_builder (A.String, SStringLit("true"))|] "printf" then_builder in
+              let () = add_terminal then_builder branch_instr in
+              let else_bb = L.append_block context "else" the_function in
+              let else_builder = L.builder_at_end context else_bb in
+              let _ = L.build_call printf_func [|expr sc else_builder (A.String, SStringLit("false"))|] "printf" else_builder in
+              let () = add_terminal else_builder branch_instr in
+              L.build_cond_br bool_val then_bb else_bb builder *)
           | A.Float ->
               L.build_call printf_func
                 [|float_format_str; expr sc builder e|]
@@ -622,11 +642,7 @@ let translate (functions, statements) =
       List.fold_left build_link null_ptr (List.rev lis)
     in
 
-    let add_terminal builder instr =
-      match L.block_terminator (L.insertion_block builder) with
-      | Some _ -> ()
-      | None -> ignore (instr builder)
-    in
+
 
     (* Statements *)
     let rec build_stmt sc builder stmt loop =
