@@ -7,16 +7,33 @@ typedef struct list_item_
     struct list_item_ *next;
 } list_item;
 
+list_item **add_list(char *s, list_item **curr)
+{
+    list_item *node = malloc(sizeof(list_item));
+    node->dat = &s;
+    node->next = NULL;
+    while ((*curr)->next != NULL)
+    {
+        (*curr)->next = (*curr)->next->next;
+    }
+    (*curr)->next = node;
+    return curr;
+}
+
 list_item **get_list()
 {
     list_item *test = malloc(sizeof(list_item));
-    char *s = "hello_world";
+    char *s = "hello world";
     char *s2 = (char *)malloc(strlen(s) + 1);
     strcpy(s2, s);
-    test->dat = s2;
+    test->dat = &s2;
     test->next = NULL;
     list_item **ret = malloc(sizeof(list_item *));
     *ret = test;
+    s = "goodbye world";
+    char *s3 = (char *)malloc(strlen(s) + 1);
+    strcpy(s3, s);
+    ret = add_list(s3, ret);
     return ret;
 }
 
@@ -32,18 +49,6 @@ list_item **get_list()
 //     return ret;
 // }
 
-list_item **add_list(char *s, list_item **curr)
-{
-    list_item *node = malloc(sizeof(list_item));
-    node->dat = s;
-    node->next = NULL;
-    while ((*curr)->next != NULL)
-    {
-        (*curr)->next = (*curr)->next->next;
-    }
-    (*curr)->next = node;
-    return curr;
-}
 #ifdef BUILD_TEST
 int main()
 {
