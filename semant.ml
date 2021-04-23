@@ -29,6 +29,10 @@ let check (functions, statements) =
       ; ( "append"
         , [(List Unknown, "input_list"); (Unknown, "element")]
         , List Unknown )
+      ; ( "insert"
+      , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
+      , List Unknown )
+
       ; (* TODO: length and append has to be checked as special cases. *)
         ("length", [(Unknown, "input_list")], Int) ]
   in
@@ -183,6 +187,22 @@ let check (functions, statements) =
               else (et1, SCall (((Func ([List(Int); Int], List(Int))), (SId "append")), args'))
             in
             ret
+        | (Id "insert") ->
+          let args' = List.map (expr scope) args in
+          let et1, _ = hd args' in
+          let et2, _ = hd (tl args') in
+          let inner_ty =
+            match et1 with
+            | List ty -> ty
+            | _ -> raise (E.AppendNonList et2)
+          in
+          let ret =
+            if inner_ty != et2 then
+              raise (E.MismatchedTypes (inner_ty, et2, call))
+            else (et1, SCall (((Func ([List(Int); Int; Int], List(Int))), (SId "insert")), args'))
+          in
+          ret
+  
         | (Id "length") ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in

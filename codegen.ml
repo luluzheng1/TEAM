@@ -320,6 +320,28 @@ let translate (functions, statements) =
           let sl_func = build_string_length_function () in
           L.build_call sl_func [|expr sc builder (A.String, st); (L.const_int i32_t 0)|] "length" builder
 
+      | SCall ((_, SId "insert"), [((A.List lt), lst); e; i]) ->
+        let la_func = build_access_function () in
+          let lis = expr sc builder ((A.List lt), lst) in
+          let lsti = L.build_load lis "ilist" builder in
+          let temp = L.build_alloca list_struct_type "temp" builder in
+          let next = L.build_struct_gep temp 1 "next" builder in 
+          let _ = L.build_store lsti next builder in
+          let dat_struct = L.build_malloc list_struct_type "data_node" builder in
+          let dat_ptr = L.build_malloc (ltype_of_typ lt) "data" builder in
+          let _ = L.build_store (expr sc builder e) dat_ptr builder in
+          let dat_ptr_ptr = L.build_struct_gep dat_struct 0 "dat" builder in
+          let type_casted = L.build_bitcast dat_ptr (L.pointer_type i8_t) "cast" builder in 
+          let _ = L.build_store type_casted_new_data_ptr dat_ptr_ptr builder in
+          let item_ptr =
+            L.build_call la_func [|temp; expr sc builder i|] "result" builder
+          in
+          let cur_next = L.build_struct_gep item_ptr 1 "test" builder in
+          let _ = L.build_store (L.build_load cur_next "temp" builder) (L.build_struct_gep dat_struct 1 "dat" builder) builder in
+          let _ = L.build_store dat_struct cur_next builder in
+          let _ = L.build_store (L.build_load next "temp" builder) lis builder in
+          lis 
+
       | SCall ((_, SId "append"), [((A.List lt), lst); e]) -> 
           (* evaluate expression *)
           let e' = expr sc builder e in 
