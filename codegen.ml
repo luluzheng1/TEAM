@@ -332,7 +332,7 @@ let translate (functions, statements) =
           let _ = L.build_store (expr sc builder e) dat_ptr builder in
           let dat_ptr_ptr = L.build_struct_gep dat_struct 0 "dat" builder in
           let type_casted = L.build_bitcast dat_ptr (L.pointer_type i8_t) "cast" builder in 
-          let _ = L.build_store type_casted_new_data_ptr dat_ptr_ptr builder in
+          let _ = L.build_store type_casted dat_ptr_ptr builder in
           let item_ptr =
             L.build_call la_func [|temp; expr sc builder i|] "result" builder
           in
