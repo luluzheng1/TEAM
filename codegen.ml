@@ -331,9 +331,9 @@ let translate (functions, statements) =
           (* make a copy of the original list *)
           let _ = L.build_call lc_func [|list_ptr; L.const_int i32_t (-1); new_list_ptr_ptr|] "last_node_ptr_ptr" builder in 
           
-
-          let new_list_ptr_ptr = insert_function sc builder lt new_list_ptr_ptr e' i in
-          new_list_ptr_ptr
+          let i' = expr sc builder i in
+          let return_ptr_ptr = insert_function builder lt new_list_ptr_ptr e' i' in
+          return_ptr_ptr
       (* | SCall ((_, SId "reverse"), [(lt, lst)]) ->  *)
 
       | SCall ((_, SId "print"), [e]) -> (
@@ -425,18 +425,41 @@ let translate (functions, statements) =
       sc :=
         {lvariables= StringMap.add n l_var !sc.lvariables; parent= !sc.parent}
 
-    and insert_function sc builder lt list_ptr_ptr e' i = 
+    and insert_function builder lt list_ptr_ptr e' i' = 
       let list_ptr = L.build_load list_ptr_ptr "list_ptr" builder in 
-      (* make access function *)
+      let prev_index = L.build_sub i' (L.const_int i32_t 1) "prev_index" builder in
+      let ll_func = build_list_length_function () in
+      let length = L.build_call ll_func [|list_ptr; (L.const_int i32_t 0)|] "length" builder in 
+
+      let index_is_zero = 
+        L.build_icmp L.Icmp.Eq (L.const_int i32_t 0) i' "index_is_zero" builder 
+      in
+      let index_is_length = 
+        L.build_icmp L.Icmp.Eq length i' "index_is_length" builder
+      in
+      let prev_index = 
+        L.build_select index_is_zero i' prev_index "prev_index" builder 
+      in
+      let i' = 
+        L.build_select index_is_length (L.const_int i32_t 0) i' "i'" builder
+      in
+
       let la_func = build_access_function () in 
-      let item_ptr = L.build_call la_func [|list_ptr; expr sc builder i|] "item_ptr" builder in
-      let last_next_ptr_ptr = L.build_struct_gep item_ptr 1 "last_next_ptr_ptr" builder in 
-      let next_item_ptr = L.build_load last_next_ptr_ptr "next_item_ptr" builder in 
-      (* make a new node *)
+
+      let prev_struct_ptr = 
+        L.build_select index_is_zero 
+          (L.build_alloca list_struct_type "" builder)
+          (L.build_call la_func [|list_ptr; prev_index|] "" builder) 
+          "prev_struct_ptr" builder 
+      in
+      let next_struct_ptr = 
+        L.build_select index_is_length 
+          (L.const_null list_struct_ptr)
+          (L.build_call la_func [|list_ptr; i'|] "" builder) 
+          "next_struct_ptr" builder
+      in
       let new_node_ptr = L.build_malloc list_struct_type "new_node_ptr" builder in
       let _ = L.build_store (L.const_null list_struct_type) new_node_ptr builder in
-      let new_node_next_ptr_ptr = L.build_struct_gep new_node_ptr 1 "new_node_next_ptr_ptr" builder in
-      (* store the value in the new node *)
       let data_ptr_ptr =
         L.build_struct_gep new_node_ptr 0 "data_ptr_ptr" builder
       in
@@ -444,14 +467,22 @@ let translate (functions, statements) =
         L.build_malloc (ltype_of_typ (get_list_inner_typ lt)) "new_data_ptr" builder
       in
       let _ = L.build_store e' new_data_ptr builder in
-      
       let type_casted_new_data_ptr =
         L.build_bitcast new_data_ptr (L.pointer_type i8_t) "casted_new_data_ptr" builder
       in 
       let _ = L.build_store type_casted_new_data_ptr data_ptr_ptr builder in 
-      let _ = L.build_store new_node_ptr last_next_ptr_ptr builder in
-      let _ = L.build_store next_item_ptr new_node_next_ptr_ptr builder in 
-      list_ptr_ptr
+
+      let prev_next_ptr_ptr = L.build_struct_gep prev_struct_ptr 1 "prev_next_ptr_ptr" builder in 
+      let curr_next_ptr_ptr = L.build_struct_gep new_node_ptr 1 "curr_next_tpr_ptr" builder in 
+      let _ = L.build_store new_node_ptr prev_next_ptr_ptr builder in 
+      let _ = L.build_store next_struct_ptr curr_next_ptr_ptr builder in 
+
+      let new_node_ptr_ptr = L.build_malloc list_struct_ptr "new_node_ptr_ptr" builder in 
+      let _ = L.build_store new_node_ptr new_node_ptr_ptr builder in 
+      let return_ptr_ptr = 
+        L.build_select index_is_zero new_node_ptr_ptr list_ptr_ptr "return_ptr_ptr" builder
+      in
+      return_ptr_ptr
 
     and build_copy_function typ =
     let t = get_list_inner_typ typ in
