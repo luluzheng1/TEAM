@@ -332,16 +332,16 @@ let translate (functions, statements) =
         let length = L.build_call ll_func [|list_ptr; (L.const_int i32_t 0)|] "length" builder in 
 
         let insert_func = build_insert_function lt in         
-        L.build_call insert_func [|list_ptr; e'; length|] "list_ptr_ptr" builder
+        L.build_call insert_func [|list_ptr_ptr; e'; length|] "list_ptr_ptr" builder
 
       | SCall ((_, SId "insert"), [(lt, lst); e; i]) -> 
           let list_ptr_ptr = expr sc builder (lt, lst) in
-          let list_ptr = L.build_load list_ptr_ptr "list_ptr" builder in
+          (* let list_ptr = L.build_load list_ptr_ptr "list_ptr" builder in *)
           let e' = expr sc builder e in 
           let i' = expr sc builder i in
 
           let insert_func = build_insert_function lt in 
-          L.build_call insert_func [|list_ptr; e'; i'|] "list_ptr_ptr" builder
+          L.build_call insert_func [|list_ptr_ptr; e'; i'|] "list_ptr_ptr" builder
       
       | SCall ((_, SId "print"), [e]) -> (
           let t, _ = e in
@@ -446,14 +446,14 @@ let translate (functions, statements) =
         let e = L.param range_func 1 in 
         let head_ptr_ptr = L.param range_func 2 in 
         let curr_length = L.param range_func 3 in 
-        let head_ptr = L.build_load head_ptr_ptr "head_ptr" range_builder in
+        (* let head_ptr = L.build_load head_ptr_ptr "head_ptr" range_builder in *)
         let bool_val = L.build_icmp L.Icmp.Eq s e "is_last" range_builder in 
         let then_bb = L.append_block context "then" range_func in 
         let _ = L.build_ret head_ptr_ptr (L.builder_at_end context then_bb) in 
         let else_bb = L.append_block context "else" range_func in 
         let else_builder = L.builder_at_end context else_bb in 
         let insert_func = build_insert_function (A.List(A.Int)) in 
-        let head_ptr_ptr = L.build_call insert_func [|head_ptr; s; curr_length|] "head_ptr_ptr" else_builder in
+        let head_ptr_ptr = L.build_call insert_func [|head_ptr_ptr; s; curr_length|] "head_ptr_ptr" else_builder in
         let next_s = L.build_add (L.const_int i32_t 1) s "next_s" else_builder in 
         let next_length = L.build_add (L.const_int i32_t 1) curr_length "next_length" else_builder in 
         let ret = L.build_call range_func [|next_s; e; head_ptr_ptr; next_length|] "" else_builder in
@@ -570,22 +570,24 @@ let translate (functions, statements) =
         | None -> 
             let ltype = ltype_of_typ t in 
             let insert_func_t = 
-              L.function_type (L.pointer_type list_struct_ptr) [|list_struct_ptr; ltype; i32_t|]
+              L.function_type (L.pointer_type list_struct_ptr) [|(L.pointer_type list_struct_ptr); ltype; i32_t|]
             in
             let insert_func =
               L.define_function func_name insert_func_t the_module 
             in
             let insert_builder = L.builder_at_end context (L.entry_block insert_func) in
-            let list_ptr = L.param  insert_func 0 in
+            let list_ptr_ptr = L.param  insert_func 0 in
             let e' = L.param insert_func 1 in
             let i' = L.param insert_func 2 in
 
-            let new_list_ptr_ptr = L.build_malloc list_struct_ptr "new_list_ptr_ptr" insert_builder in
-            let lc_func = build_copy_function typ in  
-            let _ = L.build_call lc_func [|list_ptr; L.const_int i32_t (-1); new_list_ptr_ptr|] "last_node_ptr_ptr" insert_builder in 
-           
+            (* let new_list_ptr_ptr = L.build_malloc list_struct_ptr "new_list_ptr_ptr" insert_builder in *)
+            (* let lc_func = build_copy_function typ in  
+            let _ = L.build_call lc_func [|list_ptr; L.const_int i32_t (-1); new_list_ptr_ptr|] "last_node_ptr_ptr" insert_builder in  *)
+            
+            (* let _ = L.build_store list_ptr new_list_ptr_ptr insert_builder in  *)
+
             let la_func = build_access_function () in
-            let list_ptr = L.build_load new_list_ptr_ptr "list_ptr" insert_builder in
+            let list_ptr = L.build_load list_ptr_ptr "list_ptr" insert_builder in
             let temp = L.build_alloca list_struct_type "temp" insert_builder in
             let next = L.build_struct_gep temp 1 "next" insert_builder in 
             let _ = L.build_store list_ptr next insert_builder in
@@ -601,9 +603,9 @@ let translate (functions, statements) =
             let cur_next = L.build_struct_gep item_ptr 1 "test" insert_builder in
             let _ = L.build_store (L.build_load cur_next "temp" insert_builder) (L.build_struct_gep dat_struct 1 "dat" insert_builder) insert_builder in
             let _ = L.build_store dat_struct cur_next insert_builder in
-            let _ = L.build_store (L.build_load next "temp" insert_builder) new_list_ptr_ptr insert_builder in
+            let _ = L.build_store (L.build_load next "temp" insert_builder) list_ptr_ptr insert_builder in
             let _ =
-              L.build_ret new_list_ptr_ptr insert_builder
+              L.build_ret list_ptr_ptr insert_builder
             in
             insert_func
 
