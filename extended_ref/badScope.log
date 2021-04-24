@@ -1,2 +1,1 @@
 Fatal error: exception Exceptions.TypeError("Error: variable 'bigNum' was used before it was defined")
-lli: error: 'main' function not found in module.
