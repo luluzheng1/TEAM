@@ -71,7 +71,7 @@ def checkResults(f_generated, f_reference):
             print(bcolors.WARNING + 
                   "command: diff -y {} (output) {} (standard)\n".format(f_generated, f_reference) + 
                   bcolors.ENDC)
-            print(bcolors.WARNING + stdout + bcolors.ENDC)
+            print(bcolors.WARNING + stdout.decode("utf-8") + bcolors.ENDC)
             print("+" * 100)
             return
     printSuccessTestMessage(f_generated)
@@ -95,7 +95,7 @@ def runFile(fileName, testMode, userInput=False):
                                stdout=subprocess.PIPE, 
                                stderr=subprocess.PIPE)
     
-    if testMode == "codegen":
+    if testMode == "codegen" or (testMode == "extended" and "bad" not in fileName):
         process = subprocess.Popen(["lli"],
                                    stdin=process.stdout,
                                    stdout=subprocess.PIPE,
