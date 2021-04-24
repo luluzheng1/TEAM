@@ -182,7 +182,7 @@ let check (functions, statements) =
             let ret =
               if inner_ty != et2 then
                 raise (E.MismatchedTypes (inner_ty, et2, call))
-              else (et1, SCall (((Func ([List(Int); Int], List(Int))), (SId "append")), args'))
+              else (et1, SCall (((Func ([List(inner_ty); inner_ty], List(inner_ty))), (SId "append")), args'))
             in
             ret
 
@@ -198,7 +198,7 @@ let check (functions, statements) =
             let ret =
               if inner_ty != et2 then
                 raise (E.MismatchedTypes (inner_ty, et2, call))
-              else (et1, SCall (((Func ([List(Int); Int; Int], List(Int))), (SId "insert")), args'))
+              else (et1, SCall (((Func ([List(inner_ty); inner_ty; Int], List(inner_ty))), (SId "insert")), args'))
             in
             ret
 
