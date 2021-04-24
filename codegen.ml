@@ -21,6 +21,7 @@ let translate (functions, statements) =
   and float_t = L.double_type context
   and i1_t = L.i1_type context
   and string_t = L.pointer_type (L.i8_type context)
+  and file_t = L.pointer_type (L.i8_type context)
   and the_module = L.create_module context "TEAM" in
   let list_struct_type = L.named_struct_type context "list_item" in
   let list_struct_ptr = L.pointer_type list_struct_type in
@@ -41,6 +42,7 @@ let translate (functions, statements) =
     | A.Unknown -> void_t
     | A.Func (args_t, ret_t) -> func_ty args_t ret_t
     | A.List _ ->  L.pointer_type list_struct_ptr
+    | A.File -> file_t
     | _ -> void_t
   and func_ty args_t ret_t =
     let llret_type = ltype_of_typ ret_t in
@@ -57,6 +59,10 @@ let translate (functions, statements) =
   in
   let pow_t : L.lltype = L.function_type float_t [|float_t; float_t|] in
   let pow_func : L.llvalue = L.declare_function "pow" pow_t the_module in
+  let open_t : L.lltype = L.function_type string_t [|string_t; string_t|] in 
+  let open_func : L.llvalue = L.declare_function "fopen" open_t the_module in
+  let readline_t : L.lltype = L.function_type file_t [|string_t|] in 
+  let readline_func : L.llvalue = L.declare_function "readline" readline_t the_module in
   let var_table = {lvariables= StringMap.empty; parent= None} in
   let globals = ref var_table in
   let function_decls : L.llvalue StringMap.t =
@@ -309,7 +315,15 @@ let translate (functions, statements) =
       | SCall ((_, SId "length"), [(A.String, st)]) -> 
           let sl_func = build_string_length_function () in
           L.build_call sl_func [|expr sc builder (A.String, st); (L.const_int i32_t 0)|] "length" builder
-  
+      | SCall ((_, SId "open"), [(A.String, st); (A.String, st2)]) ->
+          L.build_call open_func
+            [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
+            "open" builder
+      | SCall ((_, SId "readline"), [(A.File, st)]) ->
+          (* let _ = print_endline "here" in *)
+          L.build_call readline_func
+            [|expr sc builder (A.File, st)|]
+            "readline" builder
       | SCall ((_, SId "print"), [e]) -> (
           let t, _ = e in
           match t with
@@ -529,7 +543,6 @@ let translate (functions, statements) =
             let _ = L.build_ret ret else_builder in
             let _ = L.build_cond_br bool_val then_bb else_bb ll_builder in
             ll_func
-  
     and build_access_function () =
       match L.lookup_function "list_access" the_module with
       | Some func -> func
