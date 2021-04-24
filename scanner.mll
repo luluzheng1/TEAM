@@ -82,4 +82,5 @@ and comment = parse
 
 and slcomment = parse
 	'\n'   { token lexbuf }
+	| eof  { token lexbuf }
 	| _    { slcomment lexbuf }
