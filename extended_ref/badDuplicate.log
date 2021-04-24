@@ -1,1 +1,2 @@
 Fatal error: exception Exceptions.AlreadyDefined("computeSum")
+lli: error: 'main' function not found in module.
