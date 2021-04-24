@@ -13,7 +13,7 @@ create() {
     # generate code, need to pass in file since it could be modified
     ./team.native -l "$1" > "$filename".ll
     llc "$2".ll
-    eval "$CC $LIBS -o $filename.exe $filename.s"
+    eval "$CC $LIBS -o $filename.exe $filename.s fileio.o"
     echo "$filename.exe created"
 }
 
