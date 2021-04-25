@@ -5,6 +5,80 @@
 #include <stdlib.h>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+
+/* struct representation of a list node */
+typedef struct list_item_
+{
+    void *dat;
+    struct list_item_ *next;
+} list_item;
+
+list_item **append(char *s, list_item **head_ref)
+{
+    list_item *node = malloc(sizeof(list_item));
+    char **s_ptr = malloc(sizeof(char *));
+    *s_ptr = s;
+    node->dat = s_ptr;
+    node->next = NULL;
+    list_item *last = *head_ref;
+
+    if (*head_ref == NULL)
+    {
+        *head_ref = node;
+        return head_ref;
+    }
+    while (last->next != NULL)
+    {
+        last = last->next;
+    }
+    last->next = node;
+
+    return head_ref;
+}
+
+/* prints the content in the list, for debugging purposes */
+void print_list(list_item **head_ref)
+{
+    list_item *temp = *head_ref;
+
+    if ((*head_ref)->dat == NULL && (*head_ref)->next == NULL)
+    {
+        return;
+    }
+
+    while (temp != NULL)
+    {
+        printf("%s\n", (*(char **)temp->dat));
+        if (temp->next == NULL)
+        {
+            break;
+        }
+
+        temp = temp->next;
+    }
+}
+
+int length(list_item **head_ref)
+{
+    list_item *temp = *head_ref;
+    int count = 0;
+    if ((*head_ref)->dat == NULL && (*head_ref)->next == NULL)
+    {
+        return count;
+    }
+
+    while (temp != NULL)
+    {
+        count += 1;
+        if (temp->next == NULL)
+        {
+            break;
+        }
+
+        temp = temp->next;
+    }
+    return count;
+}
 /*
  * Match string against the extended regular expression in
  * pattern, treating errors as no match.
@@ -107,12 +181,10 @@ char *find(char *target, char *regex)
         {
         case PCRE2_ERROR_NOMATCH:
             /* No Match */
-            // printf("No match\n");
             break;
             /* Handle other special cases if you like */
         default:
             /* Some other match error */
-            // printf("Matching error %d\n", rc);
             break;
         }
         pcre2_match_data_free(match_data); /* Release memory used for the match */
@@ -137,13 +209,12 @@ char *find(char *target, char *regex)
 
     PCRE2_SPTR substring_start = subject + ovector[0];
     PCRE2_SIZE substring_length = ovector[1] - ovector[0];
-    // printf("%2d: %.*s\n", 0, (int)substring_length, (char *)substring_start);
     char *sub = (char *)malloc(sizeof(char) * substring_length);
     substr((char *)substring_start, sub, 0, (int)substring_length);
     return sub;
 }
 
-int find_all(char *target, char *regex)
+list_item **find_all(char *target, char *regex)
 {
     pcre2_code *re;
     PCRE2_SPTR name_table;
@@ -167,7 +238,8 @@ int find_all(char *target, char *regex)
     pcre2_match_data *match_data;
 
     subject_length = (PCRE2_SIZE)strlen((char *)subject);
-    int found = 0;
+    list_item **ret = malloc(sizeof(list_item *));
+    *ret = NULL;
     /* compile the regular expression pattern, and handle
        any errors that are detected. */
 
@@ -187,7 +259,7 @@ int find_all(char *target, char *regex)
         pcre2_get_error_message(errornumber, buffer, sizeof(buffer));
         printf("PCRE2 compilation failed at offset %d: %s\n", (int)erroroffset,
                buffer);
-        return 1;
+        return ret;
     }
 
     match_data = pcre2_match_data_create_from_pattern(re, NULL);
@@ -207,11 +279,14 @@ int find_all(char *target, char *regex)
 
     if (rc < 0)
     {
+        list_item *list = malloc(sizeof(list_item));
         switch (rc)
         {
         case PCRE2_ERROR_NOMATCH:
-            // TODO: return empty list
-            // printf("No match, found: %d\n", found);
+            /* no match found, return empty list */
+            list->dat = NULL;
+            list->next = NULL;
+            *ret = list;
             break;
         /*
     Handle other special cases if you like
@@ -222,7 +297,7 @@ int find_all(char *target, char *regex)
         }
         pcre2_match_data_free(match_data); /* Release memory used for the match */
         pcre2_code_free(re);               /*   data and the compiled pattern. */
-        return 0;
+        return ret;
     }
 
     /* Match succeeded. Get a pointer to the output vector, where string offsets are
@@ -242,11 +317,9 @@ application you might want to do things other than print them. */
 
     PCRE2_SPTR substring_start = subject + ovector[0];
     PCRE2_SIZE substring_length = ovector[1] - ovector[0];
-    // printf("%2d: %.*s\n", i, (int)substring_length, (char *)substring_start);
-    char *sub = (char *)malloc(sizeof(char) * substring_length);
+    char *sub = (char *)malloc(sizeof(char) * (substring_length + 1));
     substr((char *)substring_start, sub, 0, (int)substring_length);
-    // TODO: add sub to list
-    found += 1;
+    ret = append(sub, ret);
     /* See if there are any named substrings, and if so, show them by name. First
 we have to extract the count of named parentheses from the pattern. */
 
@@ -353,7 +426,6 @@ sequence. */
         {
             if (options == 0)
             {
-                // printf("found: %d\n", found);
                 break;
             }
             /* All matches found */
@@ -382,7 +454,7 @@ sequence. */
             printf("Matching error %d\n", rc);
             pcre2_match_data_free(match_data);
             pcre2_code_free(re);
-            return 1;
+            return ret;
         }
 
         /* Match succeeded */
@@ -408,7 +480,7 @@ sequence. */
             printf("Run abandoned\n");
             pcre2_match_data_free(match_data);
             pcre2_code_free(re);
-            return 1;
+            return ret;
         }
 
         /* As before, show substrings stored in the output vector by number, and then
@@ -416,11 +488,9 @@ sequence. */
 
         PCRE2_SPTR substring_start = subject + ovector[0];
         size_t substring_length = ovector[1] - ovector[0];
-        // printf("%2d: %.*s\n", i, (int)substring_length, (char *)substring_start);
-        char *sub = (char *)malloc(sizeof(char) * substring_length);
+        char *sub = (char *)malloc(sizeof(char) * (substring_length + 1));
         substr((char *)substring_start, sub, 0, (int)substring_length);
-        // TODO: add sub to list
-        found += 1;
+        ret = append(sub, ret);
 
         if (namecount == 0)
         {
@@ -438,10 +508,9 @@ sequence. */
         }
     } /* End of loop to find second and subsequent matches */
 
-    printf("\n");
     pcre2_match_data_free(match_data);
     pcre2_code_free(re);
-    return 1;
+    return ret;
 }
 
 char *str_replace(char *orig, char *rep, char *with)
@@ -580,9 +649,16 @@ void test_replace_all()
 }
 void test_find_all()
 {
-    find_all("hello hello hello", "hello");
-    find_all("google ggle goooogle", "go*gle");
-    find_all("gray grey gray", "gr(a|e)y");
+    list_item **list = find_all("hello hello hello", "hello");
+    assert(length(list) == 3);
+    list_item **list2 = find_all("google ggle goooogle", "go*gle");
+    assert(length(list2) == 3);
+    list_item **list3 = find_all("gray", "gr(a|e)y");
+    assert(length(list3) == 1);
+    list_item **list4 = find_all("2+2 3*3 4-4 5+5 6*6", "\\d+[\\+-x\\*]\\d+");
+    assert(length(list4) == 5);
+    list_item **list5 = find_all("This is a dog", "^dog");
+    assert(length(list5) == 0);
 }
 void test_find()
 {
@@ -675,6 +751,7 @@ int main()
     test_find();
     test_match();
     test_replace();
+    test_find_all();
     return 0;
 }
 #endif
