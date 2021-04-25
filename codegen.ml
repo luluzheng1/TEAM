@@ -8,6 +8,7 @@ type var_table =
   {lvariables: L.llvalue StringMap.t; parent: var_table ref option}
 
 let translate (functions, statements) =
+  (* defining main function *)
   let main_func =
     {styp= A.Int; sfname= "main"; sformals= []; sbody= statements}
   in
@@ -23,12 +24,13 @@ let translate (functions, statements) =
   and the_module = L.create_module context "TEAM" in
   let list_struct_type = L.named_struct_type context "list_item" in
   let list_struct_ptr = L.pointer_type list_struct_type in
+  (* list is a linked list with a ptr to the data and the next ptr *)
   let _ =
     L.struct_set_body list_struct_type
       [|L.pointer_type i8_t; list_struct_ptr|]
       true
   in
-  (* Convert MicroC types to LLVM types *)
+  (* Convert TEAM types to LLVM types *)
   let rec ltype_of_typ = function
     | A.Int -> i32_t
     | A.String -> string_t
@@ -40,17 +42,20 @@ let translate (functions, statements) =
     | A.Func (args_t, ret_t) -> func_ty args_t ret_t
     | A.List _ -> L.pointer_type list_struct_ptr
     | _ -> void_t
+  (* get the ptr to the function *)
   and func_ty args_t ret_t =
     let llret_type = ltype_of_typ ret_t in
     let llargs = Array.map (fun t -> ltype_of_typ t) (Array.of_list args_t) in
     L.pointer_type (L.function_type llret_type llargs)
   in
+  (* print function *)
   let printf_t : L.lltype =
     L.var_arg_function_type i32_t [|L.pointer_type i8_t|]
   in
   let printf_func : L.llvalue =
     L.declare_function "printf" printf_t the_module
   in
+  (* power function *)
   let pow_t : L.lltype = L.function_type float_t [|float_t; float_t|] in
   let pow_func : L.llvalue = L.declare_function "pow" pow_t the_module in
   let match_t : L.lltype = L.function_type i1_t [|string_t; string_t|] in
@@ -117,6 +122,12 @@ let translate (functions, statements) =
       | A.List t -> t
       | _ -> raise (Failure "Internal error: Not a list type")
     in
+    let add_terminal builder instr =
+      match L.block_terminator (L.insertion_block builder) with
+      | Some _ -> ()
+      | None -> ignore (instr builder)
+    in
+    (* here *)
     let rec expr sc builder ((t, e) : sexpr) =
       match e with
       | SIntLit i -> L.const_int i32_t i
@@ -211,13 +222,15 @@ let translate (functions, statements) =
                   | _ -> L.build_sub (expr sc builder j) i "difference" builder
                 in
                 let lc_func = build_copy_function t in
-                let new_list_ptr =
-                  L.build_malloc list_struct_ptr "new_list_ptr" builder
+                let new_list_ptr_ptr =
+                  L.build_malloc list_struct_ptr "new_list_ptr_ptr" builder
                 in
                 let _ =
-                  L.build_call lc_func [|item_ptr; j; new_list_ptr|] "" builder
+                  L.build_call lc_func
+                    [|item_ptr; j; new_list_ptr_ptr|]
+                    "" builder
                 in
-                L.build_load new_list_ptr "new_string" builder )
+                new_list_ptr_ptr )
           | _ -> raise (Failure "Internal error: invalid slice") )
       | SBinop (e1, op, e2) ->
           let t1, _ = e1
@@ -331,15 +344,63 @@ let translate (functions, statements) =
           L.build_call sl_func
             [|expr sc builder (A.String, st); L.const_int i32_t 0|]
             "length" builder
+      | SCall ((_, SId "append"), [(A.List lt, lst); e]) ->
+          (* evaluate expression *)
+          let e' = expr sc builder e in
+          (* make a new list *)
+          let new_list_ptr_ptr =
+            L.build_malloc list_struct_ptr "new_list_ptr" builder
+          in
+          (* make copy function *)
+          let lc_func = build_copy_function t in
+          (* evaluate old list *)
+          let lst = expr sc builder (A.List lt, lst) in
+          let lst = L.build_load lst "ilist" builder in
+          (* get last_next_ptr_ptr *)
+          let last_next_ptr_ptr =
+            L.build_call lc_func
+              [|lst; L.const_int i32_t (-1); new_list_ptr_ptr|]
+              "last_node_ptr_ptr" builder
+          in
+          (* make a new node *)
+          let new_node_ptr =
+            L.build_malloc list_struct_type "new_node_ptr" builder
+          in
+          let _ =
+            L.build_store (L.const_null list_struct_type) new_node_ptr builder
+          in
+          (* store the value in the new node *)
+          let data_ptr_ptr =
+            L.build_struct_gep new_node_ptr 0 "data_ptr_ptr" builder
+          in
+          let new_data_ptr =
+            L.build_malloc
+              (ltype_of_typ (get_list_inner_typ t))
+              "new_data_ptr" builder
+          in
+          let _ = L.build_store e' new_data_ptr builder in
+          let type_casted_new_data_ptr =
+            L.build_bitcast new_data_ptr (L.pointer_type i8_t)
+              "casted_new_data_ptr" builder
+          in
+          let _ = L.build_store type_casted_new_data_ptr data_ptr_ptr builder in
+          let _ = L.build_store new_node_ptr last_next_ptr_ptr builder in
+          new_list_ptr_ptr
       | SCall ((_, SId "print"), [e]) -> (
           let t, _ = e in
           match t with
           | A.String ->
               L.build_call printf_func [|expr sc builder e|] "printf" builder
           | A.Bool ->
-              L.build_call printf_func
-                [|int_format_str; expr sc builder e|]
-                "printf" builder
+              let bool_val = expr sc builder e in
+              let true_str = L.build_global_stringptr "true" "string" builder in
+              let false_str =
+                L.build_global_stringptr "false" "string" builder
+              in
+              let to_print =
+                L.build_select bool_val true_str false_str "bool_to_str" builder
+              in
+              L.build_call printf_func [|to_print|] "printf" builder
           | A.Float ->
               L.build_call printf_func
                 [|float_format_str; expr sc builder e|]
@@ -649,11 +710,6 @@ let translate (functions, statements) =
       in
       let null_ptr = L.const_pointer_null list_struct_ptr in
       List.fold_left build_link null_ptr (List.rev lis)
-    in
-    let add_terminal builder instr =
-      match L.block_terminator (L.insertion_block builder) with
-      | Some _ -> ()
-      | None -> ignore (instr builder)
     in
     (* Statements *)
     let rec build_stmt sc builder stmt loop =
