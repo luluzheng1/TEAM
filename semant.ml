@@ -179,8 +179,8 @@ let check (functions, statements) =
             let _ = check_print et in
             ( Void
             , SCall
-                ( (Func ([String], Void), SId "print")
-                , List.map (expr scope) args ) )
+                ((Func ([et], Void), SId "print"), List.map (expr scope) args)
+            )
         | Id "append" ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in

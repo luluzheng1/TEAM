@@ -14,7 +14,7 @@ create() {
     ./team.native -l "$1" > "$filename".ll
     llc "$2".ll
     eval "$CC $LIBS -o $filename.exe $filename.s regex.o"
-    echo "$filename.exe created"
+    # echo "$filename.exe created"
 }
 
 # SCRIPT BEGINS HERE
@@ -32,18 +32,18 @@ fi
 
 if [[ "$func" == "clean" ]]
 then
-    echo "cleaning: $filename.s $filename.ll $filename.exe"
+    # echo "cleaning: $filename.s $filename.ll $filename.exe"
     rm "$filename".s "$filename".ll "$filename".exe
     rm -rf "$filename".exe.dSYM
     exit 0
 fi
 
-echo "${reset}compiling: $file"
+# echo "${reset}compiling: $file"
 
 create "$file" "$filename"
 
 if [[ "$func" == "run" ]]
 then
-    echo "running: $filename.exe"
+    # echo "running: $filename.exe"
     ./"$filename".exe
 fi
