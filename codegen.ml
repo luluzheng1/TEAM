@@ -69,11 +69,11 @@ let translate (functions, statements) =
   let replaceall_func : L.llvalue =
     L.declare_function "replace_all" replaceall_t the_module
   in
-  let getlist_t : L.lltype =
-    L.function_type (L.pointer_type list_struct_ptr) [||]
+  let findall_t : L.lltype =
+    L.function_type (L.pointer_type list_struct_ptr) [|string_t; string_t|]
   in
-  let getlist_func : L.llvalue =
-    L.declare_function "get_list" getlist_t the_module
+  let findall_func : L.llvalue =
+    L.declare_function "find_all" findall_t the_module
   in
   let var_table = {lvariables= StringMap.empty; parent= None} in
   let globals = ref var_table in
@@ -378,8 +378,10 @@ let translate (functions, statements) =
              ; expr sc builder (A.String, st2)
              ; expr sc builder (A.String, st3) |]
             "replaceall" builder
-      | SCall ((_, SId "getlist"), []) ->
-          L.build_call getlist_func [||] "getlist" builder
+      | SCall ((_, SId "findall"), [(A.String, st); (A.String, st2)]) ->
+          L.build_call findall_func
+            [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
+            "findall" builder
       | SCall (f, args) ->
           let fdef = expr sc builder f in
           let llarg = List.rev (List.map (expr sc builder) (List.rev args)) in

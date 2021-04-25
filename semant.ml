@@ -40,7 +40,7 @@ let check (functions, statements) =
       ; ( "replaceall"
         , [(String, "target"); (String, "regex"); (String, "replace")]
         , String )
-      ; ("getlist", [], List String) ]
+      ; ("findall", [(String, "target"); (String, "regex")], List String) ]
   in
   (* fd.typ *)
   let add_func map fd =
