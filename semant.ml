@@ -180,7 +180,7 @@ let check (functions, statements) =
               | _ -> raise (E.AppendNonList et2)
             in
             let ret =
-              if inner_ty != et2 then
+              if inner_ty <> et2 then
                 raise (E.MismatchedTypes (inner_ty, et2, call))
               else (et1, SCall (((Func ([List(inner_ty); inner_ty], List(inner_ty))), (SId "append")), args'))
             in
@@ -196,9 +196,9 @@ let check (functions, statements) =
               | _ -> raise (E.AppendNonList et2)
             in
             let ret =
-              if inner_ty != et2 then
+              if inner_ty <> et2 then
                 raise (E.MismatchedTypes (inner_ty, et2, call))
-              else (et1, SCall (((Func ([List(inner_ty); inner_ty; Int], List(inner_ty))), (SId "insert")), args'))
+              else (et1, SCall (((Func ([List(inner_ty); inner_ty], List(inner_ty))), (SId "insert")), args'))
             in
             ret
 
