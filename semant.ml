@@ -323,8 +323,8 @@ let check (functions, statements) =
           SDeclaration (ty, s, (expr_ty, e'))
         else
           let _ =
-            match expr_ty with
-            | List Unknown -> add_var_to_scope scope s ty
+            match expr_ty, e' with
+            | List Unknown, _ | _, SNoexpr -> add_var_to_scope scope s ty
             | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
           in
           SDeclaration (ty, s, (expr_ty, e'))

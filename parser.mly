@@ -80,7 +80,8 @@ typ_list:
   | LPAREN typ_list_helper RPAREN { List.rev $2 } 
 
 vdecl:
-  typ ID ASSIGN expr { Declaration($1, $2, $4) }
+    typ ID ASSIGN expr { Declaration($1, $2, $4) }
+  | typ ID { Declaration($1, $2, Noexpr) }
 
 stmt_list: 
   /* nothing */ { [] }
