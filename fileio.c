@@ -12,13 +12,21 @@ FILE* open(char* filename, char* mode)
 
 char* readline(FILE *fp)
 {
+  assert(fp != NULL);
   char *line_buf = NULL;
   size_t line_buf_size = 0;
   ssize_t line_size;
-  assert(fp != NULL);
   line_size = getline(&line_buf, &line_buf_size, fp);
 
   return line_buf;
+}
+
+void write(FILE *fp, char* text)
+{
+  assert(fp != NULL);
+  fputs(text, fp);
+
+  return;
 }
 
 #ifdef BUILD_TEST
