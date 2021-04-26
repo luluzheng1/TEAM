@@ -1,5 +1,5 @@
-(* team.ml: scan & parse & sematically analyze the input, pretty-print AST
-   and SAST *)
+(* team.ml: scan & parse & sematically analyze the input, pretty-print AST and
+   SAST *)
 
 type action = Ast | Sast | LLVM_IR | Compile
 
