@@ -759,8 +759,14 @@ let translate (functions, statements) =
          ) ) ) ; sl ] ) ] in build_stmt sc builder equivalent loop fdecl *)
       | SDeclaration (t, n, e) ->
           let e = match e with
-            | (A.Void, SNoexpr) -> L.const_null (ltype_of_typ t)
+              A.Void, SNoexpr -> (match t with
+                A.List _ -> let ptr_ptr = L.build_malloc list_struct_ptr "ptr_ptr" builder in
+                            let _ = L.build_store (L.const_null list_struct_ptr) ptr_ptr builder in
+                            ptr_ptr
+              | A.String -> L.build_global_stringptr "" "string" builder
+              | _ -> L.const_null (ltype_of_typ t))
             | asd -> expr sc builder asd
+
           in let _ = match fdecl.sfname with
             | "main" ->
                 let global =
