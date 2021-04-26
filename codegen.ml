@@ -755,32 +755,46 @@ let translate (functions, statements) =
           let bool_val = expr sc pred_builder predicate in
           let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
           L.builder_at_end context merge_bb *)
-      | SFor (s, (t, e), sl) ->
-          let list_identifier = "for_list" in
-          let list_expr = (t, SId list_identifier) in
-          let s_ty =
-            match t with
-            | A.List ty -> ty
-            | _ -> raise (Failure "internal error")
-          in
-          let len_call = (A.Int, SCall (((A.Func ([A.List(A.Int)], A.Int)), (SId "length")), [list_expr])) in
-          let index_expr = (A.Int, SId "for_index") in
-          let while_cond = (A.Bool, SBinop (index_expr, A.Less, len_call)) in
-          let element = (s_ty, SId s) in
-          let equivalent =
-            SBlock
-              [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
-              ; SDeclaration(t, list_identifier, (t, e))
-              ; SDeclaration(s_ty, s, (s_ty, SNoexpr s_ty))
-              ; SWhile(while_cond, 
-                       SBlock
-                        [
-                          SExpr(s_ty, SAssign(element, (s_ty, SSliceExpr(list_expr, SIndex index_expr)))); 
-                          SExpr(A.Int, SAssign(index_expr, (A.Int, SBinop(index_expr, A.Add, (A.Int, SIntLit 1))))); 
-                          sl])
-                        ]
-          in
-          build_stmt sc builder equivalent loop 
+          | SFor (s, (t, e), sl) ->
+            let target_identifier = "target" in
+            let target_expr = (t, SId target_identifier) in
+            let equivalent =
+              match t with
+              | A.List s_ty -> 
+                let len_call = (A.Int, SCall (((A.Func ([A.List(A.Int)], A.Int)), (SId "length")), [target_expr])) in
+                let index_expr = (A.Int, SId "for_index") in
+                let while_cond = (A.Bool, SBinop (index_expr, A.Less, len_call)) in
+                let element = (s_ty, SId s) in
+                SBlock
+                  [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
+                  ; SDeclaration(t, target_identifier, (t, e))
+                  ; SDeclaration(s_ty, s, (s_ty, SNoexpr s_ty))
+                  ; SWhile(while_cond, 
+                            SBlock
+                            [
+                              SExpr(s_ty, SAssign(element, (s_ty, SSliceExpr(target_expr, SIndex index_expr)))); 
+                              SExpr(A.Int, SAssign(index_expr, (A.Int, SBinop(index_expr, A.Add, (A.Int, SIntLit 1))))); 
+                              sl])
+                            ] 
+              | A.String ->
+                let len_call = (A.Int, SCall (((A.Func ([A.String], A.Int)), (SId "length")), [target_expr])) in
+                let index_expr = (A.Int, SId "for_index") in
+                let while_cond = (A.Bool, SBinop (index_expr, A.Less, len_call)) in
+                let element = (A.Char, SId s) in
+                SBlock
+                  [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
+                  ; SDeclaration(t, target_identifier, (t, e))
+                  ; SDeclaration(A.Char, s, (A.Char, SNoexpr A.Char))
+                  ; SWhile(while_cond, 
+                            SBlock
+                            [
+                              SExpr(A.Char, SAssign(element, (A.Char, SSliceExpr(target_expr, SIndex index_expr)))); 
+                              SExpr(A.Int, SAssign(index_expr, (A.Int, SBinop(index_expr, A.Add, (A.Int, SIntLit 1))))); 
+                              sl])
+                            ] 
+              | _ -> raise (Failure "internal error")
+            in
+            build_stmt sc builder equivalent loop 
 
       | SDeclaration (t, n, e) ->
           let _ =

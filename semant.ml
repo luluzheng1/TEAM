@@ -310,6 +310,7 @@ let check (functions, statements) =
         let s_ty =
           match t with
           | List ty -> ty
+          | String -> String
           | _ -> raise (Failure "Cannot get non list type")
         in
         let _ = add_var_to_scope scope s s_ty in
