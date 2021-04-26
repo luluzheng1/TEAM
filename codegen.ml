@@ -455,6 +455,7 @@ let translate (functions, statements) =
           L.build_call fdef (Array.of_list llarg) result builder
       | SEnd -> raise (Failure "Not Yet Implemented")
       | SNoexpr -> L.const_int i32_t 0
+
     and build_asn_list sc builder ilst lis slc re' =
       match slc with
       | SIndex i ->
@@ -757,17 +758,25 @@ let translate (functions, statements) =
          "for_index" , ( A.Int , SBinop (index_expr, A.Add, (A.Int, SIntLit 1))
          ) ) ) ; sl ] ) ] in build_stmt sc builder equivalent loop fdecl *)
       | SDeclaration (t, n, e) ->
-          let _ =
-            match fdecl.sfname with
+          let e = match e with
+              A.Void, SNoexpr -> (match t with
+                A.List _ -> let ptr_ptr = L.build_malloc list_struct_ptr "ptr_ptr" builder in
+                            let _ = L.build_store (L.const_null list_struct_ptr) ptr_ptr builder in
+                            ptr_ptr
+              | A.String -> L.build_global_stringptr "" "string" builder
+              | _ -> L.const_null (ltype_of_typ t))
+            | asd -> expr sc builder asd
+
+          in let _ = match fdecl.sfname with
             | "main" ->
                 let global =
                   L.define_global n (L.const_null (ltype_of_typ t)) the_module
                 in
-                let _ = L.build_store (expr sc builder e) global builder in
+                let _ = L.build_store e global builder in
                 add_variable_to_scope sc n global
             | _ ->
                 let local = L.build_alloca (ltype_of_typ t) n builder in
-                let _ = L.build_store (expr sc builder e) local builder in
+                let _ = L.build_store e local builder in
                 add_variable_to_scope sc n local
           in
           builder
