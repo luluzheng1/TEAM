@@ -78,8 +78,9 @@ let translate (functions, statements) =
   let build_function_body scope fdecl =
     let the_function = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
-    and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
+    let int_format_str = L.build_global_stringptr "%d" "fmt" builder
+    and float_format_str = L.build_global_stringptr "%g" "fmt" builder
+    and char_format_str = L.build_global_stringptr "%c" "fmt" builder in 
     let rec find_variable sc n =
       try Some (StringMap.find n !sc.lvariables)
       with Not_found -> (
@@ -346,6 +347,8 @@ let translate (functions, statements) =
       | SCall ((_, SId "print"), [e]) -> (
           let t, _ = e in
           match t with
+          | A.Char -> 
+              L.build_call printf_func [|char_format_str; expr sc builder e|] "printf" builder
           | A.String ->
               L.build_call printf_func [|expr sc builder e|] "printf" builder
           | A.Bool ->

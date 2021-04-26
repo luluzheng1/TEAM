@@ -160,7 +160,7 @@ let check (functions, statements) =
           | (Id "print") ->
             let check_print t =
               match t with
-              | Int | Float | Bool | String -> ()
+              | Int | Float | Bool | String | Char -> ()
               | _ ->
                   raise
                     (Failure
