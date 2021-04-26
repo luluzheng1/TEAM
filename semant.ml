@@ -310,8 +310,8 @@ let check (functions, statements) =
         let s_ty =
           match t with
           | List ty -> ty
-          | String -> String
-          | _ -> raise (Failure "Cannot get non list type")
+          | String -> Char
+          | _ -> raise (Failure "for loop can only take string or list")
         in
         let _ = add_var_to_scope scope s s_ty in
         let sexpr = SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl) in
