@@ -257,7 +257,7 @@ let check (functions, statements) =
         in
         check_slice_expr
     | End -> (Int, SEnd)
-    | Noexpr -> (Void, SNoexpr)
+    | Noexpr -> (Void, SNoexpr(Int))
   in
   let check_bool_expr scope e =
     let t', e' = expr scope e in

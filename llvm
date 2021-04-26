@@ -1,0 +1,113 @@
+; ModuleID = 'TEAM'
+source_filename = "TEAM"
+
+%list_item = type <{ i8*, %list_item* }>
+
+@fmt = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@fmt.1 = private unnamed_addr constant [3 x i8] c"%g\00", align 1
+@fmt.2 = private unnamed_addr constant [3 x i8] c"%c\00", align 1
+@a = global %list_item** null
+@b = global %list_item** null
+@for_index = global i32 0
+@for_list = global %list_item** null
+@j = global i8 0
+
+declare i32 @printf(i8*, ...)
+
+declare double @pow(double, double)
+
+define i32 @main() {
+entry:
+  %malloccall = tail call i8* @malloc(i32 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i32))
+  %list = bitcast i8* %malloccall to %list_item**
+  %malloccall1 = tail call i8* @malloc(i32 ptrtoint (%list_item* getelementptr (%list_item, %list_item* null, i32 1) to i32))
+  %list_item = bitcast i8* %malloccall1 to %list_item*
+  store %list_item zeroinitializer, %list_item* %list_item, align 1
+  %copied = tail call i8* @malloc(i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32))
+  store i8 104, i8* %copied, align 1
+  %data_ptr_container = getelementptr inbounds %list_item, %list_item* %list_item, i32 0, i32 0
+  store i8* %copied, i8** %data_ptr_container, align 8
+  %next = getelementptr inbounds %list_item, %list_item* %list_item, i32 0, i32 1
+  store %list_item* null, %list_item** %next, align 8
+  store %list_item* %list_item, %list_item** %list, align 8
+  store %list_item** %list, %list_item*** @a, align 8
+  %malloccall3 = tail call i8* @malloc(i32 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i32))
+  %list4 = bitcast i8* %malloccall3 to %list_item**
+  %malloccall5 = tail call i8* @malloc(i32 ptrtoint (%list_item* getelementptr (%list_item, %list_item* null, i32 1) to i32))
+  %list_item6 = bitcast i8* %malloccall5 to %list_item*
+  store %list_item zeroinitializer, %list_item* %list_item6, align 1
+  %malloccall7 = tail call i8* @malloc(i32 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32))
+  %copied8 = bitcast i8* %malloccall7 to i32*
+  store i32 1, i32* %copied8, align 4
+  %cast_ptr = bitcast i32* %copied8 to i8*
+  %data_ptr_container9 = getelementptr inbounds %list_item, %list_item* %list_item6, i32 0, i32 0
+  store i8* %cast_ptr, i8** %data_ptr_container9, align 8
+  %next10 = getelementptr inbounds %list_item, %list_item* %list_item6, i32 0, i32 1
+  store %list_item* null, %list_item** %next10, align 8
+  store %list_item* %list_item6, %list_item** %list4, align 8
+  store %list_item** %list4, %list_item*** @b, align 8
+  store i32 0, i32* @for_index, align 4
+  %a = load %list_item**, %list_item*** @a, align 8
+  store %list_item** %a, %list_item*** @for_list, align 8
+  store i8 0, i8* @j, align 1
+  br label %while
+
+while:                                            ; preds = %while_body, %entry
+  %for_index12 = load i32, i32* @for_index, align 4
+  %for_list13 = load %list_item**, %list_item*** @for_list, align 8
+  %ilist14 = load %list_item*, %list_item** %for_list13, align 8
+  %length = call i32 @list_length(%list_item* %ilist14, i32 0)
+  %tmp15 = icmp slt i32 %for_index12, %length
+  br i1 %tmp15, label %while_body, label %merge
+
+merge:                                            ; preds = %while
+  ret i32 0
+
+while_body:                                       ; preds = %while
+  %for_list = load %list_item**, %list_item*** @for_list, align 8
+  %ilist = load %list_item*, %list_item** %for_list, align 8
+  %for_index = load i32, i32* @for_index, align 4
+  %_result = call %list_item* @list_access(%list_item* %ilist, i32 %for_index)
+  %data_ptr_ptr = getelementptr inbounds %list_item, %list_item* %_result, i32 0, i32 0
+  %data_ptr = load i8*, i8** %data_ptr_ptr, align 8
+  %data = load i8, i8* %data_ptr, align 1
+  store i8 %data, i8* @j, align 1
+  %for_index11 = load i32, i32* @for_index, align 4
+  %tmp = add i32 %for_index11, 1
+  store i32 %tmp, i32* @for_index, align 4
+  br label %while
+}
+
+declare noalias i8* @malloc(i32)
+
+define %list_item* @list_access(%list_item* %0, i32 %1) {
+entry:
+  %is_zero = icmp eq i32 %1, 0
+  br i1 %is_zero, label %then, label %else
+
+then:                                             ; preds = %entry
+  ret %list_item* %0
+
+else:                                             ; preds = %entry
+  %next_ptr = getelementptr inbounds %list_item, %list_item* %0, i32 0, i32 1
+  %next = load %list_item*, %list_item** %next_ptr, align 8
+  %sub = sub i32 %1, 1
+  %result = call %list_item* @list_access(%list_item* %next, i32 %sub)
+  ret %list_item* %result
+}
+
+define i32 @list_length(%list_item* %0, i32 %1) {
+entry:
+  %ptr_is_null = icmp eq %list_item* %0, null
+  br i1 %ptr_is_null, label %then, label %else
+
+then:                                             ; preds = %entry
+  ret i32 %1
+
+else:                                             ; preds = %entry
+  %next_ptr = getelementptr inbounds %list_item, %list_item* %0, i32 0, i32 1
+  %next = load %list_item*, %list_item** %next_ptr, align 8
+  %add = add i32 %1, 1
+  %result = call i32 @list_length(%list_item* %next, i32 %add)
+  ret i32 %result
+}

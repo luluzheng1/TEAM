@@ -380,7 +380,7 @@ let translate (functions, statements) =
           let result = match ret_type with A.Void -> "" | _ -> "_result" in
           L.build_call fdef (Array.of_list llarg) result builder
       | SEnd -> raise (Failure "Not Yet Implemented")
-      | SNoexpr -> L.const_int i32_t 0
+      | SNoexpr t -> (L.const_null (ltype_of_typ t))
     
     and build_asn_list sc builder ilst lis slc re'  = match slc with
       | SIndex i ->
@@ -733,6 +733,28 @@ let translate (functions, statements) =
           let _ = L.build_cond_br bool_val then_bb else_bb builder in
           L.builder_at_end context merge_bb
         
+
+      (* | SFor (s, (lt, lst), body) ->
+          let list_ptr_ptr = expr sc builder (lt, lst) in
+          let list_ptr = L.build_load list_ptr_ptr "list_ptr" builder in
+          let ll_func = build_list_length_function () in
+          let length = L.build_call ll_func [|list_ptr; (L.const_int i32_t 0)|] "length" builder in 
+
+          let pred_bb = L.append_block context "for" the_function in
+          let _ = L.build_br pred_bb builder in
+          let merge_bb = L.append_block context "merge" the_function in
+          let body_bb = L.append_block context "for_body" the_function in
+          let for_builder =
+            build_stmt sc
+              (L.builder_at_end context body_bb)
+              body
+              ((pred_bb, merge_bb) :: loop)
+          in
+          let () = add_terminal while_builder (L.build_br pred_bb) in
+          let pred_builder = L.builder_at_end context pred_bb in
+          let bool_val = expr sc pred_builder predicate in
+          let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
+          L.builder_at_end context merge_bb *)
       | SFor (s, (t, e), sl) ->
           let list_identifier = "for_list" in
           let list_expr = (t, SId list_identifier) in
@@ -749,7 +771,7 @@ let translate (functions, statements) =
             SBlock
               [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
               ; SDeclaration(t, list_identifier, (t, e))
-              ; SDeclaration(s_ty, s, (s_ty, SNoexpr))
+              ; SDeclaration(s_ty, s, (s_ty, SNoexpr s_ty))
               ; SWhile(while_cond, 
                        SBlock
                         [
