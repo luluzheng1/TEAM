@@ -10,6 +10,12 @@ FILE* open(char* filename, char* mode)
   return fp;
 }
 
+int close(FILE *fp)
+{
+  assert(fp != NULL);
+  return fclose(fp);
+}
+
 char* readline(FILE *fp)
 {
   assert(fp != NULL);
@@ -25,15 +31,12 @@ void write(FILE *fp, char* text)
 {
   assert(fp != NULL);
   fputs(text, fp);
-
-  return;
+  fclose(fp);
 }
 
 #ifdef BUILD_TEST
 int main()
 {
-  FILE * fp = open("test.txt", "r");
-  printf("%d", sizeof(fp));
   return 0;
 }
 #endif

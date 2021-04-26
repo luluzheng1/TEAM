@@ -61,8 +61,12 @@ let translate (functions, statements) =
   let pow_func : L.llvalue = L.declare_function "pow" pow_t the_module in
   let open_t : L.lltype = L.function_type string_t [|string_t; string_t|] in 
   let open_func : L.llvalue = L.declare_function "fopen" open_t the_module in
-  let readline_t : L.lltype = L.function_type file_t [|string_t|] in 
+  let close_t : L.lltype = L.function_type i32_t [|file_t|] in
+  let close_func: L.llvalue = L.declare_function "close" close_t the_module in
+  let readline_t : L.lltype = L.function_type string_t [|file_t|] in 
   let readline_func : L.llvalue = L.declare_function "readline" readline_t the_module in
+  let write_t: L.lltype = L.function_type string_t [|file_t; string_t|] in
+  let write_func: L.llvalue = L.declare_function "write" write_t the_module in
   let var_table = {lvariables= StringMap.empty; parent= None} in
   let globals = ref var_table in
   let function_decls : L.llvalue StringMap.t =
@@ -319,11 +323,18 @@ let translate (functions, statements) =
           L.build_call open_func
             [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
             "open" builder
-      | SCall ((_, SId "readline"), [(A.File, st)]) ->
-          (* let _ = print_endline "here" in *)
+      | SCall ((_, SId "close"), [(A.File, file)]) ->
+        L.build_call close_func
+          [|expr sc builder (A.File, file)|]
+          "close" builder
+      | SCall ((_, SId "readline"), [(A.File, file)]) ->
           L.build_call readline_func
-            [|expr sc builder (A.File, st)|]
+            [|expr sc builder (A.File, file)|]
             "readline" builder
+      | SCall ((_, SId "write"), [(A.File, file); (A.String, st)]) ->
+          L.build_call write_func
+            [|expr sc builder (A.File, file); expr sc builder (A.String, st)|]
+            "write" builder
       | SCall ((_, SId "print"), [e]) -> (
           let t, _ = e in
           match t with
