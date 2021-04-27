@@ -878,7 +878,7 @@ let translate (functions, statements) =
 
       | SDeclaration (t, n, e) ->
           let e = match e with
-              A.Void, SNoexpr -> (match t with
+              A.Void, SNoexpr t -> (match t with
                 A.List _ -> let ptr_ptr = L.build_malloc list_struct_ptr "ptr_ptr" builder in
                             let _ = L.build_store (L.const_null list_struct_ptr) ptr_ptr builder in
                             ptr_ptr

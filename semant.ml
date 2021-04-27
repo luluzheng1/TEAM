@@ -36,14 +36,14 @@ let check (functions, statements) =
       ; ( "replaceall"
         , [(String, "target"); (String, "regex"); (String, "replace")]
         , String )
-      ; ("findall", [(String, "target"); (String, "regex")], List String) ]
+      ; ("findall", [(String, "target"); (String, "regex")], List String) 
       ; ("append"
           , [(List Unknown, "input_list"); (Unknown, "element")]
           , List Unknown)
       ; ("insert"
           , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
           , List Unknown)
-      ; ("length", [(Unknown, "input_list")], Int) ]
+      ; ("length", [(Unknown, "input_list")], Int)]
   in
   (* fd.typ *)
   let add_func map fd =
@@ -412,7 +412,7 @@ let check (functions, statements) =
         else
           let _ =
             match expr_ty, e' with
-            | List Unknown, _ | _, SNoexpr -> add_var_to_scope scope s ty
+            | List Unknown, _ | _, SNoexpr _ -> add_var_to_scope scope s ty
             | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
           in
           SDeclaration (ty, s, (expr_ty, e'))
