@@ -12,4 +12,12 @@ void test2():
   print(num);
 end
 
+test2();
+print(num);
+
+void test3():
+  num = 60;
+end
+
+test3();
 print(num);
