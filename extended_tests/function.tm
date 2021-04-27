@@ -15,8 +15,8 @@ end
 
 list<int> nums = [10, 5, 8, 1, 4, 14];
 int avg = getAverage(nums, 6);
-print(avg);
+print("%d\n", avg);
 
 list<int> result = duplicateIntList(nums);
 result[0] = 4;
-print(nums[0]);
+print("%d\n", nums[0]);
