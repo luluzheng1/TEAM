@@ -9,11 +9,10 @@ module E = Exceptions
 (* Semantic checking of the AST. Returns an SAST if successful, throws an
    exception if something is wrong. *)
 let check (functions, statements) =
-  let func_ty fd = 
-    let param_types = List.map (fun (a,_) -> a) fd.formals in
-    (Func (param_types, fd.typ))
-  in 
-
+  let func_ty fd =
+    let param_types = List.map (fun (a, _) -> a) fd.formals in
+    Func (param_types, fd.typ)
+  in
   let built_in_decls =
     let add_bind map (name, formalTypes, returnType) =
       StringMap.add name
@@ -26,15 +25,24 @@ let check (functions, statements) =
       ; ("readline", [(File, "file_handle")], String)
       ; ("write", [(File, "file_handle"); (String, "content")], Void)
       ; ("close", [(File, "file_handle")], Void)
-      ; ( "insert"
-        , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
+      ; ( "append"
+        , [(List Unknown, "input_list"); (Unknown, "element")]
         , List Unknown )
-      ; ( "insert"
-        , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
-        , List Unknown )
-      ; ("length", [(Unknown, "input_list")], Int) ]
+      ; ("length", [(Unknown, "input_list")], Int)
+      ; ("match", [(String, "target"); (String, "regex")], Bool)
+      ; ("find", [(String, "target"); (String, "regex")], String)
+      ; ( "replace"
+        , [ (String, "target")
+          ; (String, "regex")
+          ; (String, "replace")
+          ; (Int, "count") ]
+        , String )
+      ; ( "replaceall"
+        , [(String, "target"); (String, "regex"); (String, "replace")]
+        , String )
+      ; ("findall", [(String, "target"); (String, "regex")], List String) ]
   in
-  (* fd.typ  *)
+  (* fd.typ *)
   let add_func map fd =
     let n = fd.fname in
     (* Name of the function *)
@@ -78,8 +86,7 @@ let check (functions, statements) =
       raise (E.Duplicate id)
     with Not_found ->
       scope :=
-        { variables= StringMap.add id ty !scope.variables
-        ; parent= !scope.parent }
+        {variables= StringMap.add id ty !scope.variables; parent= !scope.parent}
   in
   let check_assign lvaluet rvaluet err =
     if lvaluet = rvaluet then lvaluet else raise err
@@ -104,7 +111,7 @@ let check (functions, statements) =
               else raise (E.NonUniformTypeContainer (ty, ty'))
             in
             (List x, SListLit (List.map check_type es)) )
-    | Id s -> type_of_identifier scope s, SId s
+    | Id s -> (type_of_identifier scope s, SId s)
     | Binop (e1, op, e2) as e ->
         let t1, e1' = expr scope e1 and t2, e2' = expr scope e2 in
         let same = t1 = t2 in
@@ -150,58 +157,47 @@ let check (functions, statements) =
         in
         let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex)) in
         (lrt, SAssign ((lt, s'), (rt, e')))
-    | Call (fname, args) as call ->
+    | Call (fname, args) as call -> (
         let check_length frmls =
-          if List.length args != (List.length frmls) then
-            raise (E.WrongNumberOfArgs (List.length frmls, List.length args, call))
+          if List.length args != List.length frmls then
+            raise
+              (E.WrongNumberOfArgs (List.length frmls, List.length args, call))
           else ()
         in
-        (match fname with
-          | (Id "print") ->
+        match fname with
+        | Id "print" ->
             let check_print t =
               match t with
               | Int | Float | Bool | String -> ()
               | _ ->
                   raise
                     (Failure
-                      ( "Print does not support printing for type"
-                      ^ string_of_typ t ) )
+                       ( "Print does not support printing for type"
+                       ^ string_of_typ t ) )
             in
             let et, _ = expr scope (hd args) in
             let _ = check_print et in
-            (Void, SCall (((Func ([String], Void)), (SId "print")), List.map (expr scope) args))
-        | (Id "insert") ->
+            ( Void
+            , SCall
+                ((Func ([et], Void), SId "print"), List.map (expr scope) args)
+            )
+        | Id "append" ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in
             let et2, _ = hd (tl args') in
             let inner_ty =
-              match et1 with
-              | List ty -> ty
-              | _ -> raise (E.AppendNonList et2)
+              match et1 with List ty -> ty | _ -> raise (E.AppendNonList et2)
             in
             let ret =
               if inner_ty != et2 then
                 raise (E.MismatchedTypes (inner_ty, et2, call))
-              else (et1, SCall (((Func ([List(Int); Int], List(Int))), (SId "insert")), args'))
+              else
+                ( et1
+                , SCall ((Func ([List Int; Int], List Int), SId "append"), args')
+                )
             in
             ret
-        | (Id "insert") ->
-          let args' = List.map (expr scope) args in
-          let et1, _ = hd args' in
-          let et2, _ = hd (tl args') in
-          let inner_ty =
-            match et1 with
-            | List ty -> ty
-            | _ -> raise (E.AppendNonList et2)
-          in
-          let ret =
-            if inner_ty != et2 then
-              raise (E.MismatchedTypes (inner_ty, et2, call))
-            else (et1, SCall (((Func ([List(Int); Int; Int], List(Int))), (SId "insert")), args'))
-          in
-          ret
-  
-        | (Id "length") ->
+        | Id "length" ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in
             let _ =
@@ -210,21 +206,21 @@ let check (functions, statements) =
               | String -> ()
               | _ -> raise (E.LengthWrongArgument et1)
             in
-            (Int, SCall (((Func ([List(Int)], Int)), (SId "length")), args'))
+            (Int, SCall ((Func ([List Int], Int), SId "length"), args'))
         | _ ->
-          let (fty, fname') = expr scope fname in
-          let formals, ret_type = match fty with
-              | Func (f, r) -> f, r
+            let fty, fname' = expr scope fname in
+            let formals, ret_type =
+              match fty with
+              | Func (f, r) -> (f, r)
               | _ -> raise (Failure "Not a function")
-          in
-          let _ = check_length formals in
-          let check_call ft e =
-            let et, e' = expr scope e in
-            (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
-          in
-          let args' = List.map2 check_call formals args in
-          (ret_type, SCall ((fty, fname'), args')))
-  
+            in
+            let _ = check_length formals in
+            let check_call ft e =
+              let et, e' = expr scope e in
+              (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
+            in
+            let args' = List.map2 check_call formals args in
+            (ret_type, SCall ((fty, fname'), args')) )
     | SliceExpr (lexpr, slce) as slice ->
         (* let lt = type_of_identifier scope id in *)
         let lt, lexpr' = expr scope lexpr in
@@ -280,10 +276,7 @@ let check (functions, statements) =
     match stmt with
     | Expr e -> SExpr (expr scope e)
     | Block sl ->
-        let new_scope =
-          { variables= StringMap.empty
-          ; parent= Some !scope }
-        in
+        let new_scope = {variables= StringMap.empty; parent= Some !scope} in
         let new_scope_ref = ref new_scope in
         let rec check_stmt_list = function
           | Block sl :: ss -> check_stmt_list (sl @ ss)
@@ -330,8 +323,8 @@ let check (functions, statements) =
           SDeclaration (ty, s, (expr_ty, e'))
         else
           let _ =
-            match expr_ty with
-            | List Unknown -> add_var_to_scope scope s ty
+            match expr_ty, e' with
+            | List Unknown, _ | _, SNoexpr -> add_var_to_scope scope s ty
             | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
           in
           SDeclaration (ty, s, (expr_ty, e'))
