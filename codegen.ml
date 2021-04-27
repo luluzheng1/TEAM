@@ -97,9 +97,6 @@ let translate (functions, statements) =
   let build_function_body scope fdecl =
     let the_function = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-    let int_format_str = L.build_global_stringptr "%d" "fmt" builder
-    and float_format_str = L.build_global_stringptr "%g" "fmt" builder
-    and char_format_str = L.build_global_stringptr "%c" "fmt" builder in 
     let rec find_variable sc n =
       try Some (StringMap.find n !sc.lvariables)
       with Not_found -> (
@@ -358,34 +355,25 @@ let translate (functions, statements) =
           L.build_call sl_func
             [|expr sc builder (A.String, st); L.const_int i32_t 0|]
             "length" builder
-
-            (* let t, _ = e in
-            match t with
-            | A.String ->
-                L.build_call printf_func [|expr sc builder e|] "printf" builder
-            | A.Bool ->
-                let bool_val = expr sc builder e in
-                let true_str = L.build_global_stringptr "true" "string" builder in
-                let false_str =
-                  L.build_global_stringptr "false" "string" builder
-                in
-                let to_print =
-                  L.build_select bool_val true_str false_str "bool_to_str" builder
-                in
-                L.build_call printf_func [|to_print|] "printf" builder
-            | A.Float ->
-                L.build_call printf_func
-                  [|float_format_str; expr sc builder e|]
-                  "printf" builder
-            | A.Int ->
-                L.build_call printf_func
-                  [|int_format_str; expr sc builder e|]
-                  "printf" builder
-            | _ ->
-                raise
-                  (Failure
-                     ("Print for type " ^ A.string_of_typ t ^ " not supported yet")
-                  ) ) *)
+      | SCall ((_, SId "print"), args) -> (
+        let eval_arg e = 
+          let t, _ = e in
+          match t with 
+          | A.Bool ->
+              let bool_val = expr sc builder e in
+              let true_str = L.build_global_stringptr "true" "string" builder in
+              let false_str =
+                L.build_global_stringptr "false" "string" builder
+              in
+              let to_print =
+                L.build_select bool_val true_str false_str "bool_to_str" builder
+              in
+              to_print
+          | _ -> expr sc builder e
+        in 
+        let arg_list = List.map eval_arg args in
+        L.build_call printf_func (Array.of_list arg_list) "printf" builder
+      )
       | SCall ((_, SId "match"), [(A.String, st); (A.String, st2)]) ->
           L.build_call match_func
             [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
