@@ -97,8 +97,9 @@ let translate (functions, statements) =
   let build_function_body scope fdecl =
     let the_function = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
-    and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
+    let int_format_str = L.build_global_stringptr "%d" "fmt" builder
+    and float_format_str = L.build_global_stringptr "%g" "fmt" builder
+    and char_format_str = L.build_global_stringptr "%c" "fmt" builder in 
     let rec find_variable sc n =
       try Some (StringMap.find n !sc.lvariables)
       with Not_found -> (
@@ -302,7 +303,11 @@ let translate (functions, statements) =
             | A.Leq -> L.build_icmp L.Icmp.Sle e1' e2' "tmp" builder
             | A.Greater -> L.build_icmp L.Icmp.Sgt e1' e2' "tmp" builder
             | A.Geq -> L.build_icmp L.Icmp.Sge e1' e2' "tmp" builder
-            | A.Range -> raise (Failure "Not Yet Implemented")
+            | A.Range -> 
+              let range_function = build_range_function () in 
+              let head_ptr_ptr = L.build_malloc list_struct_ptr "head_ptr_ptr" builder in
+              let _ = L.build_store (L.const_null list_struct_ptr) head_ptr_ptr builder in
+              L.build_call range_function [|e1'; e2'; head_ptr_ptr; (L.const_int i32_t 0)|] "range_list" builder
             | _ -> raise E.InvalidIntBinop
           else if t1 = A.Bool && t2 = A.Bool then
             match op with
@@ -311,7 +316,15 @@ let translate (functions, statements) =
             | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "tmp" builder
             | A.Neq -> L.build_icmp L.Icmp.Ne e1' e2' "tmp" builder
             | _ -> raise E.InvalidFloatBinop
-          else raise (Failure "Not Yet Implemented")
+          else if t1 = A.Char && t2 = A.Char then 
+            match op with 
+            | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "temp" builder
+            | _ -> raise E.InvalidIntBinop
+          else (
+            print_string (A.string_of_typ t1);
+            print_string (A.string_of_typ t2);
+            raise (Failure "Not Yet Implemented");
+          )
       | SUnop (op, e) ->
           let t, _ = e in
           let e' = expr sc builder e in
@@ -345,74 +358,6 @@ let translate (functions, statements) =
           L.build_call sl_func
             [|expr sc builder (A.String, st); L.const_int i32_t 0|]
             "length" builder
-      | SCall ((_, SId "append"), [(A.List lt, lst); e]) ->
-          (* evaluate expression *)
-          let e' = expr sc builder e in
-          (* make a new list *)
-          let new_list_ptr_ptr =
-            L.build_malloc list_struct_ptr "new_list_ptr" builder
-          in
-          (* make copy function *)
-          let lc_func = build_copy_function t in
-          (* evaluate old list *)
-          let lst = expr sc builder (A.List lt, lst) in
-          let lst = L.build_load lst "ilist" builder in
-          (* get last_next_ptr_ptr *)
-          let last_next_ptr_ptr =
-            L.build_call lc_func
-              [|lst; L.const_int i32_t (-1); new_list_ptr_ptr|]
-              "last_node_ptr_ptr" builder
-          in
-          (* make a new node *)
-          let new_node_ptr =
-            L.build_malloc list_struct_type "new_node_ptr" builder
-          in
-          let _ =
-            L.build_store (L.const_null list_struct_type) new_node_ptr builder
-          in
-          (* store the value in the new node *)
-          let data_ptr_ptr =
-            L.build_struct_gep new_node_ptr 0 "data_ptr_ptr" builder
-          in
-          let new_data_ptr =
-            L.build_malloc
-              (ltype_of_typ (get_list_inner_typ t))
-              "new_data_ptr" builder
-          in
-          let _ = L.build_store e' new_data_ptr builder in
-          let type_casted_new_data_ptr =
-            L.build_bitcast new_data_ptr (L.pointer_type i8_t)
-              "casted_new_data_ptr" builder
-          in
-          let _ = L.build_store type_casted_new_data_ptr data_ptr_ptr builder in
-          let _ = L.build_store new_node_ptr last_next_ptr_ptr builder in
-          new_list_ptr_ptr
-          | SCall ((_, SId "print"), args) -> (
-            let eval_arg e = 
-              let t, _ = e in
-              match t with 
-              | A.String -> expr sc builder e
-              | A.Int -> expr sc builder e
-              | A.Float -> expr sc builder e
-              | A.Bool ->
-                  let bool_val = expr sc builder e in
-                  let true_str = L.build_global_stringptr "true" "string" builder in
-                  let false_str =
-                    L.build_global_stringptr "false" "string" builder
-                  in
-                  let to_print =
-                    L.build_select bool_val true_str false_str "bool_to_str" builder
-                  in
-                  to_print
-              | _ ->
-                raise
-                  (Failure
-                      ("Print for type " ^ A.string_of_typ t ^ " not supported yet")
-                  ) 
-            in 
-            let arg_list = List.map eval_arg args in
-            L.build_call printf_func (Array.of_list arg_list) "printf" builder
-          )
 
             (* let t, _ = e in
             match t with
@@ -470,6 +415,52 @@ let translate (functions, statements) =
           L.build_call findall_func
             [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
             "findall" builder
+
+      | SCall ((_, SId "append"), [(lt, lst); e]) -> 
+        let list_ptr_ptr = expr sc builder (lt, lst) in
+        let list_ptr = L.build_load list_ptr_ptr "list_ptr" builder in
+        let e' = expr sc builder e in 
+
+        let ll_func = build_list_length_function () in
+        let length = L.build_call ll_func [|list_ptr; (L.const_int i32_t 0)|] "length" builder in 
+
+        let insert_func = build_insert_function lt in         
+        L.build_call insert_func [|list_ptr_ptr; e'; length|] "list_ptr_ptr" builder
+
+      | SCall ((_, SId "insert"), [(lt, lst); e; i]) -> 
+          let list_ptr_ptr = expr sc builder (lt, lst) in
+          let e' = expr sc builder e in 
+          let i' = expr sc builder i in
+
+          let insert_func = build_insert_function lt in 
+          L.build_call insert_func [|list_ptr_ptr; e'; i'|] "list_ptr_ptr" builder
+      
+      | SCall ((_, SId "print"), [e]) -> (
+          let t, _ = e in
+          match t with
+          | A.Char -> 
+              L.build_call printf_func [|char_format_str; expr sc builder e|] "printf" builder
+          | A.String ->
+              L.build_call printf_func [|expr sc builder e|] "printf" builder
+          | A.Bool ->
+              let bool_val = expr sc builder e in
+              let true_str = L.build_global_stringptr "true" "string" builder in
+              let false_str = L.build_global_stringptr "false" "string" builder in
+              let to_print = L.build_select bool_val true_str false_str "bool_to_str" builder in
+              L.build_call printf_func [|to_print|] "printf" builder
+          | A.Float ->
+              L.build_call printf_func
+                [|float_format_str; expr sc builder e|]
+                "printf" builder
+          | A.Int ->
+              L.build_call printf_func
+                [|int_format_str; expr sc builder e|]
+                "printf" builder
+          | _ ->
+              raise
+                (Failure
+                   ( "Print for type " ^ A.string_of_typ t
+                   ^ " not supported yet" ) ) )
       | SCall (f, args) ->
           let fdef = expr sc builder f in
           let llarg = List.rev (List.map (expr sc builder) (List.rev args)) in
@@ -481,8 +472,8 @@ let translate (functions, statements) =
           let result = match ret_type with A.Void -> "" | _ -> "_result" in
           L.build_call fdef (Array.of_list llarg) result builder
       | SEnd -> raise (Failure "Not Yet Implemented")
-      | SNoexpr -> L.const_int i32_t 0
-
+      | SNoexpr t -> (L.const_null (ltype_of_typ t))
+      
     and build_asn_list sc builder ilst lis slc re' =
       match slc with
       | SIndex i ->
@@ -544,146 +535,217 @@ let translate (functions, statements) =
       let _ = L.build_store e' l_var builder in
       sc :=
         {lvariables= StringMap.add n l_var !sc.lvariables; parent= !sc.parent}
+
+    
+    and build_range_function () = 
+    match L.lookup_function "range_function" the_module with 
+    | Some func -> func
+    | None -> 
+        let range_func_t = 
+          L.function_type (L.pointer_type list_struct_ptr) 
+            [|i32_t; i32_t; (L.pointer_type list_struct_ptr); i32_t|]
+        in
+        let range_func = L.define_function "range" range_func_t the_module in 
+        let range_builder = L.builder_at_end context (L.entry_block range_func) in 
+        let s = L.param range_func 0 in 
+        let e = L.param range_func 1 in 
+        let head_ptr_ptr = L.param range_func 2 in 
+        let curr_length = L.param range_func 3 in 
+        (* let head_ptr = L.build_load head_ptr_ptr "head_ptr" range_builder in *)
+        let bool_val = L.build_icmp L.Icmp.Eq s e "is_last" range_builder in 
+        let then_bb = L.append_block context "then" range_func in 
+        let _ = L.build_ret head_ptr_ptr (L.builder_at_end context then_bb) in 
+        let else_bb = L.append_block context "else" range_func in 
+        let else_builder = L.builder_at_end context else_bb in 
+        let insert_func = build_insert_function (A.List(A.Int)) in 
+        let head_ptr_ptr = L.build_call insert_func [|head_ptr_ptr; s; curr_length|] "head_ptr_ptr" else_builder in
+        let next_s = L.build_add (L.const_int i32_t 1) s "next_s" else_builder in 
+        let next_length = L.build_add (L.const_int i32_t 1) curr_length "next_length" else_builder in 
+        let ret = L.build_call range_func [|next_s; e; head_ptr_ptr; next_length|] "" else_builder in
+        let _ = L.build_ret ret else_builder in
+        let _ = L.build_cond_br bool_val then_bb else_bb range_builder in
+        range_func
     and build_copy_function typ =
-      let t = get_list_inner_typ typ in
-      let func_name = "list_copy_" ^ A.string_of_typ t in
-      match L.lookup_function func_name the_module with
-      | Some func -> func
-      | None ->
-          let lc_func_t =
-            L.function_type
-              (L.pointer_type list_struct_ptr)
-              [|list_struct_ptr; i32_t; L.pointer_type list_struct_ptr|]
-          in
-          let lc_func = L.define_function func_name lc_func_t the_module in
-          let lc_builder = L.builder_at_end context (L.entry_block lc_func) in
-          let i_cond =
-            L.build_icmp L.Icmp.Eq (L.param lc_func 1) (L.const_int i32_t 0)
-              "is_zero" lc_builder
-          in
-          let n_cond =
-            L.build_is_null (L.param lc_func 0) "ptr_is_null" lc_builder
-          in
-          let bool_val = L.build_or i_cond n_cond "or_conds" lc_builder in
-          let then_bb = L.append_block context "then" lc_func in
-          let _ =
-            L.build_ret (L.param lc_func 2) (L.builder_at_end context then_bb)
-          in
-          let else_bb = L.append_block context "else" lc_func in
-          let else_builder = L.builder_at_end context else_bb in
-          let new_struct_ptr =
-            L.build_malloc list_struct_type "new_struct_ptr" else_builder
-          in
-          let _ =
-            L.build_store
-              (L.const_null list_struct_type)
-              new_struct_ptr else_builder
-          in
-          let data_ptr = L.build_malloc (ltype_of_typ t) "ltyp" else_builder in
-          let old_data_ptr_ptr =
-            L.build_struct_gep (L.param lc_func 0) 0 "old_data_ptr_ptr"
-              else_builder
-          in
-          let old_data_ptr =
-            L.build_load old_data_ptr_ptr "old_data_ptr" else_builder
-          in
-          let old_data_ptr =
-            L.build_bitcast old_data_ptr
-              (L.pointer_type (ltype_of_typ t))
-              "cast_old_data_ptr" else_builder
-          in
-          let old_data = L.build_load old_data_ptr "old_data" else_builder in
-          let _ = L.build_store old_data data_ptr else_builder in
-          let data_ptr_cast =
-            L.build_bitcast data_ptr (L.pointer_type i8_t) "data_ptr_cast"
-              else_builder
-          in
-          let _ =
-            L.build_store data_ptr_cast
-              (L.build_struct_gep new_struct_ptr 0 "store_new_data" else_builder)
-              else_builder
-          in
-          let _ =
-            L.build_store new_struct_ptr (L.param lc_func 2) else_builder
-          in
-          let ptr_ptr =
-            L.build_struct_gep new_struct_ptr 1 "next" else_builder
-          in
-          let next_ptr =
-            L.build_struct_gep (L.param lc_func 0) 1 "next_ptr" else_builder
-          in
-          let next = L.build_load next_ptr "next" else_builder in
-          let sub =
-            L.build_sub (L.param lc_func 1) (L.const_int i32_t 1) "sub"
-              else_builder
-          in
-          let ret =
-            L.build_call lc_func [|next; sub; ptr_ptr|] "" else_builder
-          in
-          let _ = L.build_ret ret else_builder in
-          let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in
-          lc_func
-    and build_string_length_function () =
-      match L.lookup_function "string_length" the_module with
-      | Some func -> func
-      | None ->
-          let sl_func_t = L.function_type i32_t [|string_t; i32_t|] in
-          let sl_func =
-            L.define_function "string_length" sl_func_t the_module
-          in
-          let sl_builder = L.builder_at_end context (L.entry_block sl_func) in
-          let bool_val =
-            L.build_is_null
-              (L.build_load (L.param sl_func 0) "char" sl_builder)
-              "ptr_is_null" sl_builder
-          in
-          let then_bb = L.append_block context "then" sl_func in
-          let _ =
-            L.build_ret (L.param sl_func 1) (L.builder_at_end context then_bb)
-          in
-          let else_bb = L.append_block context "else" sl_func in
-          let else_builder = L.builder_at_end context else_bb in
-          let next =
-            L.build_gep (L.param sl_func 0)
-              [|L.const_int i32_t 1|]
-              "next_ptr" else_builder
-          in
-          let add =
-            L.build_add (L.param sl_func 1) (L.const_int i32_t 1) "add"
-              else_builder
-          in
-          let ret = L.build_call sl_func [|next; add|] "result" else_builder in
-          let _ = L.build_ret ret else_builder in
-          let _ = L.build_cond_br bool_val then_bb else_bb sl_builder in
-          sl_func
-    and build_list_length_function () =
-      match L.lookup_function "list_length" the_module with
-      | Some func -> func
-      | None ->
-          let ll_func_t = L.function_type i32_t [|list_struct_ptr; i32_t|] in
-          let ll_func = L.define_function "list_length" ll_func_t the_module in
-          let ll_builder = L.builder_at_end context (L.entry_block ll_func) in
-          let bool_val =
-            L.build_is_null (L.param ll_func 0) "ptr_is_null" ll_builder
-          in
-          let then_bb = L.append_block context "then" ll_func in
-          let _ =
-            L.build_ret (L.param ll_func 1) (L.builder_at_end context then_bb)
-          in
-          let else_bb = L.append_block context "else" ll_func in
-          let else_builder = L.builder_at_end context else_bb in
-          let next_ptr =
-            L.build_struct_gep (L.param ll_func 0) 1 "next_ptr" else_builder
-          in
-          let next = L.build_load next_ptr "next" else_builder in
-          let add =
-            L.build_add (L.param ll_func 1) (L.const_int i32_t 1) "add"
-              else_builder
-          in
-          let ret = L.build_call ll_func [|next; add|] "result" else_builder in
-          let _ = L.build_ret ret else_builder in
-          let _ = L.build_cond_br bool_val then_bb else_bb ll_builder in
-          ll_func
+    let t = get_list_inner_typ typ in
+    let func_name = "list_copy_" ^ A.string_of_typ t in
+    match L.lookup_function func_name the_module with
+    | Some func -> func
+    | None ->
+        let lc_func_t =
+          L.function_type (L.pointer_type list_struct_ptr)
+            [|list_struct_ptr; i32_t; L.pointer_type list_struct_ptr|]
+        in
+        let lc_func = L.define_function func_name lc_func_t the_module in
+        let lc_builder = L.builder_at_end context (L.entry_block lc_func) in
+        let i_cond =
+          L.build_icmp L.Icmp.Eq (L.param lc_func 1) (L.const_int i32_t 0)
+            "is_zero" lc_builder
+        in
+        let n_cond =
+          L.build_is_null (L.param lc_func 0) "ptr_is_null" lc_builder
+        in
+        let bool_val = L.build_or i_cond n_cond "or_conds" lc_builder in
+        let then_bb = L.append_block context "then" lc_func in
+        let _ = L.build_ret (L.param lc_func 2) (L.builder_at_end context then_bb) in
+        let else_bb = L.append_block context "else" lc_func in
+        let else_builder = L.builder_at_end context else_bb in
+        let new_struct_ptr =
+          L.build_malloc list_struct_type "new_struct_ptr" else_builder
+        in
+        let _ = L.build_store (L.const_null list_struct_type)
+           new_struct_ptr else_builder in
+        let data_ptr = L.build_malloc (ltype_of_typ t) "ltyp" else_builder in
+        let old_data_ptr_ptr =
+          L.build_struct_gep (L.param lc_func 0) 0 "old_data_ptr_ptr"
+            else_builder
+        in
+        let old_data_ptr =
+          L.build_load old_data_ptr_ptr "old_data_ptr" else_builder
+        in
+        let old_data_ptr =
+          L.build_bitcast old_data_ptr
+            (L.pointer_type (ltype_of_typ t))
+            "cast_old_data_ptr" else_builder
+        in
+        let old_data = L.build_load old_data_ptr "old_data" else_builder in
+        let _ = L.build_store old_data data_ptr else_builder in
+        let data_ptr_cast =
+          L.build_bitcast data_ptr (L.pointer_type i8_t) "data_ptr_cast"
+            else_builder
+        in
+        let _ =
+          L.build_store data_ptr_cast
+            (L.build_struct_gep new_struct_ptr 0 "store_new_data" else_builder)
+            else_builder
+        in
+        let _ =
+          L.build_store new_struct_ptr (L.param lc_func 2) else_builder
+        in
+        let ptr_ptr =
+          L.build_struct_gep new_struct_ptr 1 "next" else_builder
+        in
+        let next_ptr =
+          L.build_struct_gep (L.param lc_func 0) 1 "next_ptr" else_builder
+        in
+        let next = L.build_load next_ptr "next" else_builder in
+        let sub =
+          L.build_sub (L.param lc_func 1) (L.const_int i32_t 1) "sub"
+            else_builder
+        in
+        let ret = L.build_call lc_func [|next; sub; ptr_ptr|] "" else_builder in
+        let _ = L.build_ret ret else_builder in
+        let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in
+        lc_func
+
+        and build_string_length_function () =
+        match L.lookup_function "string_length" the_module with
+        | Some func -> func
+        | None ->
+            let sl_func_t =
+              L.function_type i32_t [|string_t; i32_t|]
+            in
+            let sl_func = L.define_function "string_length" sl_func_t the_module in
+            let sl_builder = L.builder_at_end context (L.entry_block sl_func) in
+            let bool_val =
+              L.build_is_null (L.build_load (L.param sl_func 0) "char" sl_builder) "ptr_is_null" sl_builder
+            in
+            let then_bb = L.append_block context "then" sl_func in
+            let _ =
+              L.build_ret (L.param sl_func 1) (L.builder_at_end context then_bb)
+            in
+            let else_bb = L.append_block context "else" sl_func in
+            let else_builder = L.builder_at_end context else_bb in
+            let next =
+              L.build_gep (L.param sl_func 0) [|L.const_int i32_t 1|] "next_ptr" else_builder
+            in
+            let add =
+              L.build_add (L.param sl_func 1) (L.const_int i32_t 1) "add"
+                else_builder
+            in
+            let ret = L.build_call sl_func [|next; add|] "result" else_builder in
+            let _ = L.build_ret ret else_builder in
+            let _ = L.build_cond_br bool_val then_bb else_bb sl_builder in
+            sl_func
+
+        and build_insert_function typ = 
+        let t = get_list_inner_typ typ in
+        let func_name = "insert_" ^ A.string_of_typ t in
+        match L.lookup_function func_name the_module with 
+        | Some func -> func
+        | None -> 
+            let ltype = ltype_of_typ t in 
+            let insert_func_t = 
+              L.function_type (L.pointer_type list_struct_ptr) [|(L.pointer_type list_struct_ptr); ltype; i32_t|]
+            in
+            let insert_func =
+              L.define_function func_name insert_func_t the_module 
+            in
+            let insert_builder = L.builder_at_end context (L.entry_block insert_func) in
+            let list_ptr_ptr = L.param insert_func 0 in
+            let e' = L.param insert_func 1 in
+            let i' = L.param insert_func 2 in
+
+            let list_ptr = L.build_load list_ptr_ptr "list_ptr" insert_builder in
+
+            let new_list_ptr_ptr = L.build_malloc list_struct_ptr "new_list_ptr_ptr" insert_builder in
+            let _ = L.build_store (L.const_null list_struct_ptr) new_list_ptr_ptr insert_builder in 
+
+            let lc_func = build_copy_function typ in  
+            let _ = L.build_call lc_func [|list_ptr; L.const_int i32_t (-1); new_list_ptr_ptr|] "last_node_ptr_ptr" insert_builder in 
+            let new_list_ptr = L.build_load new_list_ptr_ptr "new_list_ptr" insert_builder in
+            let la_func = build_access_function () in
+            let temp = L.build_alloca list_struct_type "temp" insert_builder in
+            let next = L.build_struct_gep temp 1 "next" insert_builder in 
+            let _ = L.build_store new_list_ptr next insert_builder in
+            let dat_struct = L.build_malloc list_struct_type "data_node" insert_builder in
+            let dat_ptr = L.build_malloc ltype "data" insert_builder in
+            let _ = L.build_store e' dat_ptr insert_builder in
+            let dat_ptr_ptr = L.build_struct_gep dat_struct 0 "dat" insert_builder in
+            let type_casted = L.build_bitcast dat_ptr (L.pointer_type i8_t) "cast" insert_builder in 
+            let _ = L.build_store type_casted dat_ptr_ptr insert_builder in
+            let item_ptr =
+              L.build_call la_func [|temp; i'|] "result" insert_builder
+            in
+            let cur_next = L.build_struct_gep item_ptr 1 "test" insert_builder in
+            let _ = L.build_store (L.build_load cur_next "temp" insert_builder) (L.build_struct_gep dat_struct 1 "dat" insert_builder) insert_builder in
+            let _ = L.build_store dat_struct cur_next insert_builder in
+            let _ = L.build_store (L.build_load next "temp" insert_builder) new_list_ptr_ptr insert_builder in
+            let _ =
+              L.build_ret new_list_ptr_ptr insert_builder
+            in
+            insert_func
+
+        and build_list_length_function () =
+        match L.lookup_function "list_length" the_module with
+        | Some func -> func
+        | None ->
+            let ll_func_t =
+              L.function_type i32_t [|list_struct_ptr; i32_t|]
+            in
+            let ll_func = L.define_function "list_length" ll_func_t the_module in
+            let ll_builder = L.builder_at_end context (L.entry_block ll_func) in
+            let bool_val =
+              L.build_is_null (L.param ll_func 0) "ptr_is_null" ll_builder
+            in
+            let then_bb = L.append_block context "then" ll_func in
+            let _ =
+              L.build_ret (L.param ll_func 1) (L.builder_at_end context then_bb)
+            in
+            let else_bb = L.append_block context "else" ll_func in
+            let else_builder = L.builder_at_end context else_bb in
+            let next_ptr =
+              L.build_struct_gep (L.param ll_func 0) 1 "next_ptr" else_builder
+            in
+            let next = L.build_load next_ptr "next" else_builder in
+            let add =
+              L.build_add (L.param ll_func 1) (L.const_int i32_t 1) "add"
+                else_builder
+            in
+            let ret = L.build_call ll_func [|next; add|] "result" else_builder in
+            let _ = L.build_ret ret else_builder in
+            let _ = L.build_cond_br bool_val then_bb else_bb ll_builder in
+            ll_func
+  
     and build_access_function () =
       match L.lookup_function "list_access" the_module with
       | Some func -> func
@@ -771,19 +833,49 @@ let translate (functions, statements) =
           let () = add_terminal else_builder branch_instr in
           let _ = L.build_cond_br bool_val then_bb else_bb builder in
           L.builder_at_end context merge_bb
-      | SFor _ -> builder
-      (* | SFor (s, (t, e), sl) -> let list_identifier = "for_list" in let
-         list_expr = (t, SId list_identifier) in let s_ty = match t with |
-         A.List ty -> ty | _ -> raise (Failure "internal error") in let len_call
-         = (A.Int, SCall ("length", [list_expr])) in let index_expr = (A.Int,
-         SId "for_index") in let while_cond = (A.Bool, SBinop (index_expr,
-         A.Less, len_call)) in let equivalent = SBlock [ SDeclaration (A.Int,
-         "for_index", (A.Int, SIntLit 0)) ; SDeclaration (t, list_identifier,
-         (t, e)) ; SDeclaration (s_ty, s, (s_ty, SNoexpr)) ; SWhile ( while_cond
-         , SBlock [ SExpr ( s_ty , SAssign ( s , ( s_ty , SSliceExpr
-         (list_identifier, SIndex index_expr) ) ) ) ; SExpr ( A.Int , SAssign (
-         "for_index" , ( A.Int , SBinop (index_expr, A.Add, (A.Int, SIntLit 1))
-         ) ) ) ; sl ] ) ] in build_stmt sc builder equivalent loop fdecl *)
+
+        
+          | SFor (s, (t, e), sl) ->
+            let target_identifier = "target" in
+            let target_expr = (t, SId target_identifier) in
+            let equivalent =
+              match t with
+              | A.List s_ty -> 
+                let len_call = (A.Int, SCall (((A.Func ([A.List(A.Int)], A.Int)), (SId "length")), [target_expr])) in
+                let index_expr = (A.Int, SId "for_index") in
+                let while_cond = (A.Bool, SBinop (index_expr, A.Less, len_call)) in
+                let element = (s_ty, SId s) in
+                SBlock
+                  [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
+                  ; SDeclaration(t, target_identifier, (t, e))
+                  ; SDeclaration(s_ty, s, (s_ty, SNoexpr s_ty))
+                  ; SWhile(while_cond, 
+                            SBlock
+                            [
+                              SExpr(s_ty, SAssign(element, (s_ty, SSliceExpr(target_expr, SIndex index_expr)))); 
+                              SExpr(A.Int, SAssign(index_expr, (A.Int, SBinop(index_expr, A.Add, (A.Int, SIntLit 1))))); 
+                              sl])
+                            ] 
+              | A.String ->
+                let len_call = (A.Int, SCall (((A.Func ([A.String], A.Int)), (SId "length")), [target_expr])) in
+                let index_expr = (A.Int, SId "for_index") in
+                let while_cond = (A.Bool, SBinop (index_expr, A.Less, len_call)) in
+                let element = (A.Char, SId s) in
+                SBlock
+                  [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
+                  ; SDeclaration(t, target_identifier, (t, e))
+                  ; SDeclaration(A.Char, s, (A.Char, SNoexpr A.Char))
+                  ; SWhile(while_cond, 
+                            SBlock
+                            [
+                              SExpr(A.Char, SAssign(element, (A.Char, SSliceExpr(target_expr, SIndex index_expr)))); 
+                              SExpr(A.Int, SAssign(index_expr, (A.Int, SBinop(index_expr, A.Add, (A.Int, SIntLit 1))))); 
+                              sl])
+                            ] 
+              | _ -> raise (Failure "internal error")
+            in
+            build_stmt sc builder equivalent loop 
+
       | SDeclaration (t, n, e) ->
           let e = match e with
               A.Void, SNoexpr -> (match t with

@@ -22,8 +22,9 @@ and sx =
   | SAssign of sexpr * sexpr
   | SCall of sexpr * sexpr list
   | SSliceExpr of sexpr * sslce
+  | SNoexpr of typ
   | SEnd
-  | SNoexpr
+
 
 and sslce = SIndex of sexpr | SSlice of sexpr * sexpr
 
@@ -73,7 +74,7 @@ let rec string_of_sexpr (t, e) =
     | SCall (f, el) ->
         (string_of_sexpr f) ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
     | SEnd -> ""
-    | SNoexpr -> "" )
+    | SNoexpr _ -> "" )
   ^ ")"
 
 let indent stmts_as_string =
@@ -115,7 +116,7 @@ let rec string_of_sstmt = function
       ^ "end\n"
   | SDeclaration (t, id, (tp, e)) -> (
     match e with
-    | SNoexpr -> string_of_typ t ^ " " ^ id ^ "\n"
+    | SNoexpr _ -> string_of_typ t ^ " " ^ id ^ "\n"
     | _ ->
         string_of_typ t ^ " " ^ id ^ " = " ^ string_of_sexpr (tp, e) ^ "\n" )
   | SBreak -> "break\n"
