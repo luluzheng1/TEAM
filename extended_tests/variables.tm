@@ -1,23 +1,23 @@
 int num = 40;
-print(num);
+print("%d\n", num);
 
 void test(int num):
-  print(num);
+  print("%d\n", num);
 end
 
 test(4);
 
 void test2():
   int num = 20;
-  print(num);
+  print("%d\n", num);
 end
 
 test2();
-print(num);
+print("%d\n", num);
 
 void test3():
   num = 60;
 end
 
 test3();
-print(num);
+print("%d\n", num);
