@@ -40,7 +40,7 @@ let check (functions, statements) =
       ; ( "replaceall"
         , [(String, "target"); (String, "regex"); (String, "replace")]
         , String )
-      ; ("findall", [(String, "target"); (String, "regex")], List String) ]
+      ; ("findall", [(String, "target"); (String, "regex")], List Unknown) ]
   in
   (* fd.typ *)
   let add_func map fd =
@@ -88,10 +88,21 @@ let check (functions, statements) =
       scope :=
         {variables= StringMap.add id ty !scope.variables; parent= !scope.parent}
   in
+  let update_var (scope : symbol_table ref) id ty =
+    scope :=
+      {variables= StringMap.add id ty !scope.variables; parent= !scope.parent}
+  in
   let check_assign lvaluet rvaluet err =
-    match lvaluet with
-    | List ty -> if rvaluet = List Unknown then List ty else raise err
-    | _ -> if lvaluet = rvaluet then lvaluet else raise err
+    if lvaluet = rvaluet then lvaluet
+    else
+      let ret =
+        match (lvaluet, rvaluet) with
+        | List Unknown, List ty -> List ty
+        | List _, List Unknown -> List Unknown
+        | Void, List Unknown -> List Unknown
+        | _ -> raise err
+      in
+      ret
   in
   (* Return a semantically-checked expression with a type *)
   let rec expr scope exp =
@@ -158,7 +169,17 @@ let check (functions, statements) =
           | _ -> raise (Failure "Can't assign to type")
         in
         let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex)) in
-        (lrt, SAssign ((lt, s'), (rt, e')))
+        let s_name =
+          match s with Id n -> n | _ -> raise (Failure "LHS is not a variable")
+        in
+        let ret =
+          match (lt, rt) with
+          | List _, List _ | Void, List _ ->
+              let _ = update_var scope s_name lrt in
+              (lrt, SAssign ((lrt, s'), (rt, e')))
+          | _ -> (lrt, SAssign ((lt, s'), (rt, e')))
+        in
+        ret
     | Call (fname, args) as call -> (
         let check_length frmls =
           if List.length args != List.length frmls then
@@ -371,6 +392,9 @@ let check (functions, statements) =
         if same then
           let _ = add_var_to_scope scope s ty in
           SDeclaration (ty, s, (expr_ty, e'))
+        else if ty = List Unknown then
+          let _ = add_var_to_scope scope s expr_ty in
+          SDeclaration (expr_ty, s, (expr_ty, e'))
         else
           let _ =
             match (expr_ty, e') with

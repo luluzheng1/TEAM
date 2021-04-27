@@ -63,8 +63,7 @@ type stmt =
   | Break
   | Continue
 
-type func_decl =
-  {typ: typ; fname: string; formals: bind list; body: stmt list}
+type func_decl = {typ: typ; fname: string; formals: bind list; body: stmt list}
 
 type program = func_decl list * stmt list
 
@@ -99,19 +98,21 @@ let rec string_of_expr = function
   | ListLit l -> "[" ^ String.concat "," (List.map string_of_expr l) ^ "]"
   | SliceExpr (e, s) -> (
     match s with
-    | Index i -> (string_of_expr e) ^ "[" ^ string_of_expr i ^ "]"
+    | Index i -> string_of_expr e ^ "[" ^ string_of_expr i ^ "]"
     | Slice (i, j) ->
-        (string_of_expr e) ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]" )
+        string_of_expr e ^ "[" ^ string_of_expr i ^ ":" ^ string_of_expr j ^ "]"
+    )
   | Id s -> s
   | Binop (e1, o, e2) -> (
     match o with
     | Range -> string_of_expr e1 ^ string_of_op o ^ string_of_expr e2
-    | _ -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
-    )
+    | _ -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2 )
   | Unop (o, e) -> string_of_uop o ^ string_of_expr e
-  | Assign (v, e) -> (string_of_expr v) ^ " = " ^ string_of_expr e
+  | Assign (v, e) -> string_of_expr v ^ " = " ^ string_of_expr e
   | Call (f, el) ->
-      (string_of_expr f) ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+      string_of_expr f ^ "("
+      ^ String.concat ", " (List.map string_of_expr el)
+      ^ ")"
   | End -> ""
   | Noexpr -> ""
 
@@ -135,9 +136,7 @@ let rec string_of_stmt = function
   | If (e, s1, s2) -> (
     match s2 with
     | Block [] ->
-        "if " ^ string_of_expr e ^ ":\n"
-        ^ indent (string_of_stmt s1)
-        ^ "end\n"
+        "if " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s1) ^ "end\n"
     | _ ->
         "if " ^ string_of_expr e ^ ":\n"
         ^ indent (string_of_stmt s1)
@@ -149,9 +148,7 @@ let rec string_of_stmt = function
       ^ indent (string_of_stmt st)
       ^ "end\n"
   | While (e, s) ->
-      "while " ^ string_of_expr e ^ ":\n"
-      ^ indent (string_of_stmt s)
-      ^ "end\n"
+      "while " ^ string_of_expr e ^ ":\n" ^ indent (string_of_stmt s) ^ "end\n"
   | Declaration (t, id, e) -> (
     match e with
     | Noexpr -> string_of_typ t ^ " " ^ id ^ ";\n"
