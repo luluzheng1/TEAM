@@ -294,7 +294,15 @@ let translate (functions, statements) =
             | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "tmp" builder
             | A.Neq -> L.build_icmp L.Icmp.Ne e1' e2' "tmp" builder
             | _ -> raise E.InvalidFloatBinop
-          else raise (Failure "Not Yet Implemented")
+          else if t1 = A.Char && t2 = A.Char then 
+            match op with 
+            | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "temp" builder
+            | _ -> raise E.InvalidIntBinop
+          else (
+            print_string (A.string_of_typ t1);
+            print_string (A.string_of_typ t2);
+            raise (Failure "Not Yet Implemented");
+          )
       | SUnop (op, e) ->
           let t, _ = e in
           let e' = expr sc builder e in
