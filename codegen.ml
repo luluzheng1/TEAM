@@ -797,39 +797,35 @@ let translate (functions, statements) =
 
         
           | SFor (s, (t, e), sl) ->
-            let target_identifier = "target" in
-            let target_expr = (t, SId target_identifier) in
             let equivalent =
               match t with
               | A.List s_ty -> 
-                let len_call = (A.Int, SCall (((A.Func ([A.List(A.Int)], A.Int)), (SId "length")), [target_expr])) in
+                let len_call = (A.Int, SCall (((A.Func ([A.List(A.Int)], A.Int)), (SId "length")), [(t,e)])) in
                 let index_expr = (A.Int, SId "for_index") in
                 let while_cond = (A.Bool, SBinop (index_expr, A.Less, len_call)) in
                 let element = (s_ty, SId s) in
                 SBlock
                   [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
-                  ; SDeclaration(t, target_identifier, (t, e))
                   ; SDeclaration(s_ty, s, (s_ty, SNoexpr))
                   ; SWhile(while_cond, 
                             SBlock
                             [
-                              SExpr(s_ty, SAssign(element, (s_ty, SSliceExpr(target_expr, SIndex index_expr)))); 
+                              SExpr(s_ty, SAssign(element, (s_ty, SSliceExpr((t,e), SIndex index_expr)))); 
                               SExpr(A.Int, SAssign(index_expr, (A.Int, SBinop(index_expr, A.Add, (A.Int, SIntLit 1))))); 
                               sl])
                             ] 
               | A.String ->
-                let len_call = (A.Int, SCall (((A.Func ([A.String], A.Int)), (SId "length")), [target_expr])) in
+                let len_call = (A.Int, SCall (((A.Func ([A.String], A.Int)), (SId "length")), [(t,e)])) in
                 let index_expr = (A.Int, SId "for_index") in
                 let while_cond = (A.Bool, SBinop (index_expr, A.Less, len_call)) in
                 let element = (A.Char, SId s) in
                 SBlock
                   [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
-                  ; SDeclaration(t, target_identifier, (t, e))
-                  ; SDeclaration(A.Char, s, (A.Char, SNoexpr))
+                  ; SDeclaration(A.Char, s, (A.Void, SNoexpr))
                   ; SWhile(while_cond, 
                             SBlock
                             [
-                              SExpr(A.Char, SAssign(element, (A.Char, SSliceExpr(target_expr, SIndex index_expr)))); 
+                              SExpr(A.Char, SAssign(element, (A.Char, SSliceExpr((t,e), SIndex index_expr)))); 
                               SExpr(A.Int, SAssign(index_expr, (A.Int, SBinop(index_expr, A.Add, (A.Int, SIntLit 1))))); 
                               sl])
                             ] 
