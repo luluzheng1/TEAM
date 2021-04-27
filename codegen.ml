@@ -851,7 +851,9 @@ let translate (functions, statements) =
                 let _ = L.build_store e global builder in
                 add_variable_to_scope sc n global
             | _ ->
-                let local = L.build_alloca (ltype_of_typ t) n builder in
+                let init_pos = L.instr_begin (L.entry_block the_function) in
+                let new_builder = L.builder_at context init_pos in
+                let local = L.build_alloca (ltype_of_typ t) n new_builder in
                 let _ = L.build_store e local builder in
                 add_variable_to_scope sc n local
           in
