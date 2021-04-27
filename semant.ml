@@ -89,7 +89,9 @@ let check (functions, statements) =
         {variables= StringMap.add id ty !scope.variables; parent= !scope.parent}
   in
   let check_assign lvaluet rvaluet err =
-    if lvaluet = rvaluet then lvaluet else raise err
+    match lvaluet with
+    | List ty -> if rvaluet = List Unknown then List ty else raise err
+    | _ -> if lvaluet = rvaluet then lvaluet else raise err
   in
   (* Return a semantically-checked expression with a type *)
   let rec expr scope exp =
@@ -166,88 +168,66 @@ let check (functions, statements) =
         in
         match fname with
         | Id "print" ->
-            (* let check_print t =
-              match t with
-              | Int | Float | Bool | String -> ()
-              | _ ->
-                  raise
-                    (Failure
-                       ( "Print does not support printing for type"
-                       ^ string_of_typ t ) )
-            in
+            (* let check_print t = match t with | Int | Float | Bool | String ->
+               () | _ -> raise (Failure ( "Print does not support printing for
+               type" ^ string_of_typ t ) ) in let et, _ = expr scope (hd args)
+               in let _ = check_print et in ( Void , SCall ((Func ([et], Void),
+               SId "print"), List.map (expr scope) args) ) *)
             let et, _ = expr scope (hd args) in
-            let _ = check_print et in
-            ( Void
-            , SCall
-                ((Func ([et], Void), SId "print"), List.map (expr scope) args)
-            ) *)
-
-
-
-          let et, _ = expr scope (hd args) in
-          let extractstr args = match args with
-            | [] -> raise (E.PrintMissingArgs (call))
-            | str :: vars ->
-              if fst (expr scope str) = String then
-                let extractliteral expr = match expr with
-                  | (SStringLit l) -> l
-                  | _ -> raise (E.PrintWrongType (str))
-                in
-                (extractliteral (snd (expr scope str)), vars)
-              else
-                raise (E.PrintWrongType (str))
-          in
-          let (str, vars) = extractstr args in
-          let stringtolist s =
-            let rec exp i l =
-              if i < 0 then l else exp (i - 1) (s.[i] :: l) in
-            exp (String.length s - 1) []
-          in
-          let charlist = stringtolist str in
-          let rec extracttypes str argtypes state = match str with 
-            | [] -> argtypes
-            | curr::rest -> 
-              if state = true then
-                if curr = 'c' then
-                  extracttypes rest (cons Char argtypes) false  
-                else
-                  if curr = 'i' || curr = 'd' then
-                    extracttypes rest (cons Int argtypes) false 
-                  else
-                    if curr = 'f' then
+            let extractstr args =
+              match args with
+              | [] -> raise (E.PrintMissingArgs call)
+              | str :: vars ->
+                  if fst (expr scope str) = String then
+                    let extractliteral expr =
+                      match expr with
+                      | SStringLit l -> l
+                      | _ -> raise (E.PrintWrongType str)
+                    in
+                    (extractliteral (snd (expr scope str)), vars)
+                  else raise (E.PrintWrongType str)
+            in
+            let str, vars = extractstr args in
+            let stringtolist s =
+              let rec exp i l = if i < 0 then l else exp (i - 1) (s.[i] :: l) in
+              exp (String.length s - 1) []
+            in
+            let charlist = stringtolist str in
+            let rec extracttypes str argtypes state =
+              match str with
+              | [] -> argtypes
+              | curr :: rest ->
+                  if state = true then
+                    if curr = 'c' then
+                      extracttypes rest (cons Char argtypes) false
+                    else if curr = 'i' || curr = 'd' then
+                      extracttypes rest (cons Int argtypes) false
+                    else if curr = 'f' then
                       extracttypes rest (cons Float argtypes) false
-                    else
-                      if curr = 's' then
-                        extracttypes rest (cons String argtypes) false
-                      else
-                        raise (E.PrintBadArgs (curr))
+                    else if curr = 's' then
+                      extracttypes rest (cons String argtypes) false
+                    else raise (E.PrintBadArgs curr)
+                  else if curr = '%' then extracttypes rest argtypes true
+                  else extracttypes rest argtypes false
+            in
+            let argtypes = extracttypes charlist [] false in
+            let checknumargs argtypes vars =
+              let enumargs = List.length argtypes in
+              let anumargs = List.length vars in
+              if enumargs != anumargs then
+                raise (E.PrintWrongNumArgs (enumargs, anumargs))
+            in
+            let () = checknumargs argtypes vars in
+            let rec checkargs argtypes vars i =
+              if i = List.length argtypes then 1
               else
-                if curr = '%' then 
-                  extracttypes rest argtypes true
-                else 
-                  extracttypes rest argtypes false
-          in
-          let argtypes = extracttypes charlist [] false in
-          let checknumargs argtypes vars =
-            let enumargs = List.length argtypes in
-            let anumargs = List.length vars in
-            if enumargs != anumargs then
-              raise (E.PrintWrongNumArgs (enumargs, anumargs))
-          in
-          let () = checknumargs argtypes vars in
-          let rec checkargs argtypes vars i = 
-            if i = (List.length argtypes) then
-              1
-            else
-              let expectedtype = (List.nth argtypes i) in 
-              let actualtype = fst (expr scope (List.nth vars i)) in
-              if expectedtype = actualtype then
-                checkargs argtypes vars (i+1)
-              else
-                raise (E.PrintTypeError (expectedtype, actualtype))
-          in
-          let _ = checkargs (List.rev argtypes) vars 0 in
-          ( Void
+                let expectedtype = List.nth argtypes i in
+                let actualtype = fst (expr scope (List.nth vars i)) in
+                if expectedtype = actualtype then checkargs argtypes vars (i + 1)
+                else raise (E.PrintTypeError (expectedtype, actualtype))
+            in
+            let _ = checkargs (List.rev argtypes) vars 0 in
+            ( Void
             , SCall
                 ((Func ([et], Void), SId "print"), List.map (expr scope) args)
             )
@@ -393,7 +373,7 @@ let check (functions, statements) =
           SDeclaration (ty, s, (expr_ty, e'))
         else
           let _ =
-            match expr_ty, e' with
+            match (expr_ty, e') with
             | List Unknown, _ | _, SNoexpr -> add_var_to_scope scope s ty
             | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
           in
