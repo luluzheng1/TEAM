@@ -433,7 +433,7 @@ let translate (functions, statements) =
           let result = match ret_type with A.Void -> "" | _ -> "_result" in
           L.build_call fdef (Array.of_list llarg) result builder
       | SEnd -> raise (Failure "Not Yet Implemented")
-      | SNoexpr t -> (L.const_null (ltype_of_typ t))
+      | SNoexpr -> (L.const_null i32_t)
       
     and build_asn_list sc builder ilst lis slc re' =
       match slc with
@@ -809,7 +809,7 @@ let translate (functions, statements) =
                 SBlock
                   [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
                   ; SDeclaration(t, target_identifier, (t, e))
-                  ; SDeclaration(s_ty, s, (s_ty, SNoexpr s_ty))
+                  ; SDeclaration(s_ty, s, (s_ty, SNoexpr))
                   ; SWhile(while_cond, 
                             SBlock
                             [
@@ -825,7 +825,7 @@ let translate (functions, statements) =
                 SBlock
                   [ SDeclaration(A.Int, "for_index", (A.Int, SIntLit 0))
                   ; SDeclaration(t, target_identifier, (t, e))
-                  ; SDeclaration(A.Char, s, (A.Char, SNoexpr A.Char))
+                  ; SDeclaration(A.Char, s, (A.Char, SNoexpr))
                   ; SWhile(while_cond, 
                             SBlock
                             [
@@ -839,7 +839,7 @@ let translate (functions, statements) =
 
       | SDeclaration (t, n, e) ->
           let e = match e with
-              A.Void, SNoexpr t -> (match t with
+              A.Void, SNoexpr -> (match t with
                 A.List _ -> let ptr_ptr = L.build_malloc list_struct_ptr "ptr_ptr" builder in
                             let _ = L.build_store (L.const_null list_struct_ptr) ptr_ptr builder in
                             ptr_ptr
