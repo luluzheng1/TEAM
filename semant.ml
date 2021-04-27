@@ -25,10 +25,6 @@ let check (functions, statements) =
       ; ("readline", [(File, "file_handle")], String)
       ; ("write", [(File, "file_handle"); (String, "content")], Void)
       ; ("close", [(File, "file_handle")], Void)
-      ; ( "append"
-        , [(List Unknown, "input_list"); (Unknown, "element")]
-        , List Unknown )
-      ; ("length", [(Unknown, "input_list")], Int)
       ; ("match", [(String, "target"); (String, "regex")], Bool)
       ; ("find", [(String, "target"); (String, "regex")], String)
       ; ( "replace"
@@ -41,6 +37,13 @@ let check (functions, statements) =
         , [(String, "target"); (String, "regex"); (String, "replace")]
         , String )
       ; ("findall", [(String, "target"); (String, "regex")], List String) ]
+      ; ("append"
+          , [(List Unknown, "input_list"); (Unknown, "element")]
+          , List Unknown)
+      ; ("insert"
+          , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
+          , List Unknown)
+      ; ("length", [(Unknown, "input_list")], Int) ]
   in
   (* fd.typ *)
   let add_func map fd =
@@ -186,15 +189,29 @@ let check (functions, statements) =
               match et1 with List ty -> ty | _ -> raise (E.AppendNonList et2)
             in
             let ret =
-              if inner_ty != et2 then
+              if inner_ty <> et2 then
                 raise (E.MismatchedTypes (inner_ty, et2, call))
-              else
-                ( et1
-                , SCall ((Func ([List Int; Int], List Int), SId "append"), args')
-                )
+              else (et1, SCall (((Func ([List(inner_ty); inner_ty], List(inner_ty))), (SId "append")), args'))
             in
             ret
-        | Id "length" ->
+
+        | (Id "insert") ->
+            let args' = List.map (expr scope) args in
+            let et1, _ = hd args' in
+            let et2, _ = hd (tl args') in
+            let inner_ty =
+              match et1 with
+              | List ty -> ty
+              | _ -> raise (E.AppendNonList et2)
+            in
+            let ret =
+              if inner_ty <> et2 then
+                raise (E.MismatchedTypes (inner_ty, et2, call))
+              else (et1, SCall (((Func ([List(inner_ty); inner_ty], List(inner_ty))), (SId "insert")), args'))
+            in
+            ret
+
+        | (Id "length") ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in
             let _ =
@@ -249,7 +266,7 @@ let check (functions, statements) =
         in
         check_slice_expr
     | End -> (Int, SEnd)
-    | Noexpr -> (Void, SNoexpr)
+    | Noexpr -> (Void, SNoexpr(Int))
   in
   let check_bool_expr scope e =
     let t', e' = expr scope e in
@@ -299,7 +316,8 @@ let check (functions, statements) =
         let s_ty =
           match t with
           | List ty -> ty
-          | _ -> raise (Failure "Cannot get non list type")
+          | String -> Char
+          | _ -> raise (Failure "for loop can only take string or list")
         in
         let _ = add_var_to_scope scope s s_ty in
         let sexpr = SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl) in
