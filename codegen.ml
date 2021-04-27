@@ -422,33 +422,6 @@ let translate (functions, statements) =
 
           let insert_func = build_insert_function lt in 
           L.build_call insert_func [|list_ptr_ptr; e'; i'|] "list_ptr_ptr" builder
-      
-      | SCall ((_, SId "print"), [e]) -> (
-          let t, _ = e in
-          match t with
-          | A.Char -> 
-              L.build_call printf_func [|char_format_str; expr sc builder e|] "printf" builder
-          | A.String ->
-              L.build_call printf_func [|expr sc builder e|] "printf" builder
-          | A.Bool ->
-              let bool_val = expr sc builder e in
-              let true_str = L.build_global_stringptr "true" "string" builder in
-              let false_str = L.build_global_stringptr "false" "string" builder in
-              let to_print = L.build_select bool_val true_str false_str "bool_to_str" builder in
-              L.build_call printf_func [|to_print|] "printf" builder
-          | A.Float ->
-              L.build_call printf_func
-                [|float_format_str; expr sc builder e|]
-                "printf" builder
-          | A.Int ->
-              L.build_call printf_func
-                [|int_format_str; expr sc builder e|]
-                "printf" builder
-          | _ ->
-              raise
-                (Failure
-                   ( "Print for type " ^ A.string_of_typ t
-                   ^ " not supported yet" ) ) )
       | SCall (f, args) ->
           let fdef = expr sc builder f in
           let llarg = List.rev (List.map (expr sc builder) (List.rev args)) in
