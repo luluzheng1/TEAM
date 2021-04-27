@@ -1,1 +1,3 @@
-// print("The median was %i and average was %f", 80, 80.2);
+int temp = 100;
+string state = "tired";
+print("Today is %d degrees and I am %s\n", temp, state);
