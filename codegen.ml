@@ -182,7 +182,7 @@ let translate (functions, statements) =
                     [|L.pointer_type i8_t; L.pointer_type i8_t; i32_t; i1_t|]
                 in
                 let mmcpy =
-                  L.declare_function "llvm.memcpy" mmcpy_t the_module
+                  L.declare_function "llvm.memcpy.p0i8.p0i8.i32" mmcpy_t the_module
                 in
                 let _ =
                   L.build_call mmcpy
