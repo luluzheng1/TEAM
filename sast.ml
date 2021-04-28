@@ -22,8 +22,9 @@ and sx =
   | SAssign of sexpr * sexpr
   | SCall of sexpr * sexpr list
   | SSliceExpr of sexpr * sslce
-  | SEnd
   | SNoexpr
+  | SEnd
+
 
 and sslce = SIndex of sexpr | SSlice of sexpr * sexpr
 

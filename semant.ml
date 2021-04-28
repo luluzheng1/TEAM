@@ -25,10 +25,6 @@ let check (functions, statements) =
       ; ("readline", [(File, "file_handle")], String)
       ; ("write", [(File, "file_handle"); (String, "content")], Void)
       ; ("close", [(File, "file_handle")], Void)
-      ; ( "append"
-        , [(List Unknown, "input_list"); (Unknown, "element")]
-        , List Unknown )
-      ; ("length", [(Unknown, "input_list")], Int)
       ; ("match", [(String, "target"); (String, "regex")], Bool)
       ; ("find", [(String, "target"); (String, "regex")], String)
       ; ( "replace"
@@ -40,7 +36,14 @@ let check (functions, statements) =
       ; ( "replaceall"
         , [(String, "target"); (String, "regex"); (String, "replace")]
         , String )
-      ; ("findall", [(String, "target"); (String, "regex")], List Unknown) ]
+      ; ("findall", [(String, "target"); (String, "regex")], List String)
+      ; ( "append"
+        , [(List Unknown, "input_list"); (Unknown, "element")]
+        , List Unknown )
+      ; ( "insert"
+        , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
+        , List Unknown )
+      ; ("length", [(Unknown, "input_list")], Int) ]
   in
   (* fd.typ *)
   let add_func map fd =
@@ -197,65 +200,16 @@ let check (functions, statements) =
         in
         match fname with
         | Id "print" ->
-            (* let check_print t = match t with | Int | Float | Bool | String ->
-               () | _ -> raise (Failure ( "Print does not support printing for
-               type" ^ string_of_typ t ) ) in let et, _ = expr scope (hd args)
-               in let _ = check_print et in ( Void , SCall ((Func ([et], Void),
-               SId "print"), List.map (expr scope) args) ) *)
             let et, _ = expr scope (hd args) in
-            let extractstr args =
-              match args with
-              | [] -> raise (E.PrintMissingArgs call)
-              | str :: vars ->
-                  if fst (expr scope str) = String then
-                    let extractliteral expr =
-                      match expr with
-                      | SStringLit l -> l
-                      | _ -> raise (E.PrintWrongType str)
-                    in
-                    (extractliteral (snd (expr scope str)), vars)
-                  else raise (E.PrintWrongType str)
+            let _ =
+              match et with
+              | String -> ()
+              | _ ->
+                  raise
+                    (Failure
+                       ( "Print does not support printing for type"
+                       ^ string_of_typ et ) )
             in
-            let str, vars = extractstr args in
-            let stringtolist s =
-              let rec exp i l = if i < 0 then l else exp (i - 1) (s.[i] :: l) in
-              exp (String.length s - 1) []
-            in
-            let charlist = stringtolist str in
-            let rec extracttypes str argtypes state =
-              match str with
-              | [] -> argtypes
-              | curr :: rest ->
-                  if state = true then
-                    if curr = 'c' then
-                      extracttypes rest (cons Char argtypes) false
-                    else if curr = 'i' || curr = 'd' then
-                      extracttypes rest (cons Int argtypes) false
-                    else if curr = 'f' then
-                      extracttypes rest (cons Float argtypes) false
-                    else if curr = 's' then
-                      extracttypes rest (cons String argtypes) false
-                    else raise (E.PrintBadArgs curr)
-                  else if curr = '%' then extracttypes rest argtypes true
-                  else extracttypes rest argtypes false
-            in
-            let argtypes = extracttypes charlist [] false in
-            let checknumargs argtypes vars =
-              let enumargs = List.length argtypes in
-              let anumargs = List.length vars in
-              if enumargs != anumargs then
-                raise (E.PrintWrongNumArgs (enumargs, anumargs))
-            in
-            let () = checknumargs argtypes vars in
-            let rec checkargs argtypes vars i =
-              if i = List.length argtypes then 1
-              else
-                let expectedtype = List.nth argtypes i in
-                let actualtype = fst (expr scope (List.nth vars i)) in
-                if expectedtype = actualtype then checkargs argtypes vars (i + 1)
-                else raise (E.PrintTypeError (expectedtype, actualtype))
-            in
-            let _ = checkargs (List.rev argtypes) vars 0 in
             ( Void
             , SCall
                 ((Func ([et], Void), SId "print"), List.map (expr scope) args)
@@ -268,12 +222,32 @@ let check (functions, statements) =
               match et1 with List ty -> ty | _ -> raise (E.AppendNonList et2)
             in
             let ret =
-              if inner_ty != et2 then
+              if inner_ty <> et2 then
                 raise (E.MismatchedTypes (inner_ty, et2, call))
               else
                 ( et1
-                , SCall ((Func ([List Int; Int], List Int), SId "append"), args')
-                )
+                , SCall
+                    ( ( Func ([List inner_ty; inner_ty], List inner_ty)
+                      , SId "append" )
+                    , args' ) )
+            in
+            ret
+        | Id "insert" ->
+            let args' = List.map (expr scope) args in
+            let et1, _ = hd args' in
+            let et2, _ = hd (tl args') in
+            let inner_ty =
+              match et1 with List ty -> ty | _ -> raise (E.AppendNonList et2)
+            in
+            let ret =
+              if inner_ty <> et2 then
+                raise (E.MismatchedTypes (inner_ty, et2, call))
+              else
+                ( et1
+                , SCall
+                    ( ( Func ([List inner_ty; inner_ty], List inner_ty)
+                      , SId "insert" )
+                    , args' ) )
             in
             ret
         | Id "length" ->
@@ -381,7 +355,8 @@ let check (functions, statements) =
         let s_ty =
           match t with
           | List ty -> ty
-          | _ -> raise (Failure "Cannot get non list type")
+          | String -> Char
+          | _ -> raise (Failure "for loop can only take string or list")
         in
         let _ = add_var_to_scope scope s s_ty in
         let sexpr = SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl) in
