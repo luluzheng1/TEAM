@@ -50,31 +50,21 @@ To run the extended testsuite, do
 | Program      | Description |
 | -----------  | ----------- |
 | arith.tm     | Tests arithmetic operators (add, subtract, multiply, divide) for int and float |
-| string.tm    | Tests string slicing/indexing                                |
-| list.tm.     | Tests list slicing/indexing                                  |
+| string.tm    | Tests string slicing and indexing                                |
+| list.tm      | Tests list slicing and indexing                                  |
 | function.tm  | Tests calling a user-defined function in the body of another function                      |
 | while.tm     | Tests while loop                                             |
 | scope.tm     | Tests local and global variables hold correct values         |
-| formattedPrint.tm   | Tests c-like print function where the input string can have references to other arguments |
+| formattedPrint.tm   | Tests print function with formatted strings |
 
 3 negative tests included in this testsuite are as follows:
 
 | Test            | Description |
 | -----------     | ----------- |
-| badDuplicate.tm | Tests detecting duplicate functions                      |
-| badScope.tm     | Tests detecting variables used in illegal scope          |
-| badReturn.tm    | Tests detecting mistmatch between a function's return type specified by it signature and its actual return type specified by its body     |
+| badDuplicate.tm | Detects duplicate function definitions           |
+| badScope.tm     | Detects variables used out of scope          |
+| badReturn.tm    | Detects mistmatch between a function's return type specified by its signature and its actual return type in its body     |
 
-
-## Hello World
-
-**hello_world.tm** is a simple program that defines and calls
-the function `hello_world()`, which declares a string with the
-value "Hello World" and prints it to standard output.
-
-To test the Hello World program, do
-
-      python runtests.py -t codegen_tests/hello_world.tm -r codegen_ref/hello_world.log -m codegen
 
 ## Group Members
 
