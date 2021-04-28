@@ -170,16 +170,24 @@ let check (functions, statements) =
         in
         let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex)) in
         let s_name =
-          match s with Id n -> n | _ -> raise (Failure "LHS is not a variable")
+          match s with
+          | Id n -> n
+          | SliceExpr (Id n, _) -> n
+          | _ -> raise (Failure "LHS is not a variable")
         in
-        let ret =
+        let is_slice = match s with SliceExpr _ -> true | _ -> false in
+        let non_slice =
           match (lt, rt) with
           | List _, List _ | Void, List _ ->
               let _ = update_var scope s_name lrt in
               (lrt, SAssign ((lrt, s'), (rt, e')))
           | _ -> (lrt, SAssign ((lt, s'), (rt, e')))
         in
-        ret
+        if is_slice then
+          let _ = update_var scope s_name lt in
+          (* let _ = print_endline (string_of_typ lt) in *)
+          (lt, SAssign ((lt, s'), (rt, e')))
+        else non_slice
     | Call (fname, args) as call -> (
         let check_length frmls =
           if List.length args != List.length frmls then
