@@ -62,12 +62,6 @@ bool endWith(string text, char e):
     return e == text[string_length - 1];
 end
 
-
-
-
-
-
-
 list<char> string_to_list(string text):
     list<char> result = [];
     for c in text:
