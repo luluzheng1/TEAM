@@ -8,6 +8,7 @@ module E = Exceptions
 
 (* Semantic checking of the AST. Returns an SAST if successful, throws an
    exception if something is wrong. *)
+
 let check (functions, statements) =
   let func_ty fd =
     let param_types = List.map (fun (a, _) -> a) fd.formals in
@@ -56,7 +57,7 @@ let check (functions, statements) =
     | _ -> StringMap.add n (func_ty fd) map
   in
   let function_decls = List.fold_left add_func built_in_decls functions in
-  let variable_table = {variables= function_decls; parent= None} in
+  let variable_table = {variables= function_decls; functions; parent= None} in
   (* Create a reference to the global table. The scope will be passed through
      recurisve calls and be mutated when we need to add a new variable *)
   let global_scope = ref variable_table in
@@ -89,11 +90,15 @@ let check (functions, statements) =
       raise (E.Duplicate id)
     with Not_found ->
       scope :=
-        {variables= StringMap.add id ty !scope.variables; parent= !scope.parent}
+        { variables= StringMap.add id ty !scope.variables
+        ; functions= !scope.functions
+        ; parent= !scope.parent }
   in
   let update_var (scope : symbol_table ref) id ty =
     scope :=
-      {variables= StringMap.add id ty !scope.variables; parent= !scope.parent}
+      { variables= StringMap.add id ty !scope.variables
+      ; functions= !scope.functions
+      ; parent= !scope.parent }
   in
   let check_assign lvaluet rvaluet err =
     if lvaluet = rvaluet then lvaluet
@@ -101,7 +106,7 @@ let check (functions, statements) =
       let ret =
         match (lvaluet, rvaluet) with
         | List Unknown, List ty -> List ty
-        | List _, List Unknown -> List Unknown
+        | List ty, List Unknown -> List ty
         | Void, List Unknown -> List Unknown
         | _ -> raise err
       in
@@ -188,7 +193,6 @@ let check (functions, statements) =
         in
         if is_slice then
           let _ = update_var scope s_name lt in
-          (* let _ = print_endline (string_of_typ lt) in *)
           (lt, SAssign ((lt, s'), (rt, e')))
         else non_slice
     | Call (fname, args) as call -> (
@@ -216,22 +220,25 @@ let check (functions, statements) =
             )
         | Id "append" ->
             let args' = List.map (expr scope) args in
-            let et1, _ = hd args' in
-            let et2, _ = hd (tl args') in
+            let et1, args1' = hd args' in
+            let et2, args2' = hd (tl args') in
             let inner_ty =
               match et1 with List ty -> ty | _ -> raise (E.AppendNonList et2)
             in
-            let ret =
-              if inner_ty <> et2 then
+            let _ =
+              if inner_ty <> et2 && inner_ty != Unknown then
                 raise (E.MismatchedTypes (inner_ty, et2, call))
-              else
-                ( et1
-                , SCall
-                    ( ( Func ([List inner_ty; inner_ty], List inner_ty)
-                      , SId "append" )
-                    , args' ) )
+              else ()
             in
-            ret
+            if et1 = List Unknown then
+              ( List et2
+              , SCall
+                  ( (Func ([List et2; et2], List et2), SId "append")
+                  , [(List et2, args1'); (et2, args2')] ) )
+            else
+              ( List et2
+              , SCall ((Func ([List et2; et2], List et2), SId "append"), args')
+              )
         | Id "insert" ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in
@@ -267,13 +274,74 @@ let check (functions, statements) =
               | Func (f, r) -> (f, r)
               | _ -> raise (Failure "Not a function")
             in
-            let _ = check_length formals in
             let check_call ft e =
               let et, e' = expr scope e in
               (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
             in
             let args' = List.map2 check_call formals args in
-            (ret_type, SCall ((fty, fname'), args')) )
+            let _ = check_length formals in
+            let arg_types = List.map (fun e -> fst (expr scope e)) args in
+            (* get all list type arguments *)
+            let list_args =
+              List.filter
+                (fun x -> match x with List _ -> true | _ -> false)
+                arg_types
+            in
+            if length list_args > 0 then
+              let inner_types =
+                List.map
+                  (fun t ->
+                    match t with
+                    | List inner_ty -> inner_ty
+                    | _ -> raise (Failure "Not a list type!") )
+                  arg_types
+              in
+              (* convert list types to strings *)
+              let type_specific_name =
+                String.concat "_"
+                  (List.map (fun t -> string_of_typ t) inner_types)
+              in
+              let func_name =
+                match fname with
+                | Id s -> s
+                | _ -> raise (Failure "Not a function name")
+              in
+              (* look up the old function *)
+              let look_up_func =
+                List.find_opt (fun f -> f.fname = func_name) functions
+              in
+              let generic_func =
+                match look_up_func with
+                | Some f -> f
+                | None -> raise (Failure "Could not find function")
+              in
+              let new_fname =
+                String.concat "_" [generic_func.fname; type_specific_name]
+              in
+              (* make a copy of the new function where type is resolved to a
+                 specific kind of list *)
+              let modified_func =
+                { typ= ret_type
+                ; fname= new_fname
+                ; formals=
+                    List.combine arg_types (List.map snd generic_func.formals)
+                ; body= generic_func.body }
+              in
+              let _ =
+                global_scope :=
+                  { variables= !global_scope.variables
+                  ; functions=
+                      modified_func
+                      ::
+                      List.filter
+                        (fun f -> f.fname != generic_func.fname)
+                        !global_scope.functions
+                  ; parent= !global_scope.parent }
+              in
+              (* let _ = print_endline (string_of_fdecl modified_func) in *)
+              ( ret_type
+              , SCall ((Func (arg_types, ret_type), SId new_fname), args') )
+            else (ret_type, SCall ((fty, fname'), args')) )
     | SliceExpr (lexpr, slce) as slice ->
         (* let lt = type_of_identifier scope id in *)
         let lt, lexpr' = expr scope lexpr in
@@ -329,7 +397,11 @@ let check (functions, statements) =
     match stmt with
     | Expr e -> SExpr (expr scope e)
     | Block sl ->
-        let new_scope = {variables= StringMap.empty; parent= Some !scope} in
+        let new_scope =
+          { variables= StringMap.empty
+          ; functions= !scope.functions
+          ; parent= Some !scope }
+        in
         let new_scope_ref = ref new_scope in
         let rec check_stmt_list = function
           | Block sl :: ss -> check_stmt_list (sl @ ss)
@@ -343,8 +415,41 @@ let check (functions, statements) =
       | "toplevel" -> raise E.ReturnOutsideFunction
       | _ ->
           let t, e' = expr scope e in
-          if t = fdecl.typ then SReturn (t, e')
-          else raise (E.ReturnMismatchedTypes (fdecl.typ, t, return)) )
+          let is_return_list =
+            match (t, fdecl.typ) with
+            | List _, List Unknown -> true
+            | _ -> false
+          in
+          if is_return_list then
+            let look_up_func =
+              (* Look up functions in the symbol table *)
+              List.find_opt (fun f -> f.fname = fdecl.fname) !scope.functions
+            in
+            let func =
+              match look_up_func with
+              | Some f -> f
+              | None -> raise (Failure "Could not find function")
+            in
+            let modified_func =
+              {typ= t; fname= func.fname; formals= func.formals; body= func.body}
+            in
+            let _ =
+              global_scope :=
+                { variables= !global_scope.variables
+                ; functions=
+                    modified_func
+                    ::
+                    List.filter
+                      (fun f -> f.fname != func.fname)
+                      !global_scope.functions
+                    (*does cons work here?*)
+                ; parent= !global_scope.parent }
+            in
+            (* walk through the functions in the scope and print them out *)
+            SReturn (t, e')
+          else if t = fdecl.typ then SReturn (t, e')
+          else raise (E.ReturnMismatchedTypes (fdecl.typ, t, return))
+          (* remember to update function return type *) )
     | If (p, b1, b2) ->
         SIf
           ( check_bool_expr scope p
@@ -363,6 +468,7 @@ let check (functions, statements) =
         let _ =
           scope :=
             { variables= StringMap.remove s !scope.variables
+            ; functions= !scope.functions
             ; parent= !scope.parent }
         in
         sexpr
@@ -372,10 +478,11 @@ let check (functions, statements) =
         let expr_ty, e' = expr scope e in
         let _ = check_void_type ty s in
         let same = expr_ty = ty in
+        let is_list = match expr_ty with List _ -> true | _ -> false in
         if same then
           let _ = add_var_to_scope scope s ty in
           SDeclaration (ty, s, (expr_ty, e'))
-        else if ty = List Unknown then
+        else if ty = List Unknown && is_list then
           let _ = add_var_to_scope scope s expr_ty in
           SDeclaration (expr_ty, s, (expr_ty, e'))
         else
@@ -389,22 +496,40 @@ let check (functions, statements) =
     | Continue -> if loop > 0 then SContinue else raise (E.NotInLoop "Continue")
   in
   let check_functions func =
+    (* let _ = print_endline (string_of_fdecl func) in *)
     let formals' = check_binds func.formals in
     let add_formal map (ty, name) = StringMap.add name ty map in
     let func_variable_table =
       { variables= List.fold_left add_formal StringMap.empty formals'
+      ; functions= !global_scope.functions
       ; parent= Some !global_scope }
     in
     let func_scope = ref func_variable_table in
     let _ = check_return func.body func.typ in
     let body' = check_stmt func_scope (Block func.body) 0 func in
-    {styp= func.typ; sfname= func.fname; sformals= formals'; sbody= [body']}
+    if func.typ = List Unknown then
+      let updated_func =
+        List.filter (fun f -> f.fname = func.fname) !global_scope.functions
+      in
+      let _ =
+        if length updated_func = 0 then raise (Failure "Function not found")
+        else ()
+      in
+      (* func.typ should be updated styp *)
+      { styp= (hd updated_func).typ
+      ; sfname= func.fname
+      ; sformals= formals'
+      ; sbody= [body'] }
+    else {styp= func.typ; sfname= func.fname; sformals= formals'; sbody= [body']}
   in
   let check_stmts stmt = check_stmt global_scope stmt 0 dummy in
   let statements' =
     try List.map check_stmts statements with e -> E.handle_error e
   in
   let functions' =
-    try List.map check_functions functions with e -> E.handle_error e
+    try List.map check_functions !global_scope.functions
+    with e -> E.handle_error e
   in
   (functions', statements')
+
+(*Todo need to erase generic functions last*)

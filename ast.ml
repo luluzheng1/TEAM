@@ -48,7 +48,7 @@ type typ =
   | Func of typ list * typ
   | File
   | Unknown
-(* An empty list has an unknown type *)
+(* An empty list has an list unknown type *)
 
 type bind = typ * string
 

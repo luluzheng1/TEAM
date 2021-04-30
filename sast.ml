@@ -4,8 +4,10 @@ open Ast
 module StringMap = Map.Make (String)
 
 type symbol_table =
-  { variables: typ StringMap.t; (* Variables bound in current block *)
-    parent: symbol_table option (* Enclosing scope *) }
+  { variables: typ StringMap.t
+  ; (* Variables bound in current block *)
+    functions: func_decl list
+  ; parent: symbol_table option (* Enclosing scope *) }
 
 type sexpr = typ * sx
 
@@ -24,7 +26,6 @@ and sx =
   | SSliceExpr of sexpr * sslce
   | SNoexpr
   | SEnd
-
 
 and sslce = SIndex of sexpr | SSlice of sexpr * sexpr
 
@@ -55,24 +56,25 @@ let rec string_of_sexpr (t, e) =
     | SBoolLit false -> "false"
     | SCharLit c -> String.make 1 c
     | SStringLit s -> "\"" ^ s ^ "\""
-    | SListLit l ->
-        "[" ^ String.concat "," (List.map string_of_sexpr l) ^ "]"
+    | SListLit l -> "[" ^ String.concat "," (List.map string_of_sexpr l) ^ "]"
     | SSliceExpr (e, s) -> (
       match s with
-      | SIndex i -> (string_of_sexpr e) ^ "[" ^ string_of_sexpr i ^ "]"
+      | SIndex i -> string_of_sexpr e ^ "[" ^ string_of_sexpr i ^ "]"
       | SSlice (i, j) ->
-          (string_of_sexpr e) ^ "[" ^ string_of_sexpr i ^ ":" ^ string_of_sexpr j ^ "]" )
+          string_of_sexpr e ^ "[" ^ string_of_sexpr i ^ ":" ^ string_of_sexpr j
+          ^ "]" )
     | SId s -> s
     | SBinop (e1, o, e2) -> (
       match o with
       | Range -> string_of_sexpr e1 ^ string_of_op o ^ string_of_sexpr e2
       | _ ->
-          string_of_sexpr e1 ^ " " ^ string_of_op o ^ " "
-          ^ string_of_sexpr e2 )
+          string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2 )
     | SUnop (o, e) -> string_of_uop o ^ string_of_sexpr e
-    | SAssign (v, e) -> (string_of_sexpr v) ^ " = " ^ string_of_sexpr e
+    | SAssign (v, e) -> string_of_sexpr v ^ " = " ^ string_of_sexpr e
     | SCall (f, el) ->
-        (string_of_sexpr f) ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
+        string_of_sexpr f ^ "("
+        ^ String.concat ", " (List.map string_of_sexpr el)
+        ^ ")"
     | SEnd -> ""
     | SNoexpr -> "" )
   ^ ")"
@@ -117,8 +119,7 @@ let rec string_of_sstmt = function
   | SDeclaration (t, id, (tp, e)) -> (
     match e with
     | SNoexpr -> string_of_typ t ^ " " ^ id ^ "\n"
-    | _ ->
-        string_of_typ t ^ " " ^ id ^ " = " ^ string_of_sexpr (tp, e) ^ "\n" )
+    | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_sexpr (tp, e) ^ "\n" )
   | SBreak -> "break\n"
   | SContinue -> "continue\n"
 

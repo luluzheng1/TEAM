@@ -143,6 +143,7 @@ let translate (functions, statements) =
             | A.Func _ -> StringMap.find n function_decls
             | _ -> raise (E.NotFound n) ) )
       | SListLit l ->
+          (* corner case: when l = [] *)
           let lst = L.build_malloc list_struct_ptr "list" builder in
           let _ = L.build_store (build_list t l sc builder) lst builder in
           lst
