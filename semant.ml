@@ -57,7 +57,12 @@ let check (functions, statements) =
     | _ -> StringMap.add n (func_ty fd) map
   in
   let function_decls = List.fold_left add_func built_in_decls functions in
-  let variable_table = {variables= function_decls; functions; parent= None} in
+  let variable_table =
+    { variables= function_decls
+    ; functions
+    ; list_variables= StringMap.empty
+    ; parent= None }
+  in
   (* Create a reference to the global table. The scope will be passed through
      recurisve calls and be mutated when we need to add a new variable *)
   let global_scope = ref variable_table in
@@ -84,6 +89,11 @@ let check (functions, statements) =
       | Some parent -> type_of_identifier (ref parent) name
       | _ -> raise (E.UndefinedId name) )
   in
+  (* For finding a list outside of current scope that hasn't been type inferred *)
+  (* let rec scope_of_identifier (scope : symbol_table ref) name = let has_var =
+     StringMap.mem name !scope.variables in if has_var && type_of_identifier
+     scope name = List Unknown then Some scope else match !scope.parent with |
+     Some parent -> scope_of_identifier (ref parent) name | _ -> None in *)
   let add_var_to_scope (scope : symbol_table ref) id ty =
     try
       let _ = StringMap.find id !scope.variables in
@@ -92,14 +102,28 @@ let check (functions, statements) =
       scope :=
         { variables= StringMap.add id ty !scope.variables
         ; functions= !scope.functions
+        ; list_variables= !scope.list_variables
         ; parent= !scope.parent }
   in
   let update_var (scope : symbol_table ref) id ty =
     scope :=
       { variables= StringMap.add id ty !scope.variables
       ; functions= !scope.functions
+      ; list_variables= !scope.list_variables
       ; parent= !scope.parent }
   in
+  let add_list_scope id (scope : symbol_table ref) =
+    try
+      let _ = StringMap.find id !scope.variables in
+      raise (E.Duplicate id)
+    with Not_found ->
+      scope :=
+        { variables= !scope.variables
+        ; functions= !scope.functions
+        ; list_variables= StringMap.add id scope !scope.list_variables
+        ; parent= !scope.parent }
+  in
+  let get_list_scope id scope = StringMap.find_opt id !scope.list_variables in
   let check_assign lvaluet rvaluet err =
     if lvaluet = rvaluet then lvaluet
     else
@@ -188,6 +212,14 @@ let check (functions, statements) =
           match (lt, rt) with
           | List _, List _ | Void, List _ ->
               let _ = update_var scope s_name lrt in
+              let _ =
+                match get_list_scope s_name scope with
+                | Some sc -> update_var sc s_name lrt
+                | None -> ()
+              in
+              (* let topmost_scope = scope_of_identifier scope s_name in let _ =
+                 match topmost_scope with | Some sc -> update_var sc s_name lrt
+                 | None -> () in *)
               (lrt, SAssign ((lrt, s'), (rt, e')))
           | _ -> (lrt, SAssign ((lt, s'), (rt, e')))
         in
@@ -349,6 +381,7 @@ let check (functions, statements) =
                       List.filter
                         (fun f -> f.fname != generic_func.fname)
                         !global_scope.functions
+                  ; list_variables= !scope.list_variables
                   ; parent= !global_scope.parent }
               in
               (* let _ = print_endline (string_of_fdecl modified_func) in *)
@@ -413,6 +446,7 @@ let check (functions, statements) =
         let new_scope =
           { variables= StringMap.empty
           ; functions= !scope.functions
+          ; list_variables= !scope.list_variables
           ; parent= Some !scope }
         in
         let new_scope_ref = ref new_scope in
@@ -455,7 +489,7 @@ let check (functions, statements) =
                     List.filter
                       (fun f -> f.fname != func.fname)
                       !global_scope.functions
-                    (*does cons work here?*)
+                ; list_variables= !scope.list_variables
                 ; parent= !global_scope.parent }
             in
             (* walk through the functions in the scope and print them out *)
@@ -482,6 +516,7 @@ let check (functions, statements) =
           scope :=
             { variables= StringMap.remove s !scope.variables
             ; functions= !scope.functions
+            ; list_variables= !scope.list_variables
             ; parent= !scope.parent }
         in
         sexpr
@@ -491,17 +526,24 @@ let check (functions, statements) =
         let expr_ty, e' = expr scope e in
         let _ = check_void_type ty s in
         let same = expr_ty = ty in
-        let is_list = match expr_ty with List _ -> true | _ -> false in
-        if same then
+        let is_generic_list =
+          match expr_ty with
+          | List Unknown -> true
+          | List _ -> false
+          | _ -> false
+        in
+        if (same && not is_generic_list) || e' = SNoexpr then
           let _ = add_var_to_scope scope s ty in
           SDeclaration (ty, s, (expr_ty, e'))
-        else if ty = List Unknown && is_list then
+        else if ty = List Unknown && not is_generic_list then
           let _ = add_var_to_scope scope s expr_ty in
           SDeclaration (expr_ty, s, (expr_ty, e'))
         else
           let _ =
             match (expr_ty, e') with
-            | List Unknown, _ | _, SNoexpr -> add_var_to_scope scope s ty
+            | List Unknown, _ ->
+                let _ = add_list_scope s scope in
+                add_var_to_scope scope s ty
             | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
           in
           SDeclaration (ty, s, (expr_ty, e'))
@@ -515,6 +557,7 @@ let check (functions, statements) =
     let func_variable_table =
       { variables= List.fold_left add_formal StringMap.empty formals'
       ; functions= !global_scope.functions
+      ; list_variables= !global_scope.list_variables
       ; parent= Some !global_scope }
     in
     let func_scope = ref func_variable_table in
