@@ -1,5 +1,5 @@
 // Three matches
-list<string> l = findall("hello hello hello", "hello");
+list l = findall("hello hello hello", "hello");
 string s = l[0];
 string s2 = l[1];
 string s3 = l[2];

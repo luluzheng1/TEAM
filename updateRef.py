@@ -3,7 +3,7 @@ from os import listdir
 from os.path import isfile, join
 
 phase = ["ast", "sast", "codegen"]
-mode = ["a", "s", "l"]
+mode = ["a", "r", "l"]
 os.system("make clean")
 os.system("make")
 for i, m in enumerate(phase):
