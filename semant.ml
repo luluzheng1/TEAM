@@ -587,5 +587,3 @@ let check (functions, statements) =
     with e -> E.handle_error e
   in
   (functions', statements')
-
-(*Todo need to erase generic functions last*)

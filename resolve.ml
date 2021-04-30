@@ -74,15 +74,11 @@ let resolve (functions, statements) =
           | _ -> (t, SAssign (le, re))
         in
         ret
-        (* TODO: need to include special cases for SCall *)
     | SCall (f, args) -> (
       match f with
       | _, SId "print" ->
           let resolved_args = List.map (expr scope) args in
           (t, SCall (f, resolved_args))
-          (* let resolve_args arg = let arg_ty, arg_expr = arg in let resolve_ty
-             = try type_of_identifier scope let args' = List.map (fun a -> )
-             args *)
       | _, SId "append" -> (t, SCall (f, args))
       | _, SId "insert" -> (t, SCall (f, args))
       | _, SId "length" -> (t, SCall (f, args))
@@ -111,7 +107,6 @@ let resolve (functions, statements) =
     match st with
     | SExpr e -> SExpr (expr scope e)
     | SBlock sl ->
-        (* TODO: add new scope pls *)
         let new_scope =
           { variables= StringMap.empty
           ; functions= !scope.functions
