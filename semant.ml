@@ -202,6 +202,13 @@ let check (functions, statements) =
               (E.WrongNumberOfArgs (List.length frmls, List.length args, call))
           else ()
         in
+        let fty, fname' = expr scope fname in
+        let formals, ret_type =
+          match fty with
+          | Func (f, r) -> (f, r)
+          | _ -> raise (Failure "Not a function")
+        in
+        let _ = if fname <> Id "print" then check_length formals else () in
         match fname with
         | Id "print" ->
             let et, _ = expr scope (hd args) in
@@ -284,18 +291,11 @@ let check (functions, statements) =
             in
             (Int, SCall ((Func ([List Int], Int), SId "length"), args'))
         | _ ->
-            let fty, fname' = expr scope fname in
-            let formals, ret_type =
-              match fty with
-              | Func (f, r) -> (f, r)
-              | _ -> raise (Failure "Not a function")
-            in
             let check_call ft e =
               let et, e' = expr scope e in
               (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
             in
             let args' = List.map2 check_call formals args in
-            let _ = check_length formals in
             let arg_types = List.map (fun e -> fst (expr scope e)) args in
             (* get all list type arguments *)
             let list_args =

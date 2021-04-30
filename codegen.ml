@@ -870,7 +870,7 @@ let translate (functions, statements) =
                 let element = (s_ty, SId s) in
                 SBlock
                   [ SDeclaration (A.Int, "for_index", (A.Int, SIntLit 0))
-                  ; SDeclaration (s_ty, s, (s_ty, SNoexpr))
+                  ; SDeclaration (s_ty, s, (A.Void, SNoexpr))
                   ; SWhile
                       ( while_cond
                       , SBlock

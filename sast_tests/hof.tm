@@ -11,3 +11,7 @@ end
 
 list arr = [1, 2, 3, 4];
 arr = map(addOne, arr);
+
+for i in arr:
+    print("%d\n", i);
+end
