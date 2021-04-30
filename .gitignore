@@ -39,3 +39,5 @@ test.ml
 .vscode/
 
 test.tm
+llvm
+test.py
