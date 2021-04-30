@@ -13,7 +13,6 @@ list<char> ASCII = [
                         'Z'
                     ];
 
-/*
 list<string> split(string text, char separator):
     list<string> result = [];
     int text_length = length(text);
@@ -69,7 +68,6 @@ list<char> string_to_list(string text):
     end
     return result;
 end
-*/
 
 char lower(char c):
     int index = -1;
