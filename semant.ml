@@ -89,11 +89,6 @@ let check (functions, statements) =
       | Some parent -> type_of_identifier (ref parent) name
       | _ -> raise (E.UndefinedId name) )
   in
-  (* For finding a list outside of current scope that hasn't been type inferred *)
-  (* let rec scope_of_identifier (scope : symbol_table ref) name = let has_var =
-     StringMap.mem name !scope.variables in if has_var && type_of_identifier
-     scope name = List Unknown then Some scope else match !scope.parent with |
-     Some parent -> scope_of_identifier (ref parent) name | _ -> None in *)
   let add_var_to_scope (scope : symbol_table ref) id ty =
     try
       let _ = StringMap.find id !scope.variables in
@@ -123,6 +118,7 @@ let check (functions, statements) =
         ; list_variables= StringMap.add id scope !scope.list_variables
         ; parent= !scope.parent }
   in
+  (* For finding a list outside of current scope that hasn't been type inferred *)
   let get_list_scope id scope = StringMap.find_opt id !scope.list_variables in
   let check_assign lvaluet rvaluet err =
     if lvaluet = rvaluet then lvaluet
@@ -217,9 +213,6 @@ let check (functions, statements) =
                 | Some sc -> update_var sc s_name lrt
                 | None -> ()
               in
-              (* let topmost_scope = scope_of_identifier scope s_name in let _ =
-                 match topmost_scope with | Some sc -> update_var sc s_name lrt
-                 | None -> () in *)
               (lrt, SAssign ((lrt, s'), (rt, e')))
           | _ -> (lrt, SAssign ((lt, s'), (rt, e')))
         in
@@ -363,33 +356,40 @@ let check (functions, statements) =
               let new_fname =
                 String.concat "_" [generic_func.fname; type_specific_name]
               in
-              (* make a copy of the new function where type is resolved to a
-                 specific kind of list *)
-              let modified_func =
-                { typ= ret_type
-                ; fname= new_fname
-                ; formals=
-                    List.combine arg_types (List.map snd generic_func.formals)
-                ; body= generic_func.body }
+              let new_func_created =
+                List.find_opt
+                  (fun f -> f.fname = new_fname)
+                  !global_scope.functions
               in
-              let _ =
-                global_scope :=
-                  { variables= !global_scope.variables
-                  ; functions=
-                      modified_func
-                      ::
-                      List.filter
-                        (fun f -> f.fname != generic_func.fname)
-                        !global_scope.functions
-                  ; list_variables= !scope.list_variables
-                  ; parent= !global_scope.parent }
-              in
-              (* let _ = print_endline (string_of_fdecl modified_func) in *)
-              ( ret_type
-              , SCall ((Func (arg_types, ret_type), SId new_fname), args') )
+              if Option.is_none new_func_created then
+                (* make a copy of the new function where type is resolved to a
+                   specific kind of list *)
+                let modified_func =
+                  { typ= ret_type
+                  ; fname= new_fname
+                  ; formals=
+                      List.combine arg_types (List.map snd generic_func.formals)
+                  ; body= generic_func.body }
+                in
+                let _ =
+                  global_scope :=
+                    { variables= !global_scope.variables
+                    ; functions=
+                        modified_func
+                        ::
+                        List.filter
+                          (fun f -> f.fname != generic_func.fname)
+                          !global_scope.functions
+                    ; list_variables= !scope.list_variables
+                    ; parent= !global_scope.parent }
+                in
+                ( ret_type
+                , SCall ((Func (arg_types, ret_type), SId new_fname), args') )
+              else
+                ( ret_type
+                , SCall ((Func (arg_types, ret_type), SId new_fname), args') )
             else (ret_type, SCall ((fty, fname'), args')) )
     | SliceExpr (lexpr, slce) as slice ->
-        (* let lt = type_of_identifier scope id in *)
         let lt, lexpr' = expr scope lexpr in
         let check_slice_expr =
           match slce with
@@ -492,11 +492,9 @@ let check (functions, statements) =
                 ; list_variables= !scope.list_variables
                 ; parent= !global_scope.parent }
             in
-            (* walk through the functions in the scope and print them out *)
             SReturn (t, e')
           else if t = fdecl.typ then SReturn (t, e')
-          else raise (E.ReturnMismatchedTypes (fdecl.typ, t, return))
-          (* remember to update function return type *) )
+          else raise (E.ReturnMismatchedTypes (fdecl.typ, t, return)) )
     | If (p, b1, b2) ->
         SIf
           ( check_bool_expr scope p
@@ -551,7 +549,6 @@ let check (functions, statements) =
     | Continue -> if loop > 0 then SContinue else raise (E.NotInLoop "Continue")
   in
   let check_functions func =
-    (* let _ = print_endline (string_of_fdecl func) in *)
     let formals' = check_binds func.formals in
     let add_formal map (ty, name) = StringMap.add name ty map in
     let func_variable_table =

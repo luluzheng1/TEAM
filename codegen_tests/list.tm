@@ -4,6 +4,12 @@ list foo(list l):
     return l;
 end
 
-list mylist = foo([1,2,3]);
+list intlist = foo([1,2,3]);
 
-list anotherlist = foo([1.5]);
+list floatlist = foo([1.5]);
+
+list charlist = foo(['a', 'b', 'c', 'd']);
+
+list stringlist = foo(["hello", "world", "goodbye", "world"]);
+
+list listoflist = foo([["hello"], ["world"], ["goodbye"], ["world"]]);
