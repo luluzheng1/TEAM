@@ -225,16 +225,32 @@ let check (functions, statements) =
             let inner_ty =
               match et1 with List ty -> ty | _ -> raise (E.AppendNonList et2)
             in
+            let rec innermost_ty ty =
+              match ty with
+              | List t -> innermost_ty t
+              | nonlist_ty -> nonlist_ty
+            in
+            let is_list et = match et with List _ -> true | _ -> false in
             let _ =
-              if inner_ty <> et2 && inner_ty != Unknown then
-                raise (E.MismatchedTypes (inner_ty, et2, call))
+              if
+                is_list et2
+                && innermost_ty et2 = Unknown
+                && innermost_ty et1 <> Unknown
+              then ()
+              else if innermost_ty et1 <> et2 && innermost_ty et1 != Unknown
+              then raise (E.MismatchedTypes (inner_ty, et2, call))
               else ()
             in
-            if et1 = List Unknown then
+            if innermost_ty et1 = Unknown then
               ( List et2
               , SCall
                   ( (Func ([List et2; et2], List et2), SId "append")
                   , [(List et2, args1'); (et2, args2')] ) )
+            else if is_list et2 && innermost_ty et2 = Unknown then
+              ( List et1
+              , SCall
+                  ( (Func ([List et1; et1], List et1), SId "append")
+                  , [(List et1, args1'); (et1, args2')] ) )
             else
               ( List et2
               , SCall ((Func ([List et2; et2], List et2), SId "append"), args')
