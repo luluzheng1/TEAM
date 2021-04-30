@@ -276,7 +276,7 @@ let check (functions, statements) =
         in
         check_slice_expr
     | End -> (Int, SEnd)
-    | Noexpr -> (Void, SNoexpr)
+    | Noexpr -> (Void, SNoexpr Int)
   in
   let check_bool_expr scope e =
     let t', e' = expr scope e in
@@ -349,7 +349,7 @@ let check (functions, statements) =
         else
           let _ =
             match expr_ty, e' with
-            | List Unknown, _ | _, SNoexpr -> add_var_to_scope scope s ty
+            | List Unknown, _ | _, SNoexpr _ -> add_var_to_scope scope s ty
             | _ -> raise (E.IllegalDeclaration (ty, expr_ty, decl))
           in
           SDeclaration (ty, s, (expr_ty, e'))
