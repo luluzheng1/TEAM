@@ -39,3 +39,4 @@ test.ml
 .vscode/
 
 test.tm
+.DS_Store
