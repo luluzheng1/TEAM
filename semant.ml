@@ -290,10 +290,7 @@ let check (functions, statements) =
             if length list_args > 0 then
               let inner_types =
                 List.map
-                  (fun t ->
-                    match t with
-                    | List inner_ty -> inner_ty
-                    | _ -> raise (Failure "Not a list type!") )
+                  (fun t -> match t with List inner_ty -> inner_ty | ty -> ty)
                   arg_types
               in
               (* convert list types to strings *)
