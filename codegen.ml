@@ -126,7 +126,6 @@ let translate (functions, statements) =
       | Some _ -> ()
       | None -> ignore (instr builder)
     in
-    (* here *)
     let rec expr sc builder ((t, e) : sexpr) =
       match e with
       | SIntLit i -> L.const_int i32_t i
@@ -358,8 +357,16 @@ let translate (functions, statements) =
 (* here *)
       | SCall ((_, SId "reverse"), [(A.List lt, lst)]) -> 
           let reverse_func = build_list_reverse_function () in
-          let lst = expr sc builder (A.List lt, lst) in
-          L.build_call reverse_func [|lst|] "reversed_list" builder
+          let list_ptr_ptr = expr sc builder (A.List lt, lst) in
+          let list_ptr = L.build_load list_ptr_ptr "list_ptr" builder in
+
+          let new_list_ptr_ptr = L.build_malloc list_struct_ptr "new_list_ptr_ptr" builder in
+          let _ = L.build_store (L.const_null list_struct_ptr) new_list_ptr_ptr builder in 
+
+          let lc_func = build_copy_function (A.List lt) in  
+          let _ = L.build_call lc_func [|list_ptr; L.const_int i32_t (-1); new_list_ptr_ptr|] "last_node_ptr_ptr" builder in 
+          
+          L.build_call reverse_func [|new_list_ptr_ptr|] "reversed_list" builder
 (* here *)
 
       | SCall ((_, SId "print"), args) -> (
@@ -652,24 +659,34 @@ let translate (functions, statements) =
                 in
                 let prev_node_ptr_ptr = L.param reverse_helper_func 0 in
                 let curr_node_ptr_ptr = L.param reverse_helper_func 1 in 
+
                 let prev_node_ptr = 
-                  L.build_load prev_node_ptr_ptr "prev_node_ptr" reverse_helper_builder 
-                in 
+                  L.build_load prev_node_ptr_ptr "prev_node_ptr" reverse_helper_builder
+                in
                 let curr_node_ptr = 
                   L.build_load curr_node_ptr_ptr "curr_node_ptr" reverse_helper_builder
-                in 
+                in
+
                 let next_node_ptr_ptr = 
                   L.build_struct_gep curr_node_ptr 1 "next_node_ptr_ptr" reverse_helper_builder
                 in 
                 let next_node_ptr = 
                   L.build_load next_node_ptr_ptr "next_node_ptr" reverse_helper_builder 
                 in 
+
+                let temp_ptr_ptr = 
+                  L.build_malloc list_struct_ptr "temp_ptr_ptr" reverse_helper_builder
+                in
                 let _ = 
-                  L.build_store prev_node_ptr curr_node_ptr_ptr reverse_helper_builder 
-                in 
+                  L.build_store next_node_ptr temp_ptr_ptr reverse_helper_builder
+                in
+
                 let bool_val = 
                   L.build_is_null next_node_ptr "ptr_is_null" reverse_helper_builder 
                 in
+                let _ = 
+                  L.build_store prev_node_ptr next_node_ptr_ptr reverse_helper_builder 
+                in 
                 let then_bb = L.append_block context "then" reverse_helper_func in 
                 let _ =
                   L.build_ret curr_node_ptr_ptr (L.builder_at_end context then_bb)
@@ -677,7 +694,7 @@ let translate (functions, statements) =
                 let else_bb = L.append_block context "else" reverse_helper_func in 
                 let else_builder = L.builder_at_end context else_bb in 
                 let ret = 
-                  L.build_call reverse_helper_func [|curr_node_ptr_ptr; next_node_ptr_ptr|] "result" else_builder 
+                  L.build_call reverse_helper_func [|curr_node_ptr_ptr; temp_ptr_ptr|] "result" else_builder 
                 in
                 let _ = L.build_ret ret else_builder in
                 let _ = L.build_cond_br bool_val then_bb else_bb reverse_helper_builder in
@@ -730,7 +747,7 @@ let translate (functions, statements) =
                   L.build_call list_reverse_helper_function [|list_ptr_ptr; next_ptr_ptr|] "result" else_next_not_null_builder 
                 in
                 let _ = 
-                  L.build_store (L.const_null list_struct_ptr) list_ptr_ptr else_next_not_null_builder
+                  L.build_store (L.const_null list_struct_ptr) next_ptr_ptr else_next_not_null_builder
                 in
                 let _ = L.build_ret head_ptr_ptr else_next_not_null_builder in
                 let _ = 
