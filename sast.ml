@@ -7,6 +7,8 @@ type symbol_table =
   { variables: typ StringMap.t
   ; (* Variables bound in current block *)
     functions: func_decl list
+        (* Functions that may need to be re-instantiated with concrete types *)
+  ; list_variables: symbol_table ref StringMap.t
   ; parent: symbol_table option (* Enclosing scope *) }
 
 type sexpr = typ * sx

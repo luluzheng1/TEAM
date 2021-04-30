@@ -1,5 +1,5 @@
 
-all: team.native
+all: team.native regex
 
 team.native : parser.mly scanner.mll codegen.ml semant.ml resolve.ml team.ml
 	opam config exec -- \

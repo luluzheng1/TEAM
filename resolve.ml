@@ -8,13 +8,17 @@ let resolve (functions, statements) =
   (* let _ = List.iter (fun f -> print_endline (string_of_sfdecl f)) functions
      in *)
   let variable_table =
-    {variables= StringMap.empty; functions= []; parent= None}
+    { variables= StringMap.empty
+    ; functions= []
+    ; list_variables= StringMap.empty
+    ; parent= None }
   in
   let global_scope = ref variable_table in
   let add_var (scope : symbol_table ref) id ty =
     scope :=
       { variables= StringMap.add id ty !scope.variables
       ; functions= !scope.functions
+      ; list_variables= !scope.list_variables
       ; parent= !scope.parent }
   in
   let rec type_of_identifier (scope : symbol_table ref) id =
@@ -30,6 +34,9 @@ let resolve (functions, statements) =
   let func_ty fd =
     let param_types = List.map (fun (a, _) -> a) fd.sformals in
     Func (param_types, fd.styp)
+  in
+  let rec innermost_ty ty =
+    match ty with List t -> innermost_ty t | nonlist_ty -> nonlist_ty
   in
   let rec expr scope ((t, e) : sexpr) =
     match e with
@@ -79,6 +86,11 @@ let resolve (functions, statements) =
       | _, SId "append" -> (t, SCall (f, args))
       | _, SId "insert" -> (t, SCall (f, args))
       | _, SId "length" -> (t, SCall (f, args))
+      | _, SId "find" -> (t, SCall (f, args))
+      | _, SId "findall" -> (t, SCall (f, args))
+      | _, SId "match" -> (t, SCall (f, args))
+      | _, SId "replace" -> (t, SCall (f, args))
+      | _, SId "replaceall" -> (t, SCall (f, args))
       | _, SId fname ->
           let func =
             match look_up_func functions fname with
@@ -103,6 +115,7 @@ let resolve (functions, statements) =
         let new_scope =
           { variables= StringMap.empty
           ; functions= !scope.functions
+          ; list_variables= !scope.list_variables
           ; parent= Some !scope }
         in
         let new_scope_ref = ref new_scope in
@@ -114,7 +127,24 @@ let resolve (functions, statements) =
         SBlock (List.rev (stmt_list (List.rev sl)))
     | SReturn e -> SReturn e
     | SIf (p, then_stmt, else_stmt) -> SIf (p, then_stmt, else_stmt)
-    | SFor (s, e, sl) -> SFor (s, e, sl)
+    | SFor (s, e, sl) ->
+        let t, e = e in
+        let list_name = match e with SId s -> Some s | _ -> None in
+        let resolved_ty =
+          if t = List Unknown && Option.is_some list_name then
+            type_of_identifier scope (Option.get list_name)
+          else t
+        in
+        let _ = add_var scope s (innermost_ty resolved_ty) in
+        let sexpr = SFor (s, (resolved_ty, e), stmt scope sl) in
+        let _ =
+          scope :=
+            { variables= StringMap.remove s !scope.variables
+            ; functions= !scope.functions
+            ; list_variables= !scope.list_variables
+            ; parent= !scope.parent }
+        in
+        sexpr
     | SWhile (p, b) -> SWhile (p, b)
     | SDeclaration (ty, s, e) ->
         let resolved_ty, e' = expr scope e in
