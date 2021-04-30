@@ -354,7 +354,6 @@ let translate (functions, statements) =
           L.build_call sl_func
             [|expr sc builder (A.String, st); L.const_int i32_t 0|]
             "length" builder
-(* here *)
       | SCall ((_, SId "reverse"), [(A.List lt, lst)]) -> 
           let reverse_func = build_list_reverse_function () in
           let list_ptr_ptr = expr sc builder (A.List lt, lst) in
@@ -367,7 +366,6 @@ let translate (functions, statements) =
           let _ = L.build_call lc_func [|list_ptr; L.const_int i32_t (-1); new_list_ptr_ptr|] "last_node_ptr_ptr" builder in 
           
           L.build_call reverse_func [|new_list_ptr_ptr|] "reversed_list" builder
-(* here *)
 
       | SCall ((_, SId "print"), args) -> (
         let eval_arg e = 
@@ -642,7 +640,6 @@ let translate (functions, statements) =
             let _ = L.build_cond_br bool_val then_bb else_bb sl_builder in
             sl_func
 
-            (* here *)
         and build_list_reverse_helper_function () = 
             match L.lookup_function "list_reverse_helper" the_module with 
             | Some func -> func
@@ -758,7 +755,6 @@ let translate (functions, statements) =
                 in
                 reverse_func
 
-                (* here *)
         and build_insert_function typ = 
         let t = get_list_inner_typ typ in
         let func_name = "insert_" ^ A.string_of_typ t in
