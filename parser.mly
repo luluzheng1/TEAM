@@ -68,7 +68,7 @@ typ:
   | STRING { String }
   | VOID   { Void }
   | FILE   { File }
-  | LIST LT typ GT { List $3 }
+  | LIST   { List Unknown }
   | typ_list ARROW typ { Func($1, $3) }
 
 typ_list_helper:

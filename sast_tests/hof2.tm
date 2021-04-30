@@ -24,6 +24,6 @@ list arr2 = [4, 3, 2, 1];
 list arr = add2lists(addTwoIntegers, arr1, arr2);
 
 for i in arr:
-    print("%d", i);
+    print("%d\n", i);
 end
 

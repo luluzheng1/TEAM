@@ -1,4 +1,4 @@
-list<string> strlist = ["hello"];
+list strlist = ["hello"];
 int i = length(strlist);
 
 string s = "hello";
