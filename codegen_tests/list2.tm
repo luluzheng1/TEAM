@@ -16,6 +16,7 @@ print_list(a);
 
 a = c[:1];
 print_list(a);
+
 void print_list(list l):
     print("[");
     for i in l:

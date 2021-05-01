@@ -39,7 +39,7 @@ let translate (functions, statements) =
     | A.Float -> float_t
     | A.Void -> void_t
     | A.Char -> char_t
-    | A.Unknown -> void_t
+    | A.Unknown -> i32_t
     | A.Func (args_t, ret_t) -> func_ty args_t ret_t
     | A.List _ -> L.pointer_type list_struct_ptr
     | _ -> void_t
@@ -80,6 +80,12 @@ let translate (functions, statements) =
   in
   let findall_func : L.llvalue =
     L.declare_function "find_all" findall_t the_module
+  in
+  let strcmp_t : L.lltype =
+    L.function_type (L.pointer_type i32_t) [|string_t; string_t|]
+  in
+  let strcmp_func : L.llvalue =
+    L.declare_function "strcmp_TEAM" strcmp_t the_module
   in
   let var_table = {lvariables= StringMap.empty; parent= None} in
   let globals = ref var_table in
@@ -143,7 +149,6 @@ let translate (functions, statements) =
             | A.Func _ -> StringMap.find n function_decls
             | _ -> raise (E.NotFound n) ) )
       | SListLit l ->
-          (* corner case: when l = [] *)
           let lst = L.build_malloc list_struct_ptr "list" builder in
           let _ = L.build_store (build_list t l sc builder) lst builder in
           lst
@@ -327,6 +332,11 @@ let translate (functions, statements) =
             match op with
             | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "temp" builder
             | _ -> raise E.InvalidIntBinop
+          else if t1 = A.String && t2 = A.String then
+            match op with
+            | A.Equal ->
+                L.build_call strcmp_func [|e1'; e2'|] "str_cmp_res" builder
+            | _ -> raise (Failure "Not Yet Implemented")
           else (
             print_string (A.string_of_typ t1) ;
             print_string (A.string_of_typ t2) ;

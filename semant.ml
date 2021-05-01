@@ -170,6 +170,7 @@ let check (functions, statements) =
           | (Equal | Neq) when t1 = Int && t2 = Float -> Bool
           | (Equal | Neq) when t1 = Float && t2 = Int -> Bool
           | (Equal | Neq) when same -> Bool
+          | (Equal | Neq) when t1 = Unknown || t2 = Unknown -> Bool
           | (Less | Leq | Greater | Geq) when t1 = Int && t2 = Float -> Bool
           | (Less | Leq | Greater | Geq) when t1 = Float && t2 = Int -> Bool
           | (Less | Leq | Greater | Geq) when same && t1 = Int -> Bool
