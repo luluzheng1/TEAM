@@ -166,7 +166,7 @@ let translate (functions, statements) =
                 in
                 let length_w_nul =
                   L.build_add length
-                    ((L.const_int i8_t) 1)
+                    ((L.const_int i32_t) 1)
                     "length_w_nul" builder
                 in
                 let new_str =
