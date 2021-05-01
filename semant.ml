@@ -44,7 +44,8 @@ let check (functions, statements) =
       ; ( "insert"
         , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
         , List Unknown )
-      ; ("length", [(Unknown, "input_list")], Int) ]
+      ; ("length", [(Unknown, "input_list")], Int)
+      ; ("contains", [(Unknown, "input_list"); (Unknown, "element")], Bool) ]
   in
   (* fd.typ *)
   let add_func map fd =
@@ -316,6 +317,22 @@ let check (functions, statements) =
               | _ -> raise (E.LengthWrongArgument et1)
             in
             (Int, SCall ((Func ([List Int], Int), SId "length"), args'))
+        | Id "contains" ->
+            let args' = List.map (expr scope) args in
+            let et1, _ = hd args' in
+            let et2, _ = hd (tl args') in
+            let _ =
+              if et1 <> et2 then raise (E.MismatchedTypes (et1, et2, call))
+              else ()
+            in
+            let _ =
+              match et2 with
+              | Int | Float | Bool | String | Char -> ()
+              | _ ->
+                  raise
+                    (Failure ("Not Yet Supported on typ" ^ string_of_typ et2))
+            in
+            (Bool, SCall ((Func ([List et1], et2), SId "contains"), args'))
         | _ ->
             let check_call ft e =
               let et, e' = expr scope e in

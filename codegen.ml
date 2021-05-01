@@ -81,12 +81,6 @@ let translate (functions, statements) =
   let findall_func : L.llvalue =
     L.declare_function "find_all" findall_t the_module
   in
-  let strcmp_t : L.lltype =
-    L.function_type (L.pointer_type i32_t) [|string_t; string_t|]
-  in
-  let strcmp_func : L.llvalue =
-    L.declare_function "strcmp_TEAM" strcmp_t the_module
-  in
   let var_table = {lvariables= StringMap.empty; parent= None} in
   let globals = ref var_table in
   let function_decls : L.llvalue StringMap.t =
@@ -330,16 +324,12 @@ let translate (functions, statements) =
             | _ -> raise E.InvalidFloatBinop
           else if t1 = A.Char && t2 = A.Char then
             match op with
-            | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "temp" builder
-            | _ -> raise E.InvalidIntBinop
-          else if t1 = A.String && t2 = A.String then
-            match op with
-            | A.Equal ->
-                L.build_call strcmp_func [|e1'; e2'|] "str_cmp_res" builder
-            | _ -> raise (Failure "Not Yet Implemented")
+            | A.Equal -> L.build_icmp L.Icmp.Eq e1' e2' "tmp" builder
+            | A.Neq -> L.build_icmp L.Icmp.Ne e1' e2' "tmp" builder
+            | _ -> raise E.InvalidFloatBinop
           else (
-            print_string (A.string_of_typ t1) ;
-            print_string (A.string_of_typ t2) ;
+            print_endline (A.string_of_typ t1) ;
+            print_endline (A.string_of_typ t2) ;
             raise (Failure "Not Yet Implemented") )
       | SUnop (op, e) ->
           let t, _ = e in
