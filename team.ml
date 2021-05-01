@@ -57,7 +57,7 @@ let () =
   (* get buffers/channel for standard library *)
   let std_channel = ref stdin in
   let channel = ref stdin in
-  set_channel std_channel "standard_library/string_temp.tm" ;
+  set_channel std_channel "standard_library/string.tm" ;
   (* parser program and standard library *)
   Arg.parse speclist (fun filename -> channel := open_in filename) usage_msg ;
   let lexbuf = Lexing.from_channel !channel
