@@ -134,6 +134,9 @@ let check (functions, statements) =
       in
       ret
   in
+  let rec innermost_ty ty =
+    match ty with List t -> innermost_ty t | nonlist_ty -> nonlist_ty
+  in
   (* Return a semantically-checked expression with a type *)
   let rec expr scope exp =
     match exp with
@@ -260,11 +263,6 @@ let check (functions, statements) =
             let inner_ty =
               match et1 with List ty -> ty | _ -> raise (E.AppendNonList et2)
             in
-            let rec innermost_ty ty =
-              match ty with
-              | List t -> innermost_ty t
-              | nonlist_ty -> nonlist_ty
-            in
             let is_list et = match et with List _ -> true | _ -> false in
             let _ =
               if
@@ -331,9 +329,11 @@ let check (functions, statements) =
         | Id "contains" ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in
+            let inner_et1_ty = innermost_ty et1 in
             let et2, _ = hd (tl args') in
             let _ =
-              if et1 <> et2 then raise (E.MismatchedTypes (et1, et2, call))
+              if inner_et1_ty <> et2 then
+                raise (E.MismatchedTypes (et1, List et2, call))
               else ()
             in
             let _ =

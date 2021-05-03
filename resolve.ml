@@ -87,6 +87,7 @@ let resolve (functions, statements) =
       | _, SId "match" -> (t, SCall (f, args))
       | _, SId "replace" -> (t, SCall (f, args))
       | _, SId "replaceall" -> (t, SCall (f, args))
+      | _, SId "contains" -> (t, SCall (f, args))
       | _, SId fname ->
           let func =
             match look_up_func functions fname with
