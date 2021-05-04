@@ -131,6 +131,7 @@ let check (functions, statements) =
         | List ty, List Unknown -> List ty
         | Void, List Unknown -> List Unknown
         | ty, Unknown -> ty
+        | Unknown, ty -> ty
         | _ -> raise err
       in
       ret

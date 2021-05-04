@@ -59,7 +59,8 @@ let resolve (functions, statements) =
                 | _ ->
                     raise
                       (Failure
-                         "Illegal Slice, should have been rejected in Semant" )
+                         "Internal Error: Illegal Slice, should have been \
+                          rejected in Semant" )
               in
               (id_type, SSliceExpr ((lt, lexpr'), SIndex (t, e')))
           | SSlice _ -> (
@@ -104,68 +105,70 @@ let resolve (functions, statements) =
       | _, SId "replaceall" -> (t, SCall (f, args))
       | _, SId "contains" -> (t, SCall (f, args))
       | fty, SId fname ->
-          let func =
-            match look_up_func functions fname with
-            | Some fn -> fn
-            | None -> raise (Failure "Could not find function")
-          in
-          let args' = List.map (expr scope) args in
-          let resolved_arg_tys = List.map fst args' in
-          if resolved_arg_tys <> List.map fst args then
-            (* get new name *)
-            (* get new func *)
-            let inner_tys =
-              List.map
-                (fun t -> match t with List inner_ty -> inner_ty | ty -> ty)
-                resolved_arg_tys
-            in
-            let type_specific_name =
-              String.concat "_" (List.map (fun t -> string_of_typ t) inner_tys)
-            in
-            let new_fname = String.concat "_" [fname; type_specific_name] in
-            let new_func_created =
-              List.find_opt (fun f -> f.sfname = new_fname) functions
-            in
-            let _, ret_type =
-              match fty with
-              | Func (f, r) -> (f, r)
-              | _ -> raise (Failure "Not a function")
-            in
-            if Option.is_none new_func_created then
-              let modified_func =
-                { styp= ret_type
-                ; sfname= new_fname
-                ; sformals=
-                    List.combine resolved_arg_tys (List.map snd func.sformals)
-                ; sbody= func.sbody }
+          let option_func = look_up_func functions fname in
+          if Option.is_some option_func then
+            let func = Option.get option_func in
+            let args' = List.map (expr scope) args in
+            let resolved_arg_tys = List.map fst args' in
+            if resolved_arg_tys <> List.map fst args then
+              (* get new name *)
+              (* get new func *)
+              let inner_tys =
+                List.map
+                  (fun t -> match t with List inner_ty -> inner_ty | ty -> ty)
+                  resolved_arg_tys
               in
-              let _ =
-                global_scope :=
-                  { rvariables= !global_scope.rvariables
-                  ; rfunctions=
-                      modified_func
-                      ::
-                      List.filter
-                        (fun f -> f.sfname != fname)
-                        !global_scope.rfunctions
-                  ; rlist_variables= !scope.rlist_variables
-                  ; rparent= !global_scope.rparent }
+              let type_specific_name =
+                String.concat "_"
+                  (List.map (fun t -> string_of_typ t) inner_tys)
               in
-              ( ret_type
-              , SCall ((Func (resolved_arg_tys, ret_type), SId new_fname), args')
-              )
+              let new_fname = String.concat "_" [fname; type_specific_name] in
+              let new_func_created =
+                List.find_opt (fun f -> f.sfname = new_fname) functions
+              in
+              let _, ret_type =
+                match fty with
+                | Func (f, r) -> (f, r)
+                | _ -> raise (Failure "Not a function")
+              in
+              if Option.is_none new_func_created then
+                let modified_func =
+                  { styp= ret_type
+                  ; sfname= new_fname
+                  ; sformals=
+                      List.combine resolved_arg_tys (List.map snd func.sformals)
+                  ; sbody= func.sbody }
+                in
+                let _ =
+                  global_scope :=
+                    { rvariables= !global_scope.rvariables
+                    ; rfunctions=
+                        modified_func
+                        ::
+                        List.filter
+                          (fun f -> f.sfname != fname)
+                          !global_scope.rfunctions
+                    ; rlist_variables= !scope.rlist_variables
+                    ; rparent= !global_scope.rparent }
+                in
+                ( ret_type
+                , SCall
+                    ((Func (resolved_arg_tys, ret_type), SId new_fname), args')
+                )
+              else
+                ( ret_type
+                , SCall
+                    ((Func (resolved_arg_tys, ret_type), SId new_fname), args')
+                )
             else
-              ( ret_type
-              , SCall ((Func (resolved_arg_tys, ret_type), SId new_fname), args')
-              )
-          else
-            let ret =
-              match func.styp with
-              | List _ -> (func.styp, SCall ((func_ty func, SId fname), args'))
-              | _ -> (t, SCall (f, args'))
-            in
-            ret
-      | _, _ -> raise (Failure "Function does not have name") )
+              let ret =
+                match func.styp with
+                | List _ -> (func.styp, SCall ((func_ty func, SId fname), args'))
+                | _ -> (t, SCall (f, args'))
+              in
+              ret
+          else (t, SCall (f, args))
+      | _, _ -> raise (Failure "Internal Error: Function does not have name") )
     | SEnd -> (t, SEnd)
     | SNoexpr -> (Void, SNoexpr)
   in
@@ -235,7 +238,8 @@ let resolve (functions, statements) =
         List.filter (fun f -> f.sfname = func.sfname) !global_scope.rfunctions
       in
       let _ =
-        if length updated_func = 0 then raise (Failure "Function not found")
+        if length updated_func = 0 then
+          raise (Failure "Internal Error: Function not found")
         else ()
       in
       (* func.typ should be updated styp *)
