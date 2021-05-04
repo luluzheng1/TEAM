@@ -47,3 +47,10 @@ bool contains_string(list l, string elem):
 
     return false;
 end
+
+
+contains_int([1], 1);
+contains_float([1.5], 1.5);
+contains_bool([true], true);
+contains_char(['a'], 'a');
+contains_string(["hello"], "hello");

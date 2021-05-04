@@ -55,17 +55,24 @@ let () =
   in
   let usage_msg = "usage: ./team.native [-a|-s|-r|-l] [file.tm]" in
   (* get buffers/channel for standard library *)
-  let std_channel = ref stdin in
+  let string_channel = ref stdin in
+  let list_channel = ref stdin in
   let channel = ref stdin in
-  set_channel std_channel "standard_library/string.tm" ;
+  set_channel string_channel "standard_library/string.tm" ;
+  set_channel list_channel "standard_library/list.tm" ;
   (* parser program and standard library *)
   Arg.parse speclist (fun filename -> channel := open_in filename) usage_msg ;
   let lexbuf = Lexing.from_channel !channel
-  and std_lexbuf = Lexing.from_channel !std_channel in
+  and string_lexbuf = Lexing.from_channel !string_channel
+  and list_lexbuf = Lexing.from_channel !list_channel in
   let ast = Parser.program Scanner.token lexbuf in
-  let std_ast = parse std_lexbuf in
+  let string_ast = parse string_lexbuf in
+  let list_ast = parse list_lexbuf in
   (* prepend standard library to program *)
-  let ast = (fst std_ast @ fst ast, snd ast) in
+  let ast = (fst ast, snd ast) in
+  (* let ast = ( fst string_ast @ fst list_ast @ fst ast , snd string_ast @ snd
+     list_ast @ snd ast ) *)
+  (* in *)
   let sast = Semant.check ast in
   let resolved_sast = Resolve.resolve sast in
   match !action with
