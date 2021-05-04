@@ -11,5 +11,5 @@ int subtract(int x, int y):
   return z;
 end
 
-int a = fun(3, 4); int b = fun(10,99);
+int a = add(3, 4); int b = subtract(10,99);
 int c = a + b;

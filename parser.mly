@@ -37,7 +37,7 @@ open Ast
 %%
 
 program:
-  decls EOF { (List.rev (fst $1), List.rev (snd $1)) }
+  decls EOF { ( List.rev (fst $1), List.rev (snd $1)) }
 
 decls:
   /* nothing */ { ([], []) }
@@ -68,7 +68,7 @@ typ:
   | STRING { String }
   | VOID   { Void }
   | FILE   { File }
-  | LIST LT typ GT { List $3 }
+  | LIST   { List Unknown }
   | typ_list ARROW typ { Func($1, $3) }
 
 typ_list_helper:
@@ -103,7 +103,7 @@ internal_if:
 else_list:
   /* nothing */ { Block([]) }
   | ELSEIF expr COLON stmt_list else_list { If($2, Block(List.rev $4), $5) }
-  | ELSE COLON stmt_list { Block($3)   }
+  | ELSE COLON stmt_list { Block(List.rev $3)   }
 
 expr_opt:
   /* nothing */ { Noexpr }

@@ -1,1 +1,2 @@
-list<list<int>> l = [];
+list l = [];
+l = append(l, [1]);

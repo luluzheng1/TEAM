@@ -1,4 +1,4 @@
-int getAverage(list<int> nums, int length):
+int getAverage(list nums, int length):
   int sum = 0;
   int i = 0;
   while (i < length):
@@ -9,14 +9,14 @@ int getAverage(list<int> nums, int length):
   return sum / length;
 end
 
-list<int> duplicateIntList(list<int> intList):
+list duplicateIntList(list intList):
   return intList;
 end
 
-list<int> nums = [10, 5, 8, 1, 4, 14];
+list nums = [10, 5, 8, 1, 4, 14];
 int avg = getAverage(nums, 6);
 print("%d\n", avg);
 
-list<int> result = duplicateIntList(nums);
+list result = duplicateIntList(nums);
 result[0] = 4;
 print("%d\n", nums[0]);

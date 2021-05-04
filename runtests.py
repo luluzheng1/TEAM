@@ -80,7 +80,7 @@ def runFile(fileName, testMode, userInput=False):
     if testMode == "ast":
         flag = "-a"
     elif testMode == "sast":
-        flag = "-s"
+        flag = "-r"
     elif testMode == "codegen":
         flag = "-l"
     elif testMode == "extended":

@@ -8,6 +8,20 @@ To compile TEAM, do
 
       make
 
+## Environment Setup
+
+Team uses PCRE2 (Perl Compatible Regular Expressions) library to support regular expressions. To setup dependencies, do:
+
+      cd pcre2-10.36 && ./configure && make && make install
+
+Ocamlbuild sometimes does not like .o files in the directory when trying to compile TEAM. If you encounter an issue with Ocamlbuild requiring sanitization, please do:
+
+      make clean && make
+
+For more information on the PCRE2 API, please visit:
+
+https://www.pcre.org/current/doc/html/pcre2api.html
+
 ## Testing
 
 To run all tests, do
@@ -40,31 +54,31 @@ To execute a single TEAM file (file.tm), do
 
 - -m when running a single test, the mode can not be `all`.
 
-## Extended Testsuite ##
+## Extended Testsuite
+
 To run the extended testsuite, do
 
       python runtests.py -m extended
 
 7 positive tests included in this testsuite are as follows:
 
-| Program      | Description |
-| -----------  | ----------- |
-| arith.tm     | Tests arithmetic operators (add, subtract, multiply, divide) for int and float |
-| string.tm    | Tests string slicing and indexing                                |
-| list.tm      | Tests list slicing and indexing                                  |
-| function.tm  | Tests calling a user-defined function in the body of another function                      |
-| while.tm     | Tests while loop                                             |
-| scope.tm     | Tests local and global variables hold correct values         |
-| formattedPrint.tm   | Tests print function with formatted strings |
+| Program           | Description                                                                    |
+| ----------------- | ------------------------------------------------------------------------------ |
+| arith.tm          | Tests arithmetic operators (add, subtract, multiply, divide) for int and float |
+| string.tm         | Tests string slicing and indexing                                              |
+| list.tm           | Tests list slicing and indexing                                                |
+| function.tm       | Tests calling a user-defined function in the body of another function          |
+| while.tm          | Tests while loop                                                               |
+| scope.tm          | Tests local and global variables hold correct values                           |
+| formattedPrint.tm | Tests print function with formatted strings                                    |
 
 3 negative tests included in this testsuite are as follows:
 
-| Test            | Description |
-| -----------     | ----------- |
-| badDuplicate.tm | Detects duplicate function definitions           |
-| badScope.tm     | Detects variables used out of scope          |
-| badReturn.tm    | Detects mistmatch between a function's return type specified by its signature and its actual return type in its body     |
-
+| Test            | Description                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- |
+| badDuplicate.tm | Detects duplicate function definitions                                                                               |
+| badScope.tm     | Detects variables used out of scope                                                                                  |
+| badReturn.tm    | Detects mistmatch between a function's return type specified by its signature and its actual return type in its body |
 
 ## Group Members
 

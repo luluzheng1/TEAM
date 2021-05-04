@@ -2,9 +2,9 @@
 
 int x = 5;
 if x == 5:
-    print(x);
+    print("%d", x);
 elif x == 6:
-    print(x);
+    print("%d", x);
 else:
     print("not five");
 end

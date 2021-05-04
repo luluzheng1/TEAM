@@ -1,4 +1,4 @@
-// Tests faulty list assignment; missing list type
+// Tests faulty list assignment; incorrect list type
 
-list a = [3, 4, 5, 6];
+int a = [3, 4, 5, 6];
 a[1:3];

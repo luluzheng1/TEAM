@@ -1,20 +1,20 @@
-list<char> ASCII = [
-                        'a', 'b', 'c', 'd', 'e',
-                        'f', 'g', 'h', 'i', 'j',
-                        'k', 'l', 'm', 'n', 'o',
-                        'p', 'q', 'r', 's', 't', 
-                        'u', 'v', 'w', 'x', 'y', 
-                        'z', 
-                        'A', 'B', 'C', 'D', 'E', 
-                        'F', 'G', 'H', 'I', 'J', 
-                        'K', 'L', 'M', 'N', 'O', 
-                        'P', 'Q', 'R', 'S', 'T', 
-                        'U', 'V', 'W', 'X', 'Y', 
-                        'Z'
-                    ];
+list ASCII = [
+                'a', 'b', 'c', 'd', 'e',
+                'f', 'g', 'h', 'i', 'j',
+                'k', 'l', 'm', 'n', 'o',
+                'p', 'q', 'r', 's', 't', 
+                'u', 'v', 'w', 'x', 'y', 
+                'z', 
+                'A', 'B', 'C', 'D', 'E', 
+                'F', 'G', 'H', 'I', 'J', 
+                'K', 'L', 'M', 'N', 'O', 
+                'P', 'Q', 'R', 'S', 'T', 
+                'U', 'V', 'W', 'X', 'Y', 
+                'Z'
+             ];
 
-list<string> split(string text, char separator):
-    list<string> result = [];
+list split(string text, char separator):
+    list result = [];
     int text_length = length(text);
     int left = 0;
     int right = 0;
@@ -31,6 +31,7 @@ list<string> split(string text, char separator):
     return result;
 end 
 
+/*
 string join(list<string> text_list, string connector):
     string res = "";
     int list_length = length(text_list);
@@ -51,7 +52,7 @@ string string_reverse(string text):
     end 
     return res;
 end
-
+*/
 bool startWith(string text, char s):
     return s == text[0];
 end
@@ -61,8 +62,8 @@ bool endWith(string text, char e):
     return e == text[string_length - 1];
 end
 
-list<char> string_to_list(string text):
-    list<char> result = [];
+list string_to_list(string text):
+    list result = [];
     for c in text:
         result = append(result, c);
     end
@@ -99,4 +100,19 @@ char upper(char c):
     return c;
 end
 
-print("%c", lower('c'));
+bool strcmp(string str1, string str2):
+    if length(str1) != length(str2):
+        return false;
+    end
+
+    int i = 0;
+    while i < length(str1):
+        char c1 = str1[i];
+        char c2 = str2[i];
+        if c1 != c2:
+            return false;
+        end
+        i += 1;
+    end
+    return true;
+end
