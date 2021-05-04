@@ -130,6 +130,7 @@ let check (functions, statements) =
         | List Unknown, List ty -> List ty
         | List ty, List Unknown -> List ty
         | Void, List Unknown -> List Unknown
+        | ty, Unknown -> ty
         | _ -> raise err
       in
       ret
@@ -347,7 +348,7 @@ let check (functions, statements) =
         | _ ->
             let check_call ft e =
               let et, e' = expr scope e in
-              (check_assign ft et (E.IllegalArgument (et, ft, e)), e')
+              (check_assign ft et (E.IllegalArgument (ft, et, e)), e')
             in
             let args' = List.map2 check_call formals args in
             let arg_types = List.map (fun e -> fst (expr scope e)) args in

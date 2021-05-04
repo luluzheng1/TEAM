@@ -5,26 +5,24 @@ open List
 module E = Exceptions
 
 let resolve (functions, statements) =
-  (* let _ = List.iter (fun f -> print_endline (string_of_sfdecl f)) functions
-     in *)
-  let variable_table =
-    { variables= StringMap.empty
-    ; functions= []
-    ; list_variables= StringMap.empty
-    ; parent= None }
+  let variable_table : resolved_table =
+    { rvariables= StringMap.empty
+    ; rfunctions= functions
+    ; rlist_variables= StringMap.empty
+    ; rparent= None }
   in
-  let global_scope = ref variable_table in
-  let add_var (scope : symbol_table ref) id ty =
+  let global_scope : resolved_table ref = ref variable_table in
+  let add_var (scope : resolved_table ref) id ty =
     scope :=
-      { variables= StringMap.add id ty !scope.variables
-      ; functions= !scope.functions
-      ; list_variables= !scope.list_variables
-      ; parent= !scope.parent }
+      { rvariables= StringMap.add id ty !scope.rvariables
+      ; rfunctions= !scope.rfunctions
+      ; rlist_variables= !scope.rlist_variables
+      ; rparent= !scope.rparent }
   in
-  let rec type_of_identifier (scope : symbol_table ref) id =
-    try StringMap.find id !scope.variables
+  let rec type_of_identifier (scope : resolved_table ref) id =
+    try StringMap.find id !scope.rvariables
     with Not_found -> (
-      match !scope.parent with
+      match !scope.rparent with
       | Some parent -> type_of_identifier (ref parent) id
       | _ -> raise (E.UndefinedId id) )
   in
@@ -48,20 +46,37 @@ let resolve (functions, statements) =
     | SId n -> (
       try (type_of_identifier scope n, SId n) with _ -> (t, SId n) )
     | SListLit l -> (t, SListLit l)
-    | SSliceExpr (lexpr, slce) -> (
-        let id_ty, id =
-          match lexpr with
-          | List Unknown, SId s -> (
-            try (type_of_identifier scope s, SId s)
-            with _ -> (List Unknown, SId s) )
-          | ty, expr -> (ty, expr)
+    | SSliceExpr (lexpr, slce) ->
+        let lt, lexpr' = expr scope lexpr in
+        let check_slice_expr =
+          match slce with
+          | SIndex e ->
+              let t, e' = expr scope e in
+              let id_type =
+                match lt with
+                | List ty -> ty
+                | String -> Char
+                | _ ->
+                    raise
+                      (Failure
+                         "Illegal Slice, should have been rejected in Semant" )
+              in
+              (id_type, SSliceExpr ((lt, lexpr'), SIndex (t, e')))
+          | SSlice _ -> (
+              let id_ty, id =
+                match lexpr with
+                | List Unknown, SId s -> (
+                  try (type_of_identifier scope s, SId s)
+                  with _ -> (List Unknown, SId s) )
+                | ty, expr -> (ty, expr)
+              in
+              match id_ty with
+              | List Unknown -> (t, SSliceExpr (lexpr, slce))
+              | List _ -> (id_ty, SSliceExpr ((id_ty, id), slce))
+              | _ -> (t, SSliceExpr (lexpr, slce)) )
         in
-        match id_ty with
-        | List Unknown -> (t, SSliceExpr (lexpr, slce))
-        | List _ -> (id_ty, SSliceExpr ((id_ty, id), slce))
-        | _ -> (t, SSliceExpr (lexpr, slce)) )
-    (* (t, SSliceExpr (lexpr, slce)) *)
-    | SBinop (e1, op, e2) -> (t, SBinop (e1, op, e2))
+        check_slice_expr
+    | SBinop (e1, op, e2) -> (t, SBinop (expr scope e1, op, expr scope e2))
     | SUnop (op, e) -> (t, SUnop (op, e))
     | SAssign (le, re) ->
         let lt, le' = expr scope le in
@@ -88,18 +103,68 @@ let resolve (functions, statements) =
       | _, SId "replace" -> (t, SCall (f, args))
       | _, SId "replaceall" -> (t, SCall (f, args))
       | _, SId "contains" -> (t, SCall (f, args))
-      | _, SId fname ->
+      | fty, SId fname ->
           let func =
             match look_up_func functions fname with
             | Some fn -> fn
             | None -> raise (Failure "Could not find function")
           in
-          let ret =
-            match func.styp with
-            | List _ -> (func.styp, SCall ((func_ty func, SId fname), args))
-            | _ -> (t, SCall (f, args))
-          in
-          ret
+          let args' = List.map (expr scope) args in
+          let resolved_arg_tys = List.map fst args' in
+          if resolved_arg_tys <> List.map fst args then
+            (* get new name *)
+            (* get new func *)
+            let inner_tys =
+              List.map
+                (fun t -> match t with List inner_ty -> inner_ty | ty -> ty)
+                resolved_arg_tys
+            in
+            let type_specific_name =
+              String.concat "_" (List.map (fun t -> string_of_typ t) inner_tys)
+            in
+            let new_fname = String.concat "_" [fname; type_specific_name] in
+            let new_func_created =
+              List.find_opt (fun f -> f.sfname = new_fname) functions
+            in
+            let _, ret_type =
+              match fty with
+              | Func (f, r) -> (f, r)
+              | _ -> raise (Failure "Not a function")
+            in
+            if Option.is_none new_func_created then
+              let modified_func =
+                { styp= ret_type
+                ; sfname= new_fname
+                ; sformals=
+                    List.combine resolved_arg_tys (List.map snd func.sformals)
+                ; sbody= func.sbody }
+              in
+              let _ =
+                global_scope :=
+                  { rvariables= !global_scope.rvariables
+                  ; rfunctions=
+                      modified_func
+                      ::
+                      List.filter
+                        (fun f -> f.sfname != fname)
+                        !global_scope.rfunctions
+                  ; rlist_variables= !scope.rlist_variables
+                  ; rparent= !global_scope.rparent }
+              in
+              ( ret_type
+              , SCall ((Func (resolved_arg_tys, ret_type), SId new_fname), args')
+              )
+            else
+              ( ret_type
+              , SCall ((Func (resolved_arg_tys, ret_type), SId new_fname), args')
+              )
+          else
+            let ret =
+              match func.styp with
+              | List _ -> (func.styp, SCall ((func_ty func, SId fname), args'))
+              | _ -> (t, SCall (f, args'))
+            in
+            ret
       | _, _ -> raise (Failure "Function does not have name") )
     | SEnd -> (t, SEnd)
     | SNoexpr -> (Void, SNoexpr)
@@ -108,11 +173,11 @@ let resolve (functions, statements) =
     match st with
     | SExpr e -> SExpr (expr scope e)
     | SBlock sl ->
-        let new_scope =
-          { variables= StringMap.empty
-          ; functions= !scope.functions
-          ; list_variables= !scope.list_variables
-          ; parent= Some !scope }
+        let new_scope : resolved_table =
+          { rvariables= StringMap.empty
+          ; rfunctions= !scope.rfunctions
+          ; rlist_variables= !scope.rlist_variables
+          ; rparent= Some !scope }
         in
         let new_scope_ref = ref new_scope in
         let rec stmt_list = function
@@ -120,9 +185,9 @@ let resolve (functions, statements) =
           | s :: ss -> stmt new_scope_ref s :: stmt_list ss
           | [] -> []
         in
-        SBlock (List.rev (stmt_list (List.rev sl)))
+        SBlock (stmt_list sl)
     | SReturn e -> SReturn e
-    | SIf (p, then_stmt, else_stmt) -> SIf (p, then_stmt, else_stmt)
+    | SIf (p, then_stmt, else_stmt) -> SIf (expr scope p, then_stmt, else_stmt)
     | SFor (s, e, sl) ->
         let t, e = e in
         let list_name = match e with SId s -> Some s | _ -> None in
@@ -135,10 +200,10 @@ let resolve (functions, statements) =
         let sexpr = SFor (s, (resolved_ty, e), stmt scope sl) in
         let _ =
           scope :=
-            { variables= StringMap.remove s !scope.variables
-            ; functions= !scope.functions
-            ; list_variables= !scope.list_variables
-            ; parent= !scope.parent }
+            { rvariables= StringMap.remove s !scope.rvariables
+            ; rfunctions= !scope.rfunctions
+            ; rlist_variables= !scope.rlist_variables
+            ; rparent= !scope.rparent }
         in
         sexpr
     | SWhile (p, b) -> SWhile (p, b)
@@ -155,7 +220,40 @@ let resolve (functions, statements) =
     | SBreak -> SBreak
     | SContinue -> SContinue
   in
+  let check_functions func =
+    let add_formal map (ty, name) = StringMap.add name ty map in
+    let func_variable_table =
+      { rvariables= List.fold_left add_formal StringMap.empty func.sformals
+      ; rfunctions= !global_scope.rfunctions
+      ; rlist_variables= !global_scope.rlist_variables
+      ; rparent= Some !global_scope }
+    in
+    let func_scope = ref func_variable_table in
+    let body' = stmt func_scope (SBlock func.sbody) in
+    if func.styp = List Unknown then
+      let updated_func =
+        List.filter (fun f -> f.sfname = func.sfname) !global_scope.rfunctions
+      in
+      let _ =
+        if length updated_func = 0 then raise (Failure "Function not found")
+        else ()
+      in
+      (* func.typ should be updated styp *)
+      { styp= (hd updated_func).styp
+      ; sfname= func.sfname
+      ; sformals= func.sformals
+      ; sbody= [body'] }
+    else
+      { styp= func.styp
+      ; sfname= func.sfname
+      ; sformals= func.sformals
+      ; sbody= [body'] }
+  in
   let statements' =
     try List.map (stmt global_scope) statements with e -> E.handle_error e
   in
-  (functions, statements')
+  let functions' =
+    try List.map check_functions !global_scope.rfunctions
+    with e -> E.handle_error e
+  in
+  (functions', statements')

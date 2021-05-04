@@ -45,6 +45,14 @@ type sstmt =
 type sfunc_decl =
   {styp: typ; sfname: string; sformals: bind list; sbody: sstmt list}
 
+type resolved_table =
+  { rvariables: typ StringMap.t
+  ; (* Variables bound in current block *)
+    rfunctions: sfunc_decl list
+        (* Functions that may need to be re-instantiated with concrete types *)
+  ; rlist_variables: resolved_table ref StringMap.t
+  ; rparent: resolved_table option (* Enclosing scope *) }
+
 type program = sfunc_decl list * sstmt list
 
 (* Pretty-printing functions *)
