@@ -69,10 +69,11 @@ let () =
   let string_ast = parse string_lexbuf in
   let list_ast = parse list_lexbuf in
   (* prepend standard library to program *)
-  let ast = (fst ast, snd ast) in
-  (* let ast = ( fst string_ast @ fst list_ast @ fst ast , snd string_ast @ snd
-     list_ast @ snd ast ) *)
-  (* in *)
+  (* let ast = (fst ast, snd ast) in *)
+  let ast =
+    ( fst string_ast @ fst list_ast @ fst ast
+    , snd string_ast @ snd list_ast @ snd ast )
+  in
   let sast = Semant.check ast in
   let resolved_sast = Resolve.resolve sast in
   match !action with
