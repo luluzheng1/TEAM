@@ -17,13 +17,16 @@ print_list(a);
 a = c[:1];
 print_list(a);
 
+
 void print_list(list l):
     print("[");
+    int index = 0;
     for i in l:
         print("%d", i);
-        if i != l[length(l)-1]:
+        if index != length(l)-1:
             print(",");
         end
+        index += 1;
     end
     print("]\n");
 end
