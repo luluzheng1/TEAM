@@ -1,7 +1,7 @@
 (* team.ml: scan & parse & sematically analyze the input, pretty-print AST and
    SAST *)
 
-type action = Ast | Sast | Resolve | LLVM_IR
+type action = Ast | Sast | LLVM_IR
 
 let make_err err = raise (Failure err)
 
@@ -50,7 +50,6 @@ let () =
   let speclist =
     [ ("-a", Arg.Unit (set_action Ast), "Print the AST")
     ; ("-s", Arg.Unit (set_action Sast), "Print the SAST")
-    ; ("-r", Arg.Unit (set_action Resolve), "Print the resolved SAST")
     ; ("-l", Arg.Unit (set_action LLVM_IR), "Print the generated LLVM IR") ]
   in
   let usage_msg = "usage: ./team.native [-a|-s|-r|-l] [file.tm]" in
@@ -78,8 +77,7 @@ let () =
   let resolved_sast = Resolve.resolve sast in
   match !action with
   | Ast -> print_string (Ast.string_of_program ast)
-  | Sast -> print_string (Sast.string_of_sprogram sast)
-  | Resolve -> print_string (Sast.string_of_sprogram resolved_sast)
+  | Sast -> print_string (Sast.string_of_sprogram resolved_sast)
   | LLVM_IR ->
       let m = Codegen.translate resolved_sast in
       Llvm_analysis.assert_valid_module m ;
