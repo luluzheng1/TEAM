@@ -54,3 +54,196 @@ contains_float([1.5], 1.5);
 contains_bool([true], true);
 contains_char(['a'], 'a');
 contains_string(["hello"], "hello");
+
+list remove_int(list l, int elem, bool all):
+    list retlist = [];
+    int i = 0;
+    int len = length(l);
+    int remove_index = 0;
+
+    if all:
+        while i < len:
+            if l[i] == elem:
+                i += 1;
+                continue;
+            end
+            retlist = append(retlist, l[i]);
+            i += 1;
+        end   
+    else:
+        while i < len:
+            if l[i] == elem:
+                remove_index = i;
+                break;
+            end 
+            
+            retlist = append(retlist, l[i]);
+            
+            i += 1;
+        end
+        /* can be optimized with list concat */
+        if i != len:
+            for index in remove_index+1..len:
+                retlist = append(retlist, l[index]);
+            end
+        end
+    end
+
+    return retlist; 
+end
+
+
+list remove_float(list l, float elem, bool all):
+    list retlist = [];
+    int i = 0;
+    int len = length(l);
+    int remove_index = 0;
+
+    if all:
+        while i < len:
+            if l[i] == elem:
+                i += 1;
+                continue;
+            end
+            retlist = append(retlist, l[i]);
+            i += 1;
+        end   
+    else:
+        while i < len:
+            if l[i] == elem:
+                remove_index = i;
+                break;
+            end 
+            
+            retlist = append(retlist, l[i]);
+            
+            i += 1;
+        end
+        /* can be optimized with list concat */
+        if i != len:
+            for index in remove_index+1..len:
+                retlist = append(retlist, l[index]);
+            end
+        end
+    end
+
+    return retlist; 
+end
+
+list remove_bool(list l, bool elem, bool all):
+    list retlist = [];
+    int i = 0;
+    int len = length(l);
+    int remove_index = 0;
+
+    if all:
+        while i < len:
+            if l[i] == elem:
+                i += 1;
+                continue;
+            end
+            retlist = append(retlist, l[i]);
+            i += 1;
+        end   
+    else:
+        while i < len:
+            if l[i] == elem:
+                remove_index = i;
+                break;
+            end 
+            
+            retlist = append(retlist, l[i]);
+            
+            i += 1;
+        end
+        /* can be optimized with list concat */
+        if i != len:
+            for index in remove_index+1..len:
+                retlist = append(retlist, l[index]);
+            end
+        end
+    end
+
+    return retlist; 
+end
+
+
+list remove_char(list l, char elem, bool all):
+    list retlist = [];
+    int i = 0;
+    int len = length(l);
+    int remove_index = 0;
+
+    if all:
+        while i < len:
+            if l[i] == elem:
+                i += 1;
+                continue;
+            end
+            retlist = append(retlist, l[i]);
+            i += 1;
+        end   
+    else:
+        while i < len:
+            if l[i] == elem:
+                remove_index = i;
+                break;
+            end 
+            
+            retlist = append(retlist, l[i]);
+            
+            i += 1;
+        end
+        /* can be optimized with list concat */
+        if i != len:
+            for index in remove_index+1..len:
+                retlist = append(retlist, l[index]);
+            end
+        end
+    end
+
+    return retlist; 
+end
+
+list remove_string(list l, string elem, bool all):
+    list retlist = [];
+    int i = 0;
+    int len = length(l);
+    int remove_index = 0;
+
+    if all:
+        while i < len:
+            if strcmp(l[i], elem):
+                i += 1;
+                continue;
+            end
+            retlist = append(retlist, l[i]);
+            i += 1;
+        end   
+    else:
+        while i < len:
+            if strcmp(l[i], elem):
+                remove_index = i;
+                break;
+            end 
+            
+            retlist = append(retlist, l[i]);
+            
+            i += 1;
+        end
+        /* can be optimized with list concat */
+        if i != len:
+            for index in remove_index+1..len:
+                retlist = append(retlist, l[index]);
+            end
+        end
+    end
+
+    return retlist; 
+end
+
+remove_int([1], 1, true);
+remove_float([1.5], 1.5, false);
+remove_bool([true], true, true);
+remove_char(['a'], 'a', true);
+remove_string(["hello"], "what", true);
