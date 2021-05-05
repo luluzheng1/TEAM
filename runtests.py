@@ -15,7 +15,12 @@ SCANNER_PARSER_DIR = ("ast_tests", "ast_ref")
 SEMANT_DIR = ("sast_tests", "sast_ref")
 CODEGEN_DIR = ("codegen_tests", "codegen_ref")
 EXTENDED_DIR = ("extended_tests", "extended_ref")
+COMPILED_FILE_DIR = "compiledFiles"
 
+def getCompiledFiles():
+    fileList = list(map(lambda x: "/".join((COMPILED_FILE_DIR, x)), os.listdir(COMPILED_FILE_DIR)))
+    return " ".join(fileList)
+    
 def sortingKey(fileName):
     return fileName.split(".")[0]
 
@@ -91,18 +96,36 @@ def runFile(fileName, testMode, userInput=False):
     
     command = ['./team.native', flag, fileName]
 
-    process = subprocess.Popen(command, 
-                               stdout=subprocess.PIPE, 
-                               stderr=subprocess.PIPE)
-    
-    if testMode == "codegen" or (testMode == "extended" and "bad" not in fileName):
-        process = subprocess.Popen(["lli"],
-                                   stdin=process.stdout,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
 
-    stdout, stderr = process.communicate()
-    
+    if testMode not in  ["codegen", "extended"]:
+        process = subprocess.Popen(command, 
+                                stdout=subprocess.PIPE, 
+                                stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+
+    else:
+        if "bad" in fileName:
+            process = subprocess.Popen(command, 
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
+
+        else:
+            fileNamePrefix = fileName.split(".")[0]
+            os.system("./team.native {fileName} > {fileNamePrefix}.ll".format(fileName=fileName, fileNamePrefix=fileNamePrefix))
+            os.system("llc -relocation-model=pic {fileNamePrefix}.ll".format(fileNamePrefix=fileNamePrefix))
+            compiledFiles = getCompiledFiles()
+            os.system("gcc -o {fileNamePrefix} {fileNamePrefix}.s {compiledFiles}".format(fileNamePrefix=fileNamePrefix, 
+                                                                                          compiledFiles=compiledFiles))
+
+            process = subprocess.Popen(["./{fileNamePrefix}".format(fileNamePrefix=fileNamePrefix)],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+
+            stdout, stderr = process.communicate()
+            os.system("rm {fileNamePrefix}.ll {fileNamePrefix}.s {fileNamePrefix}".format(fileNamePrefix=fileNamePrefix))
+
+
     if userInput:
         dir_prefix = "user_log"
     else:
@@ -139,7 +162,7 @@ def clean(target):
 if __name__ == "__main__":
     parser = optparse.OptionParser()
     parser.add_option('-c', '--recompile', 
-                      dest='recompile', default='True', 
+                      dest='recompile', default='False', 
                       help='True to recompile top level.')
     parser.add_option('-t', '--testFile', 
                       dest='testFile', default='', 
@@ -151,8 +174,8 @@ if __name__ == "__main__":
                       dest='topLevel', default='team.native', 
                       help='Name of the top level')
     parser.add_option('-m', '--testMode', 
-                      dest='testMode', default='ast',
-                      help='ast, sast, codegen, all')
+                      dest='testMode', default='extended',
+                      help='ast, sast, codegen, extended, all')
 
     options, args = parser.parse_args()
     recompile = interpretCommand(options.recompile)
@@ -179,5 +202,3 @@ if __name__ == "__main__":
         for m in testMode:
             print(bcolors.WARNING + bcolors.UNDERLINE + "\nTest mode: {}\n".format(m) + bcolors.ENDC)
             runTests(m)
-
-    # clean('ocaml')
