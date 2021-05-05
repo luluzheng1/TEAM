@@ -22,6 +22,7 @@ let translate (functions, statements) =
   and float_t = L.double_type context
   and i1_t = L.i1_type context
   and string_t = L.pointer_type (L.i8_type context)
+  and file_t = L.pointer_type (L.i8_type context)
   and the_module = L.create_module context "TEAM" in
   let list_struct_type = L.named_struct_type context "list_item" in
   let list_struct_ptr = L.pointer_type list_struct_type in
@@ -42,7 +43,7 @@ let translate (functions, statements) =
     | A.Unknown -> i32_t
     | A.Func (args_t, ret_t) -> func_ty args_t ret_t
     | A.List _ -> L.pointer_type list_struct_ptr
-    | _ -> void_t
+    | A.File -> file_t
   (* get the ptr to the function *)
   and func_ty args_t ret_t =
     let llret_type = ltype_of_typ ret_t in
@@ -59,6 +60,14 @@ let translate (functions, statements) =
   (* power function *)
   let pow_t : L.lltype = L.function_type float_t [|float_t; float_t|] in
   let pow_func : L.llvalue = L.declare_function "pow" pow_t the_module in
+  let open_t : L.lltype = L.function_type string_t [|string_t; string_t|] in 
+  let open_func : L.llvalue = L.declare_function "fopen" open_t the_module in
+  let close_t : L.lltype = L.function_type i32_t [|file_t|] in
+  let close_func: L.llvalue = L.declare_function "close" close_t the_module in
+  let readline_t : L.lltype = L.function_type string_t [|file_t|] in 
+  let readline_func : L.llvalue = L.declare_function "readline" readline_t the_module in
+  let write_t: L.lltype = L.function_type string_t [|file_t; string_t|] in
+  let write_func: L.llvalue = L.declare_function "write" write_t the_module in
   let match_t : L.lltype = L.function_type i1_t [|string_t; string_t|] in
   let match_func : L.llvalue = L.declare_function "match" match_t the_module in
   let find_t : L.lltype = L.function_type string_t [|string_t; string_t|] in
@@ -360,9 +369,23 @@ let translate (functions, statements) =
           L.build_call ll_func [|lst; L.const_int i32_t 0|] "length" builder
       | SCall ((_, SId "length"), [(A.String, st)]) ->
           let sl_func = build_string_length_function () in
-          L.build_call sl_func
-            [|expr sc builder (A.String, st); L.const_int i32_t 0|]
-            "length" builder
+          L.build_call sl_func [|expr sc builder (A.String, st); (L.const_int i32_t 0)|] "length" builder
+      | SCall ((_, SId "open"), [(A.String, st); (A.String, st2)]) ->
+          L.build_call open_func
+            [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
+            "open" builder
+      | SCall ((_, SId "close"), [(A.File, file)]) ->
+        L.build_call close_func
+          [|expr sc builder (A.File, file)|]
+          "close" builder
+      | SCall ((_, SId "readline"), [(A.File, file)]) ->
+          L.build_call readline_func
+            [|expr sc builder (A.File, file)|]
+            "readline" builder
+      | SCall ((_, SId "write"), [(A.File, file); (A.String, st)]) ->
+          L.build_call write_func
+            [|expr sc builder (A.File, file); expr sc builder (A.String, st)|]
+            "write" builder
       | SCall ((_, SId "reverse"), [(A.List lt, lst)]) ->
           let reverse_func = build_list_reverse_function () in
           let list_ptr_ptr = expr sc builder (A.List lt, lst) in
