@@ -69,6 +69,8 @@ exception InvalidFloatBinop
 
 exception InvalidIntBinop
 
+exception InvalidStringBinop
+
 exception NotFound of string
 
 exception ImpossibleElif
@@ -294,6 +296,11 @@ let handle_error (e : exn) =
       raise
         (Failure
            "Internal Error: Invalid operation on int. Semant should have \
+            rejected this" )
+  | InvalidStringBinop ->
+      raise
+         (Failure
+            "Internal Error: Invalid operation on string. Semant should have \
             rejected this" )
   | NotFound s ->
       raise
