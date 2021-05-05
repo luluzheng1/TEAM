@@ -42,3 +42,4 @@ test.tm
 llvm
 test.py
 .DS_Store
+*log/
