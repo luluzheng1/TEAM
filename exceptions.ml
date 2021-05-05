@@ -32,6 +32,16 @@ exception UndefinedFunction of string
 
 exception WrongNumberOfArgs of int * int * expr
 
+exception PrintMissingArgs of expr
+
+exception PrintBadArgs of char
+
+exception PrintWrongType of expr
+
+exception PrintWrongNumArgs of int * int
+
+exception PrintTypeError of typ * typ
+
 exception IllegalArgument of typ * typ * expr
 
 exception IllegalSlice of expr * typ
@@ -176,6 +186,42 @@ let handle_error (e : exn) =
            (Printf.sprintf
               "Error: expected '%s' arguments but got '%s' in '%s'" s1 s2 s3 )
         )
+   | PrintMissingArgs (e) ->
+      let s1 = string_of_expr e in
+      raise
+         (TypeError
+            (Printf.sprintf
+               "Error: expected more than 0 arguments but got 0 in '%s'" s1)
+         )
+   | PrintBadArgs (e) ->
+      raise
+         (TypeError
+            (Printf.sprintf
+               "Error: expected either c, f or i but got '%c'" e)
+         )
+   | PrintWrongType (e) ->
+      let s1 = string_of_expr e in
+      raise
+         (TypeError
+            (Printf.sprintf
+               "Error: expected string but got '%s'" s1)
+         )
+   | PrintWrongNumArgs (i1, i2) ->
+      let s1 = string_of_int i1
+      and s2 = string_of_int i2 in
+      raise
+         (TypeError
+            (Printf.sprintf
+               "Error: expected %s addition arguments, but got %s"  s1 s2)
+         )
+   |  PrintTypeError (t1, t2) ->
+      let s1 = string_of_typ t1 
+      and s2 = string_of_typ t2 in
+      raise
+         (TypeError
+            (Printf.sprintf
+               "Error: expected argument of type '%s' but got '%s' instead" s1 s2)
+         )
   | IllegalArgument (t1, t2, e) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2

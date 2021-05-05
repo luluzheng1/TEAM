@@ -37,3 +37,8 @@ test.ml
 
 # VSCode files
 .vscode/
+
+test.tm
+llvm
+test.py
+.DS_Store

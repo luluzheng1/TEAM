@@ -2,6 +2,8 @@
 
 { 
   open Parser
+  exception Scan_error of string
+  let fail ch = raise (Scan_error (Char.escaped ch))
   let unescape s =
     Scanf.sscanf ("\"" ^ s ^ "\"") "%S%!" (fun x -> x)
 }
@@ -73,7 +75,7 @@ rule token = parse
 	| char as lxm  { CLIT( String.get lxm 1 ) }
 	| string    { SLIT(unescape s) }
 	| eof { EOF }
-	| _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
+	| _ as char { fail char }
 
 
 and comment = parse
@@ -82,4 +84,5 @@ and comment = parse
 
 and slcomment = parse
 	'\n'   { token lexbuf }
+	| eof  { token lexbuf }
 	| _    { slcomment lexbuf }

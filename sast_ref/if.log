@@ -1,11 +1,11 @@
 
 int x = (int : 5)
 if (bool : (int : x) == (int : 5)):
-	(void : print((int : x)))
+	(void : ((string)->void : print)((string : "%d"), (int : x)))
 else:
 	if (bool : (int : x) == (int : 6)):
-		(void : print((int : x)))
+		(void : ((string)->void : print)((string : "%d"), (int : x)))
 	else:
-		(void : print((string : "not five")))
+		(void : ((string)->void : print)((string : "not five")))
 	end
 end

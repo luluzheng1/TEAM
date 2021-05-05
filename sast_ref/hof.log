@@ -1,12 +1,16 @@
-int addOne(x)
-	return (int : (int : x) + (int : 1))
-end
-list<int> map(function, arr)
-	for i in (list<int> : (int : 0)..(int : length((list<int> : arr)))):
-	 	(int : (int : (list<int> : arr)[(int : i)]) = (int : function((int : (list<int> : arr)[(int : i)]))))
+list<int> map_(int)->int_int(function, arr)
+	for i in (list<int> : (int : 0)..(int : ((list<int>)->int : length)((list<int> : arr)))):
+	 	(int : (int : (list<int> : arr)[(int : i)]) = (int : ((int)->int : function)((int : (list<int> : arr)[(int : i)]))))
 	end
 	return (list<int> : arr)
 end
+int addOne(x)
+	return (int : (int : x) + (int : 1))
+end
 
 list<int> arr = (list<int> : [(int : 1),(int : 2),(int : 3),(int : 4)])
-(list<int> : (list<int> : arr) = (list<int> : map(((int)->int : addOne), (list<int> : arr))))
+(list<int> : (list<int> : arr) = (list<?> : (((int)->int,list<int>)->list<?> : map_(int)->int_int)(((int)->int : addOne), (list<int> : arr))))
+for i in (list<int> : arr):
+ 	(void : ((string)->void : print)((string : "%d
+	"), (int : i)))
+end

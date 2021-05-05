@@ -1,11 +1,11 @@
 bool b1 = true and false;
-print(b1);
+print("%s\n", b1);
 
 bool b2 = true or false;
-print(b2);
+print("%s\n", b2);
 
 bool b3 = true == false;
-print(b3);
+print("%s\n", b3);
 
 bool b4 = true != false;
-print(b4);
+print("%s\n", b4);
