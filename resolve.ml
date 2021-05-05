@@ -192,15 +192,15 @@ let resolve (functions, statements) =
     | SReturn e -> SReturn e
     | SIf (p, then_stmt, else_stmt) -> SIf (expr scope p, then_stmt, else_stmt)
     | SFor (s, e, sl) ->
-        let t, e = e in
-        let list_name = match e with SId s -> Some s | _ -> None in
+        let t, e' = expr scope e in
+        let list_name = match e' with SId s -> Some s | _ -> None in
         let resolved_ty =
           if t = List Unknown && Option.is_some list_name then
             type_of_identifier scope (Option.get list_name)
           else t
         in
         let _ = add_var scope s (innermost_ty resolved_ty) in
-        let sexpr = SFor (s, (resolved_ty, e), stmt scope sl) in
+        let sexpr = SFor (s, (resolved_ty, e'), stmt scope sl) in
         let _ =
           scope :=
             { rvariables= StringMap.remove s !scope.rvariables
