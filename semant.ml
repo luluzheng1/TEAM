@@ -170,6 +170,7 @@ let check (functions, statements) =
           | (Add | Sub | Mult | Div) when same && t1 = Float -> Float
           | (Add | Sub | Mult | Div) when t1 = Int && t2 = Float -> Float
           | (Add | Sub | Mult | Div) when t1 = Float && t2 = Int -> Float
+          | (Add) when t1 = String && t2 = String -> String
           | Exp when same && t1 = Int -> Int
           | Exp when same && t1 = Float -> Float
           | Exp when t1 = Int && t2 = Float -> Float
