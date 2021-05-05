@@ -1,3 +1,23 @@
+bool contains(list l, list items):
+    list res = [];
+    for item in items:
+        res = append(res, False);
+        for ref in l:
+            if ref == item:
+                res[length(res)] = true;
+            end
+        end
+
+    end
+
+    for r in res:
+        if not r:
+            return False;
+        end
+    end
+    return True;
+end
+
 bool contains_int(list l, int elem):
     for i in l:
         if i == elem:
