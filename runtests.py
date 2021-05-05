@@ -14,6 +14,7 @@ class bcolors:
 SCANNER_PARSER_DIR = ("ast_tests", "ast_ref")
 SEMANT_DIR = ("sast_tests", "sast_ref")
 CODEGEN_DIR = ("codegen_tests", "codegen_ref")
+EXTENDED_DIR = ("extended_tests", "extended_ref")
 
 def sortingKey(fileName):
     return fileName.split(".")[0]
@@ -25,6 +26,8 @@ def runTests(testMode):
         dirTuple = SCANNER_PARSER_DIR
     elif testMode == "codegen":
         dirTuple = CODEGEN_DIR
+    elif testMode == "extended":
+        dirTuple = EXTENDED_DIR
     else:
         print(bcolors.FAIL + "Test mode: {} not supported".format(testMode) + bcolors.ENDC)
         sys.exit()
@@ -68,7 +71,7 @@ def checkResults(f_generated, f_reference):
             print(bcolors.WARNING + 
                   "command: diff -y {} (output) {} (standard)\n".format(f_generated, f_reference) + 
                   bcolors.ENDC)
-            print(bcolors.WARNING + stdout + bcolors.ENDC)
+            print(bcolors.WARNING + stdout.decode("utf-8") + bcolors.ENDC)
             print("+" * 100)
             return
     printSuccessTestMessage(f_generated)
@@ -77,8 +80,10 @@ def runFile(fileName, testMode, userInput=False):
     if testMode == "ast":
         flag = "-a"
     elif testMode == "sast":
-        flag = "-s"
+        flag = "-r"
     elif testMode == "codegen":
+        flag = "-l"
+    elif testMode == "extended":
         flag = "-l"
     else:
         print(bcolors.FAIL + "Test mode: {} not supported".format(testMode) + bcolors.ENDC)
@@ -90,7 +95,7 @@ def runFile(fileName, testMode, userInput=False):
                                stdout=subprocess.PIPE, 
                                stderr=subprocess.PIPE)
     
-    if testMode == "codegen":
+    if testMode == "codegen" or (testMode == "extended" and "bad" not in fileName):
         process = subprocess.Popen(["lli"],
                                    stdin=process.stdout,
                                    stdout=subprocess.PIPE,
@@ -170,9 +175,9 @@ if __name__ == "__main__":
         logFile = runFile(testFile, testMode, True)
         checkResults(logFile, reference)
     else:
-        testMode = [testMode] if testMode != "all" else ["ast", "sast", "codegen"]
+        testMode = [testMode] if testMode != "all" else ["ast", "sast", "codegen", "extended"]
         for m in testMode:
             print(bcolors.WARNING + bcolors.UNDERLINE + "\nTest mode: {}\n".format(m) + bcolors.ENDC)
             runTests(m)
 
-    clean('ocaml')
+    # clean('ocaml')

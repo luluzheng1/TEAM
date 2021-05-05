@@ -1,15 +1,14 @@
 
-all: team.native regex
-
-team.native : parser.mly scanner.mll codegen.ml semant.ml team.ml
+all: team.native
+team.native : parser.mly scanner.mll codegen.ml semant.ml resolve.ml team.ml
 	opam config exec -- \
 	ocamlbuild -use-ocamlfind team.native
 
 # For built-in functions
+.PHONY: regex
 regex : regex.c
 	gcc -c -Wall -g regex.c
 	gcc -g  -lpcreposix -lpcre2-8 -o regex -DBUILD_TEST regex.c
-
 
 .PHONY : clean
 clean :

@@ -1,13 +1,13 @@
 float f = 5.5;
 
 f += 10;
-print(f);
+print("%f\n", f);
 
 f -= 5;
-print(f);
+print("%f\n", f);
 
 f *= 2;
-print(f);
+print("%f\n", f);
 
 f /= 2;
-print(f);
+print("%f\n", f);

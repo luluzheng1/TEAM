@@ -2,8 +2,8 @@ int addTwoElements(int x, int y):
     return x + y;
 end
 
-list <int> map2 ((int,int)->int function, list <int> arr1, list <int> arr2):
-    list <int> ans = [];
+list map2 ((int,int)->int function, list arr1, list arr2):
+    list ans = [];
     int shorterArrLength = 0;
 
     if length(arr1) < length(arr2):
@@ -19,6 +19,6 @@ list <int> map2 ((int,int)->int function, list <int> arr1, list <int> arr2):
     return ans;
 end
 
-list <int> arr1 = [1, 2, 3, 4];
-list <int> arr2 = [4, 3, 2, 1];
-list<int> arr = map2(addTwoElements, arr1, arr2);
+list arr1 = [1, 2, 3, 4];
+list arr2 = [4, 3, 2, 1];
+list arr = map2(addTwoElements, arr1, arr2);
