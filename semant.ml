@@ -200,17 +200,12 @@ let check (functions, statements) =
     | Assign (s, e) as ex ->
         let lt, s' = expr scope s in
         let rt, e' = expr scope e in
-        let _ =
-          match s' with
-          | SId _ | SSliceExpr _ -> ()
-          | _ -> raise (Failure "Can't assign to type")
-        in
         let lrt = check_assign lt rt (E.IllegalAssignment (lt, None, rt, ex)) in
         let s_name =
           match s with
           | Id n -> n
           | SliceExpr (Id n, _) -> n
-          | _ -> raise (Failure "LHS is not a variable")
+          | _ -> raise (E.AssignNonVar ex)
         in
         let is_slice = match s with SliceExpr _ -> true | _ -> false in
         let non_slice =
@@ -241,20 +236,14 @@ let check (functions, statements) =
         let formals, ret_type =
           match fty with
           | Func (f, r) -> (f, r)
-          | _ -> raise (Failure "Not a function")
+          | _ -> raise E.UndefinedFunction
         in
         let _ = if fname <> Id "print" then check_length formals else () in
         match fname with
         | Id "print" ->
             let et, _ = expr scope (hd args) in
             let _ =
-              match et with
-              | String -> ()
-              | _ ->
-                  raise
-                    (Failure
-                       ( "Print does not support printing for type"
-                       ^ string_of_typ et ) )
+              match et with String -> () | _ -> raise (E.UnsupportedPrint et)
             in
             ( Void
             , SCall
@@ -355,9 +344,7 @@ let check (functions, statements) =
                   (List.map (fun t -> string_of_typ t) inner_types)
               in
               let func_name =
-                match fname with
-                | Id s -> s
-                | _ -> raise (Failure "Not a function name")
+                match fname with Id s -> s | _ -> raise E.IllegalFname
               in
               (* look up the old function *)
               let look_up_func =
@@ -366,7 +353,7 @@ let check (functions, statements) =
               let generic_func =
                 match look_up_func with
                 | Some f -> f
-                | None -> raise (Failure "Could not find function")
+                | None -> raise E.UndefinedFunction
               in
               let new_fname =
                 String.concat "_" [generic_func.fname; type_specific_name]
@@ -492,7 +479,7 @@ let check (functions, statements) =
             let func =
               match look_up_func with
               | Some f -> f
-              | None -> raise (Failure "Could not find function")
+              | None -> raise E.UndefinedFunction
             in
             let modified_func =
               {typ= t; fname= func.fname; formals= func.formals; body= func.body}
@@ -524,7 +511,7 @@ let check (functions, statements) =
           match t with
           | List ty -> ty
           | String -> Char
-          | _ -> raise (Failure "for loop can only take string or list")
+          | _ -> raise E.IllegalFor
         in
         let _ = add_var_to_scope scope s s_ty in
         let sexpr = SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl) in
@@ -586,8 +573,7 @@ let check (functions, statements) =
         List.filter (fun f -> f.fname = func.fname) !global_scope.functions
       in
       let _ =
-        if length updated_func = 0 then raise (Failure "Function not found")
-        else ()
+        if length updated_func = 0 then raise E.UndefinedFunction else ()
       in
       (* update function type to be type specific *)
       { styp= (hd updated_func).typ
