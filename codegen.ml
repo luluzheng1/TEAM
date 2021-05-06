@@ -60,14 +60,16 @@ let translate (functions, statements) =
   (* power function *)
   let pow_t : L.lltype = L.function_type float_t [|float_t; float_t|] in
   let pow_func : L.llvalue = L.declare_function "pow" pow_t the_module in
-  let open_t : L.lltype = L.function_type string_t [|string_t; string_t|] in 
+  let open_t : L.lltype = L.function_type string_t [|string_t; string_t|] in
   let open_func : L.llvalue = L.declare_function "fopen" open_t the_module in
   let close_t : L.lltype = L.function_type i32_t [|file_t|] in
-  let close_func: L.llvalue = L.declare_function "close" close_t the_module in
-  let readline_t : L.lltype = L.function_type string_t [|file_t|] in 
-  let readline_func : L.llvalue = L.declare_function "readline" readline_t the_module in
-  let write_t: L.lltype = L.function_type string_t [|file_t; string_t|] in
-  let write_func: L.llvalue = L.declare_function "write" write_t the_module in
+  let close_func : L.llvalue = L.declare_function "close" close_t the_module in
+  let readline_t : L.lltype = L.function_type string_t [|file_t|] in
+  let readline_func : L.llvalue =
+    L.declare_function "readline" readline_t the_module
+  in
+  let write_t : L.lltype = L.function_type string_t [|file_t; string_t|] in
+  let write_func : L.llvalue = L.declare_function "write" write_t the_module in
   let match_t : L.lltype = L.function_type i1_t [|string_t; string_t|] in
   let match_func : L.llvalue = L.declare_function "match" match_t the_module in
   let find_t : L.lltype = L.function_type string_t [|string_t; string_t|] in
@@ -337,14 +339,28 @@ let translate (functions, statements) =
             | _ -> raise E.InvalidFloatBinop
           else if t1 = A.String && t2 = A.String then
             match op with
-            | A.Add ->  
+            | A.Add ->
                 let sl_func = build_string_length_function () in
-                let length1 = L.build_call sl_func [|e1'; L.const_int i32_t 0|] "length" builder in
-                let length2 = L.build_call sl_func [|e2'; L.const_int i32_t 0|] "length" builder in
-                let new_length = L.build_add length1 length2 "new_length" builder in
-                let new_length_w_null = L.build_add new_length (L.const_int i32_t 1) "new_length_nul" builder in
+                let length1 =
+                  L.build_call sl_func
+                    [|e1'; L.const_int i32_t 0|]
+                    "length" builder
+                in
+                let length2 =
+                  L.build_call sl_func
+                    [|e2'; L.const_int i32_t 0|]
+                    "length" builder
+                in
+                let new_length =
+                  L.build_add length1 length2 "new_length" builder
+                in
+                let new_length_w_null =
+                  L.build_add new_length (L.const_int i32_t 1) "new_length_nul"
+                    builder
+                in
                 let new_str =
-                  L.build_array_malloc i8_t new_length_w_null "new_string" builder
+                  L.build_array_malloc i8_t new_length_w_null "new_string"
+                    builder
                 in
                 let mmcpy_t =
                   L.function_type void_t
@@ -407,15 +423,17 @@ let translate (functions, statements) =
           L.build_call ll_func [|lst; L.const_int i32_t 0|] "length" builder
       | SCall ((_, SId "length"), [(A.String, st)]) ->
           let sl_func = build_string_length_function () in
-          L.build_call sl_func [|expr sc builder (A.String, st); (L.const_int i32_t 0)|] "length" builder
+          L.build_call sl_func
+            [|expr sc builder (A.String, st); L.const_int i32_t 0|]
+            "length" builder
       | SCall ((_, SId "open"), [(A.String, st); (A.String, st2)]) ->
           L.build_call open_func
             [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
             "open" builder
       | SCall ((_, SId "close"), [(A.File, file)]) ->
-        L.build_call close_func
-          [|expr sc builder (A.File, file)|]
-          "close" builder
+          L.build_call close_func
+            [|expr sc builder (A.File, file)|]
+            "close" builder
       | SCall ((_, SId "readline"), [(A.File, file)]) ->
           L.build_call readline_func
             [|expr sc builder (A.File, file)|]

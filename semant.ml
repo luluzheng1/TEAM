@@ -41,7 +41,6 @@ let check (functions, statements) =
       ; ( "append"
         , [(List Unknown, "input_list"); (Unknown, "element")]
         , List Unknown )
-      ; ("contains", [(Unknown, "input_list"); (Unknown, "element")], Bool)
       ; ( "insert"
         , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
         , List Unknown )
@@ -91,6 +90,7 @@ let check (functions, statements) =
       | Some parent -> type_of_identifier (ref parent) name
       | _ -> raise (E.UndefinedId name) )
   in
+  (* Add a variable to the given scope *)
   let add_var_to_scope (scope : symbol_table ref) id ty =
     try
       let _ = StringMap.find id !scope.variables in
@@ -109,6 +109,7 @@ let check (functions, statements) =
       ; list_variables= !scope.list_variables
       ; parent= !scope.parent }
   in
+  (* Add the scope of list variable with name id *)
   let add_list_scope id (scope : symbol_table ref) =
     try
       let _ = StringMap.find id !scope.variables in
@@ -165,8 +166,7 @@ let check (functions, statements) =
         let same = t1 = t2 in
         let ty =
           match op with
-          | (Add | Sub | Mult | Div | Mod) when same && t1 = Int ->
-              Int (* TODO: Does Add operate on strings? *)
+          | (Add | Sub | Mult | Div | Mod) when same && t1 = Int -> Int
           | (Add | Sub | Mult | Div) when same && t1 = Float -> Float
           | (Add | Sub | Mult | Div) when t1 = Int && t2 = Float -> Float
           | (Add | Sub | Mult | Div) when t1 = Float && t2 = Int -> Float
@@ -218,6 +218,7 @@ let check (functions, statements) =
           | List _, List _ | Void, List _ ->
               let _ = update_var scope s_name lrt in
               let _ =
+                (* update the list variable in the scope it is defined in *)
                 match get_list_scope s_name scope with
                 | Some sc -> update_var sc s_name lrt
                 | None -> ()
@@ -329,24 +330,6 @@ let check (functions, statements) =
               | _ -> raise (E.LengthWrongArgument et1)
             in
             (Int, SCall ((Func ([List Int], Int), SId "length"), args'))
-        | Id "contains" ->
-            let args' = List.map (expr scope) args in
-            let et1, _ = hd args' in
-            let inner_et1_ty = innermost_ty et1 in
-            let et2, _ = hd (tl args') in
-            let _ =
-              if inner_et1_ty <> et2 then
-                raise (E.MismatchedTypes (et1, List et2, call))
-              else ()
-            in
-            let _ =
-              match et2 with
-              | Int | Float | Bool | String | Char -> ()
-              | _ ->
-                  raise
-                    (Failure ("Not Yet Supported on typ" ^ string_of_typ et2))
-            in
-            (Bool, SCall ((Func ([List et1], et2), SId "contains"), args'))
         | _ ->
             let check_call ft e =
               let et, e' = expr scope e in
@@ -403,6 +386,8 @@ let check (functions, statements) =
                       List.combine arg_types (List.map snd generic_func.formals)
                   ; body= generic_func.body }
                 in
+                (* add the new type specified function, remove the generic
+                   function *)
                 let _ =
                   global_scope :=
                     { variables= !global_scope.variables
@@ -512,6 +497,7 @@ let check (functions, statements) =
             let modified_func =
               {typ= t; fname= func.fname; formals= func.formals; body= func.body}
             in
+            (* update function return type to be type specific *)
             let _ =
               global_scope :=
                 { variables= !global_scope.variables
@@ -542,6 +528,7 @@ let check (functions, statements) =
         in
         let _ = add_var_to_scope scope s s_ty in
         let sexpr = SFor (s, (t, e'), check_stmt scope st (loop + 1) fdecl) in
+        (* remove the indexing variable in for loop from current scope *)
         let _ =
           scope :=
             { variables= StringMap.remove s !scope.variables
@@ -565,11 +552,13 @@ let check (functions, statements) =
         if (same && not is_generic_list) || e' = SNoexpr then
           let _ = add_var_to_scope scope s ty in
           SDeclaration (ty, s, (expr_ty, e'))
+          (* update type of list on LHS of assignment to the type of the LHS *)
         else if ty = List Unknown && not is_generic_list then
           let _ = add_var_to_scope scope s expr_ty in
           SDeclaration (expr_ty, s, (expr_ty, e'))
         else
           let _ =
+            (* if type of LHS is already specific, do not revert back to generic *)
             match (expr_ty, e') with
             | List Unknown, _ ->
                 let _ = add_list_scope s scope in
@@ -600,7 +589,7 @@ let check (functions, statements) =
         if length updated_func = 0 then raise (Failure "Function not found")
         else ()
       in
-      (* func.typ should be updated styp *)
+      (* update function type to be type specific *)
       { styp= (hd updated_func).typ
       ; sfname= func.fname
       ; sformals= formals'
