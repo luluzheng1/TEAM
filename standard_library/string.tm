@@ -31,8 +31,8 @@ list split(string text, char separator):
     return result;
 end 
 
-/*
-string join(list<string> text_list, string connector):
+
+string join(list text_list, string connector):
     string res = "";
     int list_length = length(text_list);
     for index in 0..(list_length - 1):
@@ -42,6 +42,8 @@ string join(list<string> text_list, string connector):
     return res;
 end
 
+join(["hello"], "");
+/*
 string string_reverse(string text):
     string res = "";
     int string_length = length(text);
