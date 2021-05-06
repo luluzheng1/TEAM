@@ -41,6 +41,8 @@ string join(list text_list, string connector):
     res = res + text_list[list_length - 1];
     return res;
 end
+
+join(["hello"], "");
 /*
 string string_reverse(string text):
     string res = "";
