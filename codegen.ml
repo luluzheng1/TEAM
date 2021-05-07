@@ -389,6 +389,55 @@ let translate (functions, statements) =
                 let _ = L.build_store ((L.const_int i8_t) 0) nul builder in
                 new_str
             | _ -> raise E.InvalidStringBinop
+          else if t1 = A.String && t2 = A.Char then
+            match op with
+            | A.Add ->
+              let sl_func = build_string_length_function () in
+              let length1 =
+                L.build_call sl_func
+                  [|e1'; L.const_int i32_t 0|]
+                  "length" builder
+              in
+              let length2 = (L.const_int i32_t 1)
+              in
+              let new_length =
+                L.build_add length1 length2 "new_length" builder
+              in
+              let new_length_w_null =
+                L.build_add new_length (L.const_int i32_t 1) "new_length_nul"
+                  builder
+              in
+              let new_str =
+                L.build_array_malloc i8_t new_length_w_null "new_string"
+                  builder
+              in
+              let mmcpy_t =
+                L.function_type void_t
+                  [|L.pointer_type i8_t; L.pointer_type i8_t; i32_t; i1_t|]
+              in
+              let mmcpy =
+                L.declare_function "llvm.memcpy.p0i8.p0i8.i32" mmcpy_t
+                  the_module
+              in
+              let _ =
+                L.build_call mmcpy
+                  [|new_str; e1'; length1; (L.const_int i1_t) 1|]
+                  "" builder
+              in
+              let new_spot =
+                L.build_gep new_str [|length1|] "new_spot" builder
+              in
+              let _ =
+                L.build_call mmcpy
+                  [|new_spot; e2'; length2; (L.const_int i1_t) 1|]
+                  "" builder
+              in
+              let nul =
+                L.build_gep new_str [|new_length|] "string_term" builder
+              in
+              let _ = L.build_store ((L.const_int i8_t) 0) nul builder in
+              new_str
+            | _ -> raise E.InvalidStringBinop
           else (
             print_endline (A.string_of_typ t1) ;
             print_endline (A.string_of_typ t2) ;
