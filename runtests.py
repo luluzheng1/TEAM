@@ -93,36 +93,47 @@ def runFile(fileName, testMode, userInput=False):
         print(bcolors.FAIL + "Test mode: {} not supported".format(testMode) + bcolors.ENDC)
         sys.exit()
 
-    command = ['./team.native', flag, fileName]
-
-
-    if testMode not in  ["codegen", "extended"]:
-        process = subprocess.Popen(command,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-
+    if testMode not in ["codegen", "extended"]:
+        command = ['./team.native', flag, fileName]
     else:
-        if "bad" in fileName:
-            process = subprocess.Popen(command,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-            stdout, stderr = process.communicate()
+        command = ["./compile.sh", fileName, "run"]
+    process = subprocess.Popen(command,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    clean = ["./compile.sh", fileName, "clean"]
+    process = subprocess.Popen(clean,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
 
-        else:
-            fileNamePrefix = fileName.split(".")[0]
-            os.system("./team.native {fileName} > {fileNamePrefix}.ll".format(fileName=fileName, fileNamePrefix=fileNamePrefix))
-            os.system("llc -relocation-model=pic {fileNamePrefix}.ll".format(fileNamePrefix=fileNamePrefix))
-            compiledFiles = getCompiledFiles()
-            os.system("gcc -o {fileNamePrefix} {fileNamePrefix}.s {compiledFiles}".format(fileNamePrefix=fileNamePrefix,
-                                                                                          compiledFiles=compiledFiles))
 
-            process = subprocess.Popen(["./{fileNamePrefix}".format(fileNamePrefix=fileNamePrefix)],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+    # if testMode not in  ["codegen", "extended"]:
+    #     process = subprocess.Popen(command,
+    #                             stdout=subprocess.PIPE,
+    #                             stderr=subprocess.PIPE)
+    #     stdout, stderr = process.communicate()
 
-            stdout, stderr = process.communicate()
-            os.system("rm {fileNamePrefix}.ll {fileNamePrefix}.s {fileNamePrefix}".format(fileNamePrefix=fileNamePrefix))
+    # else:
+    #     if "bad" in fileName:
+    #         process = subprocess.Popen(command,
+    #                                 stdout=subprocess.PIPE,
+    #                                 stderr=subprocess.PIPE)
+    #         stdout, stderr = process.communicate()
+
+        # else:
+            # fileNamePrefix = fileName.split(".")[0]
+            # os.system("./team.native {fileName} > {fileNamePrefix}.ll".format(fileName=fileName, fileNamePrefix=fileNamePrefix))
+            # os.system("llc -relocation-model=pic {fileNamePrefix}.ll".format(fileNamePrefix=fileNamePrefix))
+            # compiledFiles = getCompiledFiles()
+            # os.system("gcc -o {fileNamePrefix} {fileNamePrefix}.s {compiledFiles}".format(fileNamePrefix=fileNamePrefix,
+            #                                                                               compiledFiles=compiledFiles))
+
+            # process = subprocess.Popen(["./{fileNamePrefix}".format(fileNamePrefix=fileNamePrefix)],
+            #                         stdout=subprocess.PIPE,
+            #                         stderr=subprocess.PIPE)
+
+            # stdout, stderr = process.communicate()
+            # os.system("rm {fileNamePrefix}.ll {fileNamePrefix}.s {fileNamePrefix}".format(fileNamePrefix=fileNamePrefix))
 
 
     if userInput:
