@@ -13,20 +13,20 @@ define HEADER
 endef
 export HEADER
 all: team.native fileio regex 
-team.native : parser.mly scanner.mll codegen.ml semant.ml resolve.ml team.ml
+team.native : ./src/parser.mly ./src/scanner.mll ./src/codegen.ml ./src/semant.ml ./src/resolve.ml ./src/team.ml
 	opam config exec -- \
-	ocamlbuild -use-ocamlfind team.native
+	ocamlbuild -use-ocamlfind ./src/team.native
 	@echo "$$HEADER"
 # For built-in functions
 .PHONY: fileio
-fileio: fileio.c
-	gcc -c -Wall -g fileio.c
-	gcc -g -o fileio -DBUILD_TEST fileio.c
+fileio: ./c_library/fileio.c
+	gcc -c -Wall -g ./c_library/fileio.c
+	gcc -g -o fileio -DBUILD_TEST ./c_library/fileio.c
 
 .PHONY: regex
-regex : regex.c
-	gcc -c -Wall -g regex.c
-	gcc -g  -lpcreposix -lpcre2-8 -o regex -DBUILD_TEST regex.c
+regex : ./c_library/regex.c
+	gcc -c -Wall -g ./c_library/regex.c
+	gcc -g  -lpcreposix -lpcre2-8 -o regex -DBUILD_TEST ./c_library/regex.c
 
 .PHONY : clean
 clean :

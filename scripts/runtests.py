@@ -11,10 +11,10 @@ class bcolors:
     WARNING = '\033[93m'
     UNDERLINE = '\033[4m'
 
-SCANNER_PARSER_DIR = ("ast_tests", "ast_ref")
-SEMANT_DIR = ("sast_tests", "sast_ref")
-CODEGEN_DIR = ("codegen_tests", "codegen_ref")
-EXTENDED_DIR = ("extended_tests", "extended_ref")
+SCANNER_PARSER_DIR = ("tests/ast_tests", "ref/ast_ref")
+SEMANT_DIR = ("tests/sast_tests", "ref/sast_ref")
+CODEGEN_DIR = ("tests/codegen_tests", "ref/codegen_ref")
+EXTENDED_DIR = ("tests/extended_tests", "ref/extended_ref")
 
 def getCompiledFiles():
     fileList = [f for f in os.listdir(".") if ".o" in f]
@@ -96,12 +96,12 @@ def runFile(fileName, testMode, userInput=False):
     if testMode not in ["codegen", "extended"] or "bad" in fileName:
         command = ['./team.native', flag, fileName]
     else:
-        command = ["./compile.sh", fileName, "run"]
+        command = ["./scripts/compile.sh", fileName, "run"]
     process = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    clean = ["./compile.sh", fileName, "clean"]
+    clean = ["./scripts/compile.sh", fileName, "clean"]
     process = subprocess.Popen(clean,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
@@ -109,7 +109,7 @@ def runFile(fileName, testMode, userInput=False):
     if userInput:
         dir_prefix = "user_log"
     else:
-        dir_prefix = "_".join((testMode, "log"))
+        dir_prefix = "log/" + "_".join((testMode, "log"))
 
     if not os.path.exists(dir_prefix):
         os.makedirs(dir_prefix)
