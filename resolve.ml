@@ -105,7 +105,7 @@ let resolve (functions, statements) =
       | _, SId "match" -> (t, SCall (f, args))
       | _, SId "replace" -> (t, SCall (f, args))
       | _, SId "replaceall" -> (t, SCall (f, args))
-      | _, SId "contains" -> (t, SCall (f, args))
+      (* | _, SId "contains" -> (t, SCall (f, args)) *)
       | fty, SId fname ->
           let option_func = look_up_func functions fname in
           if Option.is_some option_func then
