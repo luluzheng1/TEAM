@@ -43,7 +43,7 @@ string join(list text_list, string connector):
 end
 
 join(["hello"], "");
-/*
+
 string string_reverse(string text):
     string res = "";
     int string_length = length(text);
@@ -54,12 +54,12 @@ string string_reverse(string text):
     end 
     return res;
 end
-*/
-bool startWith(string text, char s):
+
+bool startswith(string text, char s):
     return s == text[0];
 end
 
-bool endWith(string text, char e):
+bool endswith(string text, char e):
     int string_length = length(text);
     return e == text[string_length - 1];
 end
