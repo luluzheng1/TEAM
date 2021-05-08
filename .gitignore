@@ -38,6 +38,12 @@ test.ml
 # VSCode files
 .vscode/
 
+# Built-in library stuff produced at compile time
+regex
+fileio
+fileio.dSYM/
+regex.dSYM/
+
 test.tm
 llvm
 test.py
