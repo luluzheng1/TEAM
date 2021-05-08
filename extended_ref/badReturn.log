@@ -1,1 +1,1 @@
-Fatal error: exception Exceptions.TypeError("Type error: Expected value of type 'string', but got a value of type 'int' in 'return 34;\n'")
+lli: error: 'main' function not found in module.

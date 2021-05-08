@@ -1,1 +1,1 @@
-Fatal error: exception Failure("illegal character \"")
+Fatal error: exception Scanner.Scan_error("\"")
