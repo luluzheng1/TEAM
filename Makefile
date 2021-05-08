@@ -21,3 +21,4 @@ clean :
 	rm *.o
 	rm regex
 	rm fileio
+	rm -r *.dSYM/
