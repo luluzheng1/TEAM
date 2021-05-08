@@ -16,6 +16,10 @@ SEMANT_DIR = ("sast_tests", "sast_ref")
 CODEGEN_DIR = ("codegen_tests", "codegen_ref")
 EXTENDED_DIR = ("extended_tests", "extended_ref")
 
+def getCompiledFiles():
+    fileList = [f for f in os.listdir(".") if ".o" in f]
+    return " ".join(fileList)
+
 def sortingKey(fileName):
     return fileName.split(".")[0]
 
@@ -58,18 +62,18 @@ def checkResults(f_generated, f_reference):
 
     if len(generated) != len(reference):
         printFailedTestMessage(f_generated)
-        return 
+        return
     for index, astGenerateLine in enumerate(generated):
         if astGenerateLine != reference[index]:
             printFailedTestMessage(f_generated)
             print("+" * 100)
             print(bcolors.WARNING + bcolors.UNDERLINE + "Running diff...\n" + bcolors.ENDC)
-            process = subprocess.Popen(["diff", "-y", f_generated, f_reference], 
-                               stdout=subprocess.PIPE, 
+            process = subprocess.Popen(["diff", "-y", f_generated, f_reference],
+                               stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
             stdout, stderr = process.communicate()
-            print(bcolors.WARNING + 
-                  "command: diff -y {} (output) {} (standard)\n".format(f_generated, f_reference) + 
+            print(bcolors.WARNING +
+                  "command: diff -y {} (output) {} (standard)\n".format(f_generated, f_reference) +
                   bcolors.ENDC)
             print(bcolors.WARNING + stdout.decode("utf-8") + bcolors.ENDC)
             print("+" * 100)
@@ -88,21 +92,20 @@ def runFile(fileName, testMode, userInput=False):
     else:
         print(bcolors.FAIL + "Test mode: {} not supported".format(testMode) + bcolors.ENDC)
         sys.exit()
-    
-    command = ['./team.native', flag, fileName]
 
-    process = subprocess.Popen(command, 
-                               stdout=subprocess.PIPE, 
-                               stderr=subprocess.PIPE)
-    
-    if testMode == "codegen" or (testMode == "extended" and "bad" not in fileName):
-        process = subprocess.Popen(["lli"],
-                                   stdin=process.stdout,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-
+    if testMode not in ["codegen", "extended"]:
+        command = ['./team.native', flag, fileName]
+    else:
+        command = ["./compile.sh", fileName, "run"]
+    process = subprocess.Popen(command,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    
+    clean = ["./compile.sh", fileName, "clean"]
+    process = subprocess.Popen(clean,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+
     if userInput:
         dir_prefix = "user_log"
     else:
@@ -115,14 +118,14 @@ def runFile(fileName, testMode, userInput=False):
         toWrite = stdout if stdout else stderr
         fo.write(toWrite.decode('utf-8'))
     return filename
-                
+
 
 def interpretCommand(command):
     return True if command[0].upper() == "T" else False
 
 def compile(topLevel):
-    process = subprocess.Popen(['ocamlbuild', '-use-ocamlfind', topLevel], 
-                               stdout=subprocess.PIPE, 
+    process = subprocess.Popen(['ocamlbuild', '-use-ocamlfind', topLevel],
+                               stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     if 'failed' in stdout.decode('utf-8') or "Error" in stdout.decode('utf-8'):
@@ -132,27 +135,27 @@ def compile(topLevel):
 
 def clean(target):
     if target == "ocaml":
-        process = subprocess.Popen(['ocamlbuild', '-clean'], 
-                                stdout=subprocess.PIPE, 
+        process = subprocess.Popen(['ocamlbuild', '-clean'],
+                                stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
 
 if __name__ == "__main__":
     parser = optparse.OptionParser()
-    parser.add_option('-c', '--recompile', 
-                      dest='recompile', default='True', 
+    parser.add_option('-c', '--recompile',
+                      dest='recompile', default='False',
                       help='True to recompile top level.')
-    parser.add_option('-t', '--testFile', 
-                      dest='testFile', default='', 
+    parser.add_option('-t', '--testFile',
+                      dest='testFile', default='',
                       help='Specify one test file. AST is written.')
     parser.add_option('-r', '--reference',
                       dest='reference', default='',
                       help='The reference to compare generated AST.')
-    parser.add_option('-l', '--topLevel', 
-                      dest='topLevel', default='team.native', 
+    parser.add_option('-l', '--topLevel',
+                      dest='topLevel', default='team.native',
                       help='Name of the top level')
-    parser.add_option('-m', '--testMode', 
-                      dest='testMode', default='ast',
-                      help='ast, sast, codegen, all')
+    parser.add_option('-m', '--testMode',
+                      dest='testMode', default='extended',
+                      help='ast, sast, codegen, extended, all')
 
     options, args = parser.parse_args()
     recompile = interpretCommand(options.recompile)
@@ -164,10 +167,10 @@ if __name__ == "__main__":
     if reference != '' and testFile == '':
         print("Error detected!\nReference specified with no test file specified.\nExiting...\n")
         sys.exit()
-        
+
     if recompile or topLevel not in os.listdir('/'):
         compile(topLevel)
-    
+
     if testFile != '':
         if testMode == "all":
             print("Error detected!\n Test mode cannot be all when testing a single file")
@@ -179,5 +182,3 @@ if __name__ == "__main__":
         for m in testMode:
             print(bcolors.WARNING + bcolors.UNDERLINE + "\nTest mode: {}\n".format(m) + bcolors.ENDC)
             runTests(m)
-
-    # clean('ocaml')

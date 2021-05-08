@@ -388,6 +388,13 @@ let translate (functions, statements) =
                 in
                 let _ = L.build_store ((L.const_int i8_t) 0) nul builder in
                 new_str
+            | A.Equal -> 
+                let strcmp_func = build_strcmp_function () in
+                L.build_call strcmp_func [|e1'; e2'|] "strcmp_eq" builder
+            | A.Neq -> 
+                let strcmp_func = build_strcmp_function () in
+                let bool_val = L.build_call strcmp_func [|e1'; e2'|] "strcmp_eq" builder in
+                L.build_select bool_val (L.const_int i1_t 0) (L.const_int i1_t 1) "strcmp_neq" builder
             | _ -> raise E.InvalidStringBinop
           else if t1 = A.String && t2 = A.Char then
             match op with
@@ -696,6 +703,87 @@ let translate (functions, statements) =
       let _ = L.build_store e' l_var builder in
       sc :=
         {lvariables= StringMap.add n l_var !sc.lvariables; parent= !sc.parent}
+    and build_strcmp_function () = 
+      match L.lookup_function "strcmp_function" the_module with
+      | Some func -> func
+      | None -> 
+          let strcmp_func_t = 
+            L.function_type i1_t [|string_t; string_t|]
+          in
+          let strcmp_func = L.define_function "strcmp_function" strcmp_func_t the_module in
+          let strcmp_builder = 
+            L.builder_at_end context (L.entry_block strcmp_func)
+          in
+
+          let stringA = L.param strcmp_func 0 in
+          let stringB = L.param strcmp_func 1 in
+
+          let sl_func = build_string_length_function () in
+          let length1 = L.build_call sl_func [|stringA; L.const_int i32_t 0|] "length" strcmp_builder in
+          let length2 = L.build_call sl_func [|stringB; L.const_int i32_t 0|] "length" strcmp_builder in
+
+          let bool_val = L.build_icmp L.Icmp.Ne length1 length2 "same_length" strcmp_builder in 
+          let then_bb = L.append_block context "then" strcmp_func in 
+          let _ = L.build_ret (L.const_int i1_t 0) (L.builder_at_end context then_bb) in
+          let else_bb = L.append_block context "else" strcmp_func in 
+          let else_builder = L.builder_at_end context else_bb in 
+          let strcmp_helper_func = build_strcmp_helper_function () in 
+          let last_index =
+            L.build_sub length1 (L.const_int i32_t 1) "last_index" else_builder
+          in
+          let ret = 
+            L.build_call strcmp_helper_func [|stringA; stringB; last_index; (L.const_int i32_t 0)|] 
+            "res" else_builder
+          in
+          let _ = L.build_ret ret else_builder in
+          let _ = L.build_cond_br bool_val then_bb else_bb strcmp_builder in 
+          strcmp_func
+
+    and build_strcmp_helper_function () = 
+      match L.lookup_function "strcmp_helper_function" the_module with 
+      | Some func -> func
+      | None ->
+          let strcmp_helper_func_t = 
+            L.function_type i1_t [|string_t; string_t; i32_t; i32_t|]
+          in
+          let strcmp_helper_func = L.define_function "strcmp_helper_function" strcmp_helper_func_t the_module in
+          let strcmp_helper_builder = 
+            L.builder_at_end context (L.entry_block strcmp_helper_func)
+          in
+          let stringA = L.param strcmp_helper_func 0 in
+          let stringB = L.param strcmp_helper_func 1 in
+          let last_index = L.param strcmp_helper_func 2 in
+          let index = L.param strcmp_helper_func 3 in
+
+          let charA_ptr = L.build_gep stringA [|index|] "charA_ptr" strcmp_helper_builder in
+          let charA = L.build_load charA_ptr "charA" strcmp_helper_builder in
+          let charB_ptr = L.build_gep stringB [|index|] "charB_ptr" strcmp_helper_builder in
+          let charB = L.build_load charB_ptr "charB" strcmp_helper_builder in
+
+
+          let bool_not_same_val = L.build_icmp L.Icmp.Ne charA charB "not_same" strcmp_helper_builder in
+          let then_not_same_bb = L.append_block context "then_not_same" strcmp_helper_func in
+          let _ = L.build_ret (L.const_int i1_t 0) (L.builder_at_end context then_not_same_bb) in
+          let else_same_bb = L.append_block context "else_same" strcmp_helper_func in
+          let else_same_builder = L.builder_at_end context else_same_bb in
+          let bool_at_end_val = L.build_icmp L.Icmp.Eq index last_index "last_char" else_same_builder in 
+          let then_end_bb = L.append_block context "then_end" strcmp_helper_func in
+          let _ = L.build_ret (L.const_int i1_t 1) (L.builder_at_end context then_end_bb) in 
+          let else_not_end_bb = L.append_block context "else_not_end" strcmp_helper_func in
+          let else_not_end_builder = L.builder_at_end context else_not_end_bb in 
+          let next_index = 
+            L.build_add (L.const_int i32_t 1) index "next_index" else_not_end_builder
+          in
+          let ret = 
+            L.build_call strcmp_helper_func [|stringA; stringB; last_index; next_index|]
+            "res" else_not_end_builder
+          in 
+          let _ = L.build_ret ret else_not_end_builder in
+          let _ = L.build_cond_br bool_at_end_val then_end_bb else_not_end_bb else_same_builder in
+          let _ = L.build_cond_br bool_not_same_val then_not_same_bb else_same_bb strcmp_helper_builder in
+          strcmp_helper_func
+
+
     and build_range_function () =
       match L.lookup_function "range_function" the_module with
       | Some func -> func
@@ -705,7 +793,7 @@ let translate (functions, statements) =
               (L.pointer_type list_struct_ptr)
               [|i32_t; i32_t; L.pointer_type list_struct_ptr; i32_t|]
           in
-          let range_func = L.define_function "range" range_func_t the_module in
+          let range_func = L.define_function "range_function" range_func_t the_module in
           let range_builder =
             L.builder_at_end context (L.entry_block range_func)
           in
