@@ -37,26 +37,26 @@ list_item **append(char *s, list_item **head_ref)
 }
 
 /* prints the content in the list, for debugging purposes */
-void print_list(list_item **head_ref)
-{
-    list_item *temp = *head_ref;
+// void print_list(list_item **head_ref)
+// {
+//     list_item *temp = *head_ref;
 
-    if ((*head_ref)->dat == NULL && (*head_ref)->next == NULL)
-    {
-        return;
-    }
+//     if ((*head_ref)->dat == NULL && (*head_ref)->next == NULL)
+//     {
+//         return;
+//     }
 
-    while (temp != NULL)
-    {
-        printf("%s\n", (*(char **)temp->dat));
-        if (temp->next == NULL)
-        {
-            break;
-        }
+//     while (temp != NULL)
+//     {
+//         printf("%s\n", (*(char **)temp->dat));
+//         if (temp->next == NULL)
+//         {
+//             break;
+//         }
 
-        temp = temp->next;
-    }
-}
+//         temp = temp->next;
+//     }
+// }
 
 int length(list_item **head_ref)
 {
