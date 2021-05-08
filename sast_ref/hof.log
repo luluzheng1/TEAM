@@ -159,45 +159,90 @@ list<int> remove_int_int_int_bool(l, elem, all)
 	end
 	return (list<int> : retlist)
 end
-bool contains_string_string_string(l, elem)
-	for i in (list<string> : l):
-	 	if (bool : ((string,string)->bool : strcmp)((string : i), (string : elem))):
-			return (bool : true)
+bool contains_float_float(l, items)
+	list<?> res = (list<?> : [])
+	for item in (list<float> : items):
+	 	(list<bool> : (list<bool> : res) = (list<bool> : ((list<bool>,bool)->list<bool> : append)((list<bool> : res), (bool : false))))
+		for ref in (list<float> : l):
+		 	if (bool : (float : ref) == (float : item)):
+				(bool : (bool : (list<bool> : res)[(int : (int : ((list<int>)->int : length)((list<bool> : res))) - (int : 1))]) = (bool : true))
+			end
 		end
 	end
-	return (bool : false)
+	for r in (list<bool> : res):
+	 	if (bool : not (bool : r)):
+			return (bool : false)
+		end
+	end
+	return (bool : true)
 end
-bool contains_char_char_char(l, elem)
-	for i in (list<char> : l):
-	 	if (bool : (char : i) == (char : elem)):
-			return (bool : true)
+bool contains_bool_bool(l, items)
+	list<?> res = (list<?> : [])
+	for item in (list<bool> : items):
+	 	(list<bool> : (list<bool> : res) = (list<bool> : ((list<bool>,bool)->list<bool> : append)((list<bool> : res), (bool : false))))
+		for ref in (list<bool> : l):
+		 	if (bool : (bool : ref) == (bool : item)):
+				(bool : (bool : (list<bool> : res)[(int : (int : ((list<int>)->int : length)((list<bool> : res))) - (int : 1))]) = (bool : true))
+			end
 		end
 	end
-	return (bool : false)
+	for r in (list<bool> : res):
+	 	if (bool : not (bool : r)):
+			return (bool : false)
+		end
+	end
+	return (bool : true)
 end
-bool contains_bool_bool_bool(l, elem)
-	for i in (list<bool> : l):
-	 	if (bool : (bool : i) == (bool : elem)):
-			return (bool : true)
+bool contains_char_char(l, items)
+	list<?> res = (list<?> : [])
+	for item in (list<char> : items):
+	 	(list<bool> : (list<bool> : res) = (list<bool> : ((list<bool>,bool)->list<bool> : append)((list<bool> : res), (bool : false))))
+		for ref in (list<char> : l):
+		 	if (bool : (char : ref) == (char : item)):
+				(bool : (bool : (list<bool> : res)[(int : (int : ((list<int>)->int : length)((list<bool> : res))) - (int : 1))]) = (bool : true))
+			end
 		end
 	end
-	return (bool : false)
+	for r in (list<bool> : res):
+	 	if (bool : not (bool : r)):
+			return (bool : false)
+		end
+	end
+	return (bool : true)
 end
-bool contains_float_float_float(l, elem)
-	for i in (list<float> : l):
-	 	if (bool : (float : i) == (float : elem)):
-			return (bool : true)
+bool contains_string_string(l, items)
+	list<?> res = (list<?> : [])
+	for item in (list<string> : items):
+	 	(list<bool> : (list<bool> : res) = (list<bool> : ((list<bool>,bool)->list<bool> : append)((list<bool> : res), (bool : false))))
+		for ref in (list<string> : l):
+		 	if (bool : (string : ref) == (string : item)):
+				(bool : (bool : (list<bool> : res)[(int : (int : ((list<int>)->int : length)((list<bool> : res))) - (int : 1))]) = (bool : true))
+			end
 		end
 	end
-	return (bool : false)
+	for r in (list<bool> : res):
+	 	if (bool : not (bool : r)):
+			return (bool : false)
+		end
+	end
+	return (bool : true)
 end
-bool contains_int_int_int(l, elem)
-	for i in (list<int> : l):
-	 	if (bool : (int : i) == (int : elem)):
-			return (bool : true)
+bool contains_int_int(l, items)
+	list<?> res = (list<?> : [])
+	for item in (list<int> : items):
+	 	(list<bool> : (list<bool> : res) = (list<bool> : ((list<bool>,bool)->list<bool> : append)((list<bool> : res), (bool : false))))
+		for ref in (list<int> : l):
+		 	if (bool : (int : ref) == (int : item)):
+				(bool : (bool : (list<bool> : res)[(int : (int : ((list<int>)->int : length)((list<bool> : res))) - (int : 1))]) = (bool : true))
+			end
 		end
 	end
-	return (bool : false)
+	for r in (list<bool> : res):
+	 	if (bool : not (bool : r)):
+			return (bool : false)
+		end
+	end
+	return (bool : true)
 end
 string join_string_string(text_list, connector)
 	string res = (string : "")
@@ -298,11 +343,11 @@ end
 
 list<char> ASCII = (list<char> : [(char : a),(char : b),(char : c),(char : d),(char : e),(char : f),(char : g),(char : h),(char : i),(char : j),(char : k),(char : l),(char : m),(char : n),(char : o),(char : p),(char : q),(char : r),(char : s),(char : t),(char : u),(char : v),(char : w),(char : x),(char : y),(char : z),(char : A),(char : B),(char : C),(char : D),(char : E),(char : F),(char : G),(char : H),(char : I),(char : J),(char : K),(char : L),(char : M),(char : N),(char : O),(char : P),(char : Q),(char : R),(char : S),(char : T),(char : U),(char : V),(char : W),(char : X),(char : Y),(char : Z)])
 (string : ((list<string>,string)->string : join_string_string)((list<string> : [(string : "hello")]), (string : "")))
-(bool : ((list<int>,int)->bool : contains_int_int_int)((list<int> : [(int : 1)]), (int : 1)))
-(bool : ((list<float>,float)->bool : contains_float_float_float)((list<float> : [(float : 1.5)]), (float : 1.5)))
-(bool : ((list<bool>,bool)->bool : contains_bool_bool_bool)((list<bool> : [(bool : true)]), (bool : true)))
-(bool : ((list<char>,char)->bool : contains_char_char_char)((list<char> : [(char : a)]), (char : a)))
-(bool : ((list<string>,string)->bool : contains_string_string_string)((list<string> : [(string : "hello")]), (string : "hello")))
+(bool : ((list<int>,list<int>)->bool : contains_int_int)((list<int> : [(int : 1),(int : 2)]), (list<int> : [(int : 1)])))
+(bool : ((list<string>,list<string>)->bool : contains_string_string)((list<string> : [(string : "hello"),(string : "wolrd")]), (list<string> : [(string : "hello")])))
+(bool : ((list<char>,list<char>)->bool : contains_char_char)((list<char> : [(char : h),(char : e)]), (list<char> : [(char : h)])))
+(bool : ((list<bool>,list<bool>)->bool : contains_bool_bool)((list<bool> : [(bool : true),(bool : false)]), (list<bool> : [(bool : true)])))
+(bool : ((list<float>,list<float>)->bool : contains_float_float)((list<float> : [(float : 1.1),(float : 1.2)]), (list<float> : [(float : 1.1)])))
 (list<int> : ((list<int>,int,bool)->list<int> : remove_int_int_int_bool)((list<int> : [(int : 1)]), (int : 1), (bool : true)))
 (list<float> : ((list<float>,float,bool)->list<float> : remove_float_float_float_bool)((list<float> : [(float : 1.5)]), (float : 1.5), (bool : false)))
 (list<bool> : ((list<bool>,bool,bool)->list<bool> : remove_bool_bool_bool_bool)((list<bool> : [(bool : true)]), (bool : true), (bool : true)))

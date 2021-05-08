@@ -84,7 +84,7 @@ def runFile(fileName, testMode, userInput=False):
     if testMode == "ast":
         flag = "-a"
     elif testMode == "sast":
-        flag = "-r"
+        flag = "-s"
     elif testMode == "codegen":
         flag = "-l"
     elif testMode == "extended":
@@ -93,7 +93,7 @@ def runFile(fileName, testMode, userInput=False):
         print(bcolors.FAIL + "Test mode: {} not supported".format(testMode) + bcolors.ENDC)
         sys.exit()
 
-    if testMode not in ["codegen", "extended"]:
+    if testMode not in ["codegen", "extended"] or "bad" in fileName:
         command = ['./team.native', flag, fileName]
     else:
         command = ["./compile.sh", fileName, "run"]
