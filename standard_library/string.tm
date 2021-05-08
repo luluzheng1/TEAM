@@ -12,7 +12,7 @@ list ASCII = [
                 'U', 'V', 'W', 'X', 'Y', 
                 'Z'
              ];
-/*
+
 list split(string text, char separator):
     list result = [];
     int text_length = length(text);
