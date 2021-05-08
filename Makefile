@@ -1,9 +1,22 @@
+define HEADER
 
+=====================================================
+|       ████████╗███████╗ █████╗ ███╗   ███╗        |
+|       ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║        |
+|          ██║   █████╗  ███████║██╔████╔██║        |
+|          ██║   ██╔══╝  ██╔══██║██║╚██╔╝██║        |
+|          ██║   ███████╗██║  ██║██║ ╚═╝ ██║        |
+|          ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝        |
+|    A Text Extraction And Manipulation Language    |
+=====================================================
+
+endef
+export HEADER
 all: team.native fileio regex 
 team.native : parser.mly scanner.mll codegen.ml semant.ml resolve.ml team.ml
 	opam config exec -- \
 	ocamlbuild -use-ocamlfind team.native
-
+	@echo "$$HEADER"
 # For built-in functions
 .PHONY: fileio
 fileio: fileio.c
