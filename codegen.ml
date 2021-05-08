@@ -492,8 +492,8 @@ let translate (functions, statements) =
             let _ = L.build_store (L.const_null list_struct_ptr) new_list builder in
             let slice = SSlice((A.Int, SIntLit 0), (A.Int, SIntLit 0)) in
             let ilst = get_list_inner_typ t1 in
-            let list_assn = build_asn_list sc builder ilst new_list slice (expr sc builder e2) in
-            let list_assn = build_asn_list sc builder ilst new_list slice (expr sc builder e1) in
+            let _ = build_asn_list sc builder ilst new_list slice (expr sc builder e2) in
+            let _ = build_asn_list sc builder ilst new_list slice (expr sc builder e1) in
             new_list
           else (
             print_endline (A.string_of_typ t1) ;
