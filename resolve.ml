@@ -11,7 +11,10 @@ let resolve (functions, statements) =
     ; rlist_variables= StringMap.empty
     ; rparent= None }
   in
+  (* Create a reference to the global table. The scope will be passed through
+     recurisve calls and be mutated when we need to add a new variable *)
   let global_scope : resolved_table ref = ref variable_table in
+  (* Add a variable to the given scope *)
   let add_var (scope : resolved_table ref) id ty =
     scope :=
       { rvariables= StringMap.add id ty !scope.rvariables
@@ -19,6 +22,7 @@ let resolve (functions, statements) =
       ; rlist_variables= !scope.rlist_variables
       ; rparent= !scope.rparent }
   in
+  (* Finding a variable, beginning in a given scope and searching upwards *)
   let rec type_of_identifier (scope : resolved_table ref) id =
     try StringMap.find id !scope.rvariables
     with Not_found -> (
@@ -56,14 +60,11 @@ let resolve (functions, statements) =
                 match lt with
                 | List ty -> ty
                 | String -> Char
-                | _ ->
-                    raise
-                      (Failure
-                         "Internal Error: Illegal Slice, should have been \
-                          rejected in Semant" )
+                | _ -> raise E.IllegalSSlice
               in
               (id_type, SSliceExpr ((lt, lexpr'), SIndex (t, e')))
           | SSlice _ -> (
+              (* look up new inferred type from the symbol table *)
               let id_ty, id =
                 match lexpr with
                 | List Unknown, SId s -> (
@@ -93,6 +94,7 @@ let resolve (functions, statements) =
     | SCall (f, args) -> (
       match f with
       | _, SId "print" ->
+          (* resolve type of list if arguments are list indexing exprs *)
           let resolved_args = List.map (expr scope) args in
           (t, SCall (f, resolved_args))
       | _, SId "append" -> (t, SCall (f, args))
@@ -111,8 +113,6 @@ let resolve (functions, statements) =
             let args' = List.map (expr scope) args in
             let resolved_arg_tys = List.map fst args' in
             if resolved_arg_tys <> List.map fst args then
-              (* get new name *)
-              (* get new func *)
               let inner_tys =
                 List.map
                   (fun t -> match t with List inner_ty -> inner_ty | ty -> ty)
@@ -122,15 +122,18 @@ let resolve (functions, statements) =
                 String.concat "_"
                   (List.map (fun t -> string_of_typ t) inner_tys)
               in
+              (* get new type resolved function name *)
               let new_fname = String.concat "_" [fname; type_specific_name] in
+              (* if new function hasn't been created yet *)
               let new_func_created =
                 List.find_opt (fun f -> f.sfname = new_fname) functions
               in
               let _, ret_type =
                 match fty with
                 | Func (f, r) -> (f, r)
-                | _ -> raise (Failure "Not a function")
+                | _ -> raise E.UndefinedFunction
               in
+              (* create new func with new types *)
               if Option.is_none new_func_created then
                 let modified_func =
                   { styp= ret_type
@@ -139,6 +142,7 @@ let resolve (functions, statements) =
                       List.combine resolved_arg_tys (List.map snd func.sformals)
                   ; sbody= func.sbody }
                 in
+                (* remove old function from the function list *)
                 let _ =
                   global_scope :=
                     { rvariables= !global_scope.rvariables
@@ -168,7 +172,7 @@ let resolve (functions, statements) =
               in
               ret
           else (t, SCall (f, args))
-      | _, _ -> raise (Failure "Internal Error: Function does not have name") )
+      | _, _ -> raise E.IllegalFname )
     | SEnd -> (t, SEnd)
     | SNoexpr -> (Void, SNoexpr)
   in
@@ -194,6 +198,7 @@ let resolve (functions, statements) =
     | SFor (s, e, sl) ->
         let t, e' = expr scope e in
         let list_name = match e' with SId s -> Some s | _ -> None in
+        (* get resolved type if expr sl is a list *)
         let resolved_ty =
           if t = List Unknown && Option.is_some list_name then
             type_of_identifier scope (Option.get list_name)
@@ -214,6 +219,7 @@ let resolve (functions, statements) =
         let resolved_ty, e' = expr scope e in
         let ret =
           match (ty, resolved_ty) with
+          (* update variable's type *)
           | List Unknown, List _ ->
               let _ = add_var scope s resolved_ty in
               SDeclaration (resolved_ty, s, (resolved_ty, e'))
@@ -238,11 +244,9 @@ let resolve (functions, statements) =
         List.filter (fun f -> f.sfname = func.sfname) !global_scope.rfunctions
       in
       let _ =
-        if length updated_func = 0 then
-          raise (Failure "Internal Error: Function not found")
-        else ()
+        if length updated_func = 0 then raise E.UndefinedFunction else ()
       in
-      (* func.typ should be updated styp *)
+      (* func.typ should be updated to type specific *)
       { styp= (hd updated_func).styp
       ; sfname= func.sfname
       ; sformals= func.sformals

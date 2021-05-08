@@ -45,6 +45,7 @@ type sstmt =
 type sfunc_decl =
   {styp: typ; sfname: string; sformals: bind list; sbody: sstmt list}
 
+(* Same as symbol table, but all functions are semantically checked *)
 type resolved_table =
   { rvariables: typ StringMap.t
   ; (* Variables bound in current block *)

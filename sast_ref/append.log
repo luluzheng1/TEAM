@@ -1,3 +1,303 @@
+list<string> remove_string_string_string_bool(l, elem, all)
+	list<?> retlist = (list<?> : [])
+	int i = (int : 0)
+	int len = (int : ((list<int>)->int : length)((list<string> : l)))
+	int remove_index = (int : 0)
+	if (bool : all):
+		while (bool : (int : i) < (int : len)):
+			if (bool : ((string,string)->bool : strcmp)((string : (list<string> : l)[(int : i)]), (string : elem))):
+				(int : (int : i) = (int : (int : i) + (int : 1)))
+				continue
+			end
+			(list<string> : (list<string> : retlist) = (list<string> : ((list<string>,string)->list<string> : append)((list<string> : retlist), (string : (list<string> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+	else:
+		while (bool : (int : i) < (int : len)):
+			if (bool : ((string,string)->bool : strcmp)((string : (list<string> : l)[(int : i)]), (string : elem))):
+				(int : (int : remove_index) = (int : i))
+				break
+			end
+			(list<string> : (list<string> : retlist) = (list<string> : ((list<string>,string)->list<string> : append)((list<string> : retlist), (string : (list<string> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+		if (bool : (int : i) != (int : len)):
+			for index in (list<int> : (int : (int : remove_index) + (int : 1))..(int : len)):
+			 	(list<string> : (list<string> : retlist) = (list<string> : ((list<string>,string)->list<string> : append)((list<string> : retlist), (string : (list<string> : l)[(int : index)]))))
+			end
+		end
+	end
+	return (list<string> : retlist)
+end
+list<char> remove_char_char_char_bool(l, elem, all)
+	list<?> retlist = (list<?> : [])
+	int i = (int : 0)
+	int len = (int : ((list<int>)->int : length)((list<char> : l)))
+	int remove_index = (int : 0)
+	if (bool : all):
+		while (bool : (int : i) < (int : len)):
+			if (bool : (char : (list<char> : l)[(int : i)]) == (char : elem)):
+				(int : (int : i) = (int : (int : i) + (int : 1)))
+				continue
+			end
+			(list<char> : (list<char> : retlist) = (list<char> : ((list<char>,char)->list<char> : append)((list<char> : retlist), (char : (list<char> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+	else:
+		while (bool : (int : i) < (int : len)):
+			if (bool : (char : (list<char> : l)[(int : i)]) == (char : elem)):
+				(int : (int : remove_index) = (int : i))
+				break
+			end
+			(list<char> : (list<char> : retlist) = (list<char> : ((list<char>,char)->list<char> : append)((list<char> : retlist), (char : (list<char> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+		if (bool : (int : i) != (int : len)):
+			for index in (list<int> : (int : (int : remove_index) + (int : 1))..(int : len)):
+			 	(list<char> : (list<char> : retlist) = (list<char> : ((list<char>,char)->list<char> : append)((list<char> : retlist), (char : (list<char> : l)[(int : index)]))))
+			end
+		end
+	end
+	return (list<char> : retlist)
+end
+list<bool> remove_bool_bool_bool_bool(l, elem, all)
+	list<?> retlist = (list<?> : [])
+	int i = (int : 0)
+	int len = (int : ((list<int>)->int : length)((list<bool> : l)))
+	int remove_index = (int : 0)
+	if (bool : all):
+		while (bool : (int : i) < (int : len)):
+			if (bool : (bool : (list<bool> : l)[(int : i)]) == (bool : elem)):
+				(int : (int : i) = (int : (int : i) + (int : 1)))
+				continue
+			end
+			(list<bool> : (list<bool> : retlist) = (list<bool> : ((list<bool>,bool)->list<bool> : append)((list<bool> : retlist), (bool : (list<bool> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+	else:
+		while (bool : (int : i) < (int : len)):
+			if (bool : (bool : (list<bool> : l)[(int : i)]) == (bool : elem)):
+				(int : (int : remove_index) = (int : i))
+				break
+			end
+			(list<bool> : (list<bool> : retlist) = (list<bool> : ((list<bool>,bool)->list<bool> : append)((list<bool> : retlist), (bool : (list<bool> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+		if (bool : (int : i) != (int : len)):
+			for index in (list<int> : (int : (int : remove_index) + (int : 1))..(int : len)):
+			 	(list<bool> : (list<bool> : retlist) = (list<bool> : ((list<bool>,bool)->list<bool> : append)((list<bool> : retlist), (bool : (list<bool> : l)[(int : index)]))))
+			end
+		end
+	end
+	return (list<bool> : retlist)
+end
+list<float> remove_float_float_float_bool(l, elem, all)
+	list<?> retlist = (list<?> : [])
+	int i = (int : 0)
+	int len = (int : ((list<int>)->int : length)((list<float> : l)))
+	int remove_index = (int : 0)
+	if (bool : all):
+		while (bool : (int : i) < (int : len)):
+			if (bool : (float : (list<float> : l)[(int : i)]) == (float : elem)):
+				(int : (int : i) = (int : (int : i) + (int : 1)))
+				continue
+			end
+			(list<float> : (list<float> : retlist) = (list<float> : ((list<float>,float)->list<float> : append)((list<float> : retlist), (float : (list<float> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+	else:
+		while (bool : (int : i) < (int : len)):
+			if (bool : (float : (list<float> : l)[(int : i)]) == (float : elem)):
+				(int : (int : remove_index) = (int : i))
+				break
+			end
+			(list<float> : (list<float> : retlist) = (list<float> : ((list<float>,float)->list<float> : append)((list<float> : retlist), (float : (list<float> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+		if (bool : (int : i) != (int : len)):
+			for index in (list<int> : (int : (int : remove_index) + (int : 1))..(int : len)):
+			 	(list<float> : (list<float> : retlist) = (list<float> : ((list<float>,float)->list<float> : append)((list<float> : retlist), (float : (list<float> : l)[(int : index)]))))
+			end
+		end
+	end
+	return (list<float> : retlist)
+end
+list<int> remove_int_int_int_bool(l, elem, all)
+	list<?> retlist = (list<?> : [])
+	int i = (int : 0)
+	int len = (int : ((list<int>)->int : length)((list<int> : l)))
+	int remove_index = (int : 0)
+	if (bool : all):
+		while (bool : (int : i) < (int : len)):
+			if (bool : (int : (list<int> : l)[(int : i)]) == (int : elem)):
+				(int : (int : i) = (int : (int : i) + (int : 1)))
+				continue
+			end
+			(list<int> : (list<int> : retlist) = (list<int> : ((list<int>,int)->list<int> : append)((list<int> : retlist), (int : (list<int> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+	else:
+		while (bool : (int : i) < (int : len)):
+			if (bool : (int : (list<int> : l)[(int : i)]) == (int : elem)):
+				(int : (int : remove_index) = (int : i))
+				break
+			end
+			(list<int> : (list<int> : retlist) = (list<int> : ((list<int>,int)->list<int> : append)((list<int> : retlist), (int : (list<int> : l)[(int : i)]))))
+			(int : (int : i) = (int : (int : i) + (int : 1)))
+		end
+		if (bool : (int : i) != (int : len)):
+			for index in (list<int> : (int : (int : remove_index) + (int : 1))..(int : len)):
+			 	(list<int> : (list<int> : retlist) = (list<int> : ((list<int>,int)->list<int> : append)((list<int> : retlist), (int : (list<int> : l)[(int : index)]))))
+			end
+		end
+	end
+	return (list<int> : retlist)
+end
+bool contains_string_string_string(l, elem)
+	for i in (list<string> : l):
+	 	if (bool : ((string,string)->bool : strcmp)((string : i), (string : elem))):
+			return (bool : true)
+		end
+	end
+	return (bool : false)
+end
+bool contains_char_char_char(l, elem)
+	for i in (list<char> : l):
+	 	if (bool : (char : i) == (char : elem)):
+			return (bool : true)
+		end
+	end
+	return (bool : false)
+end
+bool contains_bool_bool_bool(l, elem)
+	for i in (list<bool> : l):
+	 	if (bool : (bool : i) == (bool : elem)):
+			return (bool : true)
+		end
+	end
+	return (bool : false)
+end
+bool contains_float_float_float(l, elem)
+	for i in (list<float> : l):
+	 	if (bool : (float : i) == (float : elem)):
+			return (bool : true)
+		end
+	end
+	return (bool : false)
+end
+bool contains_int_int_int(l, elem)
+	for i in (list<int> : l):
+	 	if (bool : (int : i) == (int : elem)):
+			return (bool : true)
+		end
+	end
+	return (bool : false)
+end
+string join_string_string(text_list, connector)
+	string res = (string : "")
+	int list_length = (int : ((list<int>)->int : length)((list<string> : text_list)))
+	for index in (list<int> : (int : 0)..(int : (int : list_length) - (int : 1))):
+	 	(string : (string : res) = (string : (string : (string : res) + (string : (list<string> : text_list)[(int : index)])) + (string : connector)))
+	end
+	(string : (string : res) = (string : (string : res) + (string : (list<string> : text_list)[(int : (int : list_length) - (int : 1))])))
+	return (string : res)
+end
+list<string> split(text, separator)
+	list<?> result = (list<?> : [])
+	int text_length = (int : ((list<int>)->int : length)((string : text)))
+	int left = (int : 0)
+	int right = (int : 0)
+	while (bool : (int : right) < (int : text_length)):
+		if (bool : (char : (string : text)[(int : right)]) == (char : separator)):
+			(list<string> : (list<string> : result) = (list<string> : ((list<string>,string)->list<string> : append)((list<string> : result), (string : (string : text)[(int : left):(int : right)]))))
+			(int : (int : right) = (int : (int : right) + (int : 1)))
+			(int : (int : left) = (int : right))
+		else:
+			(int : (int : right) = (int : (int : right) + (int : 1)))
+		end
+	end
+	(list<string> : (list<string> : result) = (list<string> : ((list<string>,string)->list<string> : append)((list<string> : result), (string : (string : text)[(int : left):(int : right)]))))
+	return (list<string> : result)
+end
+string string_reverse(text)
+	string res = (string : "")
+	int string_length = (int : ((list<int>)->int : length)((string : text)))
+	int index = (int : (int : string_length) - (int : 1))
+	while (bool : (int : index) >= (int : 0)):
+		(string : (string : res) = (string : (string : res) + (char : (string : text)[(int : index)])))
+		(int : (int : index) = (int : (int : index) - (int : 1)))
+	end
+	return (string : res)
+end
+bool startswith(text, s)
+	return (bool : (char : s) == (char : (string : text)[(int : 0)]))
+end
+bool endswith(text, e)
+	int string_length = (int : ((list<int>)->int : length)((string : text)))
+	return (bool : (char : e) == (char : (string : text)[(int : (int : string_length) - (int : 1))]))
+end
+list<char> string_to_list(text)
+	list<?> result = (list<?> : [])
+	for c in (string : text):
+	 	(list<char> : (list<char> : result) = (list<char> : ((list<char>,char)->list<char> : append)((list<char> : result), (char : c))))
+	end
+	return (list<char> : result)
+end
+char lower(c)
+	int index = (int : -(int : 1))
+	for c_ref in (list<char> : ASCII):
+	 	(int : (int : index) = (int : (int : index) + (int : 1)))
+		if (bool : (char : c) == (char : c_ref)):
+			if (bool : (int : index) < (int : 26)):
+				return (char : c)
+			else:
+				return (char : (list<char> : ASCII)[(int : (int : index) - (int : 26))])
+			end
+		end
+	end
+	return (char : c)
+end
+char upper(c)
+	int index = (int : -(int : 1))
+	for c_ref in (list<char> : ASCII):
+	 	(int : (int : index) = (int : (int : index) + (int : 1)))
+		if (bool : (char : c) == (char : c_ref)):
+			if (bool : (int : index) > (int : 25)):
+				return (char : c)
+			else:
+				return (char : (list<char> : ASCII)[(int : (int : index) + (int : 26))])
+			end
+		end
+	end
+	return (char : c)
+end
+bool strcmp(str1, str2)
+	if (bool : (int : ((list<int>)->int : length)((string : str1))) != (int : ((list<int>)->int : length)((string : str2)))):
+		return (bool : false)
+	end
+	int i = (int : 0)
+	while (bool : (int : i) < (int : ((list<int>)->int : length)((string : str1)))):
+		char c1 = (char : (string : str1)[(int : i)])
+		char c2 = (char : (string : str2)[(int : i)])
+		if (bool : (char : c1) != (char : c2)):
+			return (bool : false)
+		end
+		(int : (int : i) = (int : (int : i) + (int : 1)))
+	end
+	return (bool : true)
+end
 
+list<char> ASCII = (list<char> : [(char : a),(char : b),(char : c),(char : d),(char : e),(char : f),(char : g),(char : h),(char : i),(char : j),(char : k),(char : l),(char : m),(char : n),(char : o),(char : p),(char : q),(char : r),(char : s),(char : t),(char : u),(char : v),(char : w),(char : x),(char : y),(char : z),(char : A),(char : B),(char : C),(char : D),(char : E),(char : F),(char : G),(char : H),(char : I),(char : J),(char : K),(char : L),(char : M),(char : N),(char : O),(char : P),(char : Q),(char : R),(char : S),(char : T),(char : U),(char : V),(char : W),(char : X),(char : Y),(char : Z)])
+(string : ((list<string>,string)->string : join_string_string)((list<string> : [(string : "hello")]), (string : "")))
+(bool : ((list<int>,int)->bool : contains_int_int_int)((list<int> : [(int : 1)]), (int : 1)))
+(bool : ((list<float>,float)->bool : contains_float_float_float)((list<float> : [(float : 1.5)]), (float : 1.5)))
+(bool : ((list<bool>,bool)->bool : contains_bool_bool_bool)((list<bool> : [(bool : true)]), (bool : true)))
+(bool : ((list<char>,char)->bool : contains_char_char_char)((list<char> : [(char : a)]), (char : a)))
+(bool : ((list<string>,string)->bool : contains_string_string_string)((list<string> : [(string : "hello")]), (string : "hello")))
+(list<int> : ((list<int>,int,bool)->list<int> : remove_int_int_int_bool)((list<int> : [(int : 1)]), (int : 1), (bool : true)))
+(list<float> : ((list<float>,float,bool)->list<float> : remove_float_float_float_bool)((list<float> : [(float : 1.5)]), (float : 1.5), (bool : false)))
+(list<bool> : ((list<bool>,bool,bool)->list<bool> : remove_bool_bool_bool_bool)((list<bool> : [(bool : true)]), (bool : true), (bool : true)))
+(list<char> : ((list<char>,char,bool)->list<char> : remove_char_char_char_bool)((list<char> : [(char : a)]), (char : a), (bool : true)))
+(list<string> : ((list<string>,string,bool)->list<string> : remove_string_string_string_bool)((list<string> : [(string : "hello")]), (string : "what"), (bool : true)))
 list<int> s = (list<int> : [(int : 1),(int : 2),(int : 3)])
 list<int> s2 = (list<int> : ((list<int>,int)->list<int> : append)((list<int> : s), (int : 4)))

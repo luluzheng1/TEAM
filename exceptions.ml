@@ -28,7 +28,7 @@ exception VoidType of string
 
 exception Duplicate of string
 
-exception UndefinedFunction of string
+exception UndefinedFunction
 
 exception WrongNumberOfArgs of int * int * expr
 
@@ -64,6 +64,17 @@ exception AppendNonList of typ
 
 exception LengthWrongArgument of typ
 
+exception UnsupportedPrint of typ
+
+exception AssignNonVar of expr
+
+exception IllegalFname
+
+exception IllegalFor
+
+(* Resolver Exceptions *)
+exception IllegalSSlice
+
 (* Codegen Exceptions *)
 exception InvalidFloatBinop
 
@@ -82,14 +93,14 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Type error: Lists can only contain one type. Expected '%s', \
-               but got '%s'"
+              "Type error: Lists can only contain one type. Expected '%s', but \
+               got '%s'"
               s1 s2 ) )
   | UndefinedId n ->
       raise
         (TypeError
-           (Printf.sprintf
-              "Error: variable '%s' was used before it was defined" n ) )
+           (Printf.sprintf "Error: variable '%s' was used before it was defined"
+              n ) )
   | MismatchedTypes (t1, t2, e) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
@@ -108,16 +119,16 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Type error: Illegal binary operator '%s' '%s' '%s' in '%s'" s1
-              s2 s3 s4 ) )
+              "Type error: Illegal binary operator '%s' '%s' '%s' in '%s'" s1 s2
+              s3 s4 ) )
   | InvalidUnaryOperation (t, op, e) ->
       let s1 = string_of_typ t
       and s2 = string_of_uop op
       and s3 = string_of_expr e in
       raise
         (TypeError
-           (Printf.sprintf "Error: Illegal unary operator '%s' '%s' in '%s'"
-              s2 s1 s3 ) )
+           (Printf.sprintf "Error: Illegal unary operator '%s' '%s' in '%s'" s2
+              s1 s3 ) )
   | IllegalAssignment (t1, op, t2, e) ->
       let s1 = string_of_typ t1
       and s3 = string_of_typ t2
@@ -125,17 +136,16 @@ let handle_error (e : exn) =
       let s2 = match op with Some x -> string_of_op x | None -> "" in
       raise
         (TypeError
-           (Printf.sprintf
-              "Error: Illegal assignment '%s' '%s'= '%s' in '%s'" s1 s2 s3 s4 )
-        )
+           (Printf.sprintf "Error: Illegal assignment '%s' '%s'= '%s' in '%s'"
+              s1 s2 s3 s4 ) )
   | IllegalDeclaration (t1, t2, s) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
       and s3 = string_of_stmt s in
       raise
         (TypeError
-           (Printf.sprintf "Error: Illegal assignment '%s' '%s' in '%s'" s1
-              s2 s3 ) )
+           (Printf.sprintf "Error: Illegal assignment '%s' '%s' in '%s'" s1 s2
+              s3 ) )
   | NonListAccess (t1, t2, e) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
@@ -151,14 +161,15 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Expected index of type Int, but got type '%s' in '%s'" s1 s2 )
-        )
+              "Type Error: Expected index of type Int, but got type '%s' in \
+               '%s'"
+              s1 s2 ) )
   | CannotRedefineBuiltIn s ->
       raise
         (TypeError
            (Printf.sprintf
-              "Error: Function '%s' may not be defined as it exists as a \
-               built in function"
+              "Error: Function '%s' may not be defined as it exists as a built \
+               in function"
               s ) )
   | AlreadyDefined s ->
       raise
@@ -168,62 +179,50 @@ let handle_error (e : exn) =
   | VoidType n ->
       raise
         (TypeError
-           (Printf.sprintf "Error: variable '%s' cannot have type Void" n) )
+           (Printf.sprintf "Type Error: variable '%s' cannot have type Void" n)
+        )
   | Duplicate n ->
       raise
         (TypeError
-           (Printf.sprintf "Error: variable name '%s' has already defined" n)
-        )
-  | UndefinedFunction n ->
+           (Printf.sprintf "Error: variable name '%s' has already defined" n) )
+  | UndefinedFunction ->
       raise
         (TypeError
-           (Printf.sprintf
-              "Error: function '%s' was called, but it is undefined" n ) )
+           (Printf.sprintf "Error: function was called, but it is undefined") )
   | WrongNumberOfArgs (exp, act, e) ->
       let s1 = string_of_int exp
       and s2 = string_of_int act
       and s3 = string_of_expr e in
       raise
         (TypeError
+           (Printf.sprintf "Error: expected '%s' arguments but got '%s' in '%s'"
+              s1 s2 s3 ) )
+  | PrintMissingArgs e ->
+      let s1 = string_of_expr e in
+      raise
+        (TypeError
            (Printf.sprintf
-              "Error: expected '%s' arguments but got '%s' in '%s'" s1 s2 s3 )
-        )
-   | PrintMissingArgs (e) ->
+              "Error: expected more than 0 arguments but got 0 in '%s'" s1 ) )
+  | PrintBadArgs e ->
+      raise
+        (TypeError
+           (Printf.sprintf "Error: expected either c, f or i but got '%c'" e) )
+  | PrintWrongType e ->
       let s1 = string_of_expr e in
+      raise (TypeError (Printf.sprintf "Error: expected string but got '%s'" s1))
+  | PrintWrongNumArgs (i1, i2) ->
+      let s1 = string_of_int i1 and s2 = string_of_int i2 in
       raise
-         (TypeError
-            (Printf.sprintf
-               "Error: expected more than 0 arguments but got 0 in '%s'" s1)
-         )
-   | PrintBadArgs (e) ->
+        (TypeError
+           (Printf.sprintf "Error: expected %s addition arguments, but got %s"
+              s1 s2 ) )
+  | PrintTypeError (t1, t2) ->
+      let s1 = string_of_typ t1 and s2 = string_of_typ t2 in
       raise
-         (TypeError
-            (Printf.sprintf
-               "Error: expected either c, f or i but got '%c'" e)
-         )
-   | PrintWrongType (e) ->
-      let s1 = string_of_expr e in
-      raise
-         (TypeError
-            (Printf.sprintf
-               "Error: expected string but got '%s'" s1)
-         )
-   | PrintWrongNumArgs (i1, i2) ->
-      let s1 = string_of_int i1
-      and s2 = string_of_int i2 in
-      raise
-         (TypeError
-            (Printf.sprintf
-               "Error: expected %s addition arguments, but got %s"  s1 s2)
-         )
-   |  PrintTypeError (t1, t2) ->
-      let s1 = string_of_typ t1 
-      and s2 = string_of_typ t2 in
-      raise
-         (TypeError
-            (Printf.sprintf
-               "Error: expected argument of type '%s' but got '%s' instead" s1 s2)
-         )
+        (TypeError
+           (Printf.sprintf
+              "Type Error: expected argument of type '%s' but got '%s' instead"
+              s1 s2 ) )
   | IllegalArgument (t1, t2, e) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
@@ -231,8 +230,8 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Type Error: Illegal argument found in '%s'. Expected \
-               argument of type '%s' but got '%s'"
+              "Type Error: Illegal argument found in '%s'. Expected argument \
+               of type '%s' but got '%s'"
               s3 s1 s2 ) )
   | IllegalSlice (e, t) ->
       let s1 = string_of_expr e and s2 = string_of_typ t in
@@ -247,8 +246,8 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Type Error: Expected index to be an int, but got '%s' in '%s'"
-              s1 s2 ) )
+              "Type Error: Expected index to be an int, but got '%s' in '%s'" s1
+              s2 ) )
   | WrongSliceIndex (t1, t2, e1, e2) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
@@ -257,9 +256,8 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Type Error: Expected left and right values of slice \
-               expression to be of type int, but got type '%s' and '%s' in \
-               '%s' and '%s'"
+              "Type Error: Expected left and right values of slice expression \
+               to be of type int, but got type '%s' and '%s' in '%s' and '%s'"
               s1 s2 s3 s4 ) )
   | ReturnNotLast ->
       raise
@@ -275,8 +273,7 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Error: No return statement in function returning non-void" )
-        )
+              "Error: No return statement in function returning non-void" ) )
   | ReturnMismatchedTypes (t1, t2, s) ->
       let s1 = string_of_typ t1
       and s2 = string_of_typ t2
@@ -284,7 +281,7 @@ let handle_error (e : exn) =
       raise
         (TypeError
            (Printf.sprintf
-              "Type error: Expected value of type '%s', but got a value of \
+              "Type Error: Expected value of type '%s', but got a value of \
                type '%s' in '%s'"
               s1 s2 s3 ) )
   | InvalidFloatBinop ->
@@ -299,19 +296,18 @@ let handle_error (e : exn) =
             rejected this" )
   | InvalidStringBinop ->
       raise
-         (Failure
-            "Internal Error: Invalid operation on string. Semant should have \
+        (Failure
+           "Internal Error: Invalid operation on string. Semant should have \
             rejected this" )
   | NotFound s ->
       raise
-        (Failure
-           (Printf.sprintf "Internal Error: Variable '%s' not in scope" s) )
+        (Failure (Printf.sprintf "Internal Error: Variable '%s' not in scope" s))
   | ImpossibleElif ->
       raise
         (Failure
            (Printf.sprintf
-              "Internal Error: Corrupted Tree. Semant should have rejected \
-               this" ) )
+              "Internal Error: Corrupted Tree. Semant should have rejected this" )
+        )
   | NotInLoop s ->
       raise
         (Failure
@@ -322,15 +318,40 @@ let handle_error (e : exn) =
       raise
         (Failure
            (Printf.sprintf
-              "Expected first argument to append to be of type list, but \
-               got type '%s' instead"
+              "Type Error: Expected first argument to append to be of type \
+               list, but got type '%s' instead"
               s ) )
   | LengthWrongArgument t ->
       let s = string_of_typ t in
       raise
         (Failure
            (Printf.sprintf
-              "Expected argument to length to be of type list or string, \
-               but got type '%s' instead"
+              "Type Error: Expected argument to length to be of type list or \
+               string, but got type '%s' instead"
               s ) )
+  | UnsupportedPrint t ->
+      let s = string_of_typ t in
+      raise
+        (Failure
+           (Printf.sprintf
+              "Type Error: Print does not support printing for type '%s'" s ) )
+  | AssignNonVar e ->
+      let s = string_of_expr e in
+      raise
+        (Failure
+           (Printf.sprintf
+              "Error: Cannot assign to a non variable or non slice expression \
+               in '%s'"
+              s ) )
+  | IllegalFname ->
+      raise (Failure (Printf.sprintf "Error: Function name is not an SId"))
+  | IllegalFor ->
+      raise
+        (Failure (Printf.sprintf "For loop can only operate on string or list"))
+  | IllegalSSlice ->
+      raise
+        (Failure
+           (Printf.sprintf
+              "Internal Error: Illegal Slice, should have been rejected in \
+               Semant" ) )
   | e -> raise (TypeError (Printexc.to_string e))

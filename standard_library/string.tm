@@ -31,8 +31,8 @@ list split(string text, char separator):
     return result;
 end 
 
-/*
-string join(list<string> text_list, string connector):
+
+string join(list text_list, string connector):
     string res = "";
     int list_length = length(text_list);
     for index in 0..(list_length - 1):
@@ -41,6 +41,8 @@ string join(list<string> text_list, string connector):
     res = res + text_list[list_length - 1];
     return res;
 end
+
+join(["hello"], "");
 
 string string_reverse(string text):
     string res = "";
@@ -52,12 +54,12 @@ string string_reverse(string text):
     end 
     return res;
 end
-*/
-bool startWith(string text, char s):
+
+bool startswith(string text, char s):
     return s == text[0];
 end
 
-bool endWith(string text, char e):
+bool endswith(string text, char e):
     int string_length = length(text);
     return e == text[string_length - 1];
 end
