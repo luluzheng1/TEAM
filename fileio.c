@@ -31,7 +31,6 @@ void write(FILE *fp, char* text)
 {
   assert(fp != NULL);
   fputs(text, fp);
-  fclose(fp);
 }
 
 #ifdef BUILD_TEST
