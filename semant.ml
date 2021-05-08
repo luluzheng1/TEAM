@@ -41,7 +41,7 @@ let check (functions, statements) =
       ; ( "append"
         , [(List Unknown, "input_list"); (Unknown, "element")]
         , List Unknown )
-      ; ("contains", [(Unknown, "input_list"); (Unknown, "element")], Bool)
+      (* ; ("contains", [(Unknown, "input_list"); (Unknown, "element")], Bool) *)
       ; ( "insert"
         , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
         , List Unknown )
@@ -329,7 +329,7 @@ let check (functions, statements) =
               | _ -> raise (E.LengthWrongArgument et1)
             in
             (Int, SCall ((Func ([List Int], Int), SId "length"), args'))
-        | Id "contains" ->
+        (* | Id "contains" ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in
             let inner_et1_ty = innermost_ty et1 in
@@ -346,7 +346,7 @@ let check (functions, statements) =
                   raise
                     (Failure ("Not Yet Supported on typ" ^ string_of_typ et2))
             in
-            (Bool, SCall ((Func ([List et1], et2), SId "contains"), args'))
+            (Bool, SCall ((Func ([List et1], et2), SId "contains"), args')) *)
         | _ ->
             let check_call ft e =
               let et, e' = expr scope e in
