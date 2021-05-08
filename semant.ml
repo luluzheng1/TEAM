@@ -210,6 +210,7 @@ let check (functions, statements) =
           | _ -> raise (E.AssignNonVar ex)
         in
         let is_slice = match s with SliceExpr _ -> true | _ -> false in
+        let is_list = match lt with List _ -> true | _ -> false in
         let non_slice =
           match (lt, rt) with
           | List _, List _ | Void, List _ ->
@@ -223,8 +224,8 @@ let check (functions, statements) =
               (lrt, SAssign ((lrt, s'), (rt, e')))
           | _ -> (lrt, SAssign ((lt, s'), (rt, e')))
         in
-        if is_slice then
-          let _ = update_var scope s_name lt in
+        if is_slice && is_list then
+          let _ = update_var scope s_name (List lt) in
           (lt, SAssign ((lt, s'), (rt, e')))
         else non_slice
     | Call (fname, args) as call -> (
