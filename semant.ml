@@ -187,6 +187,7 @@ let check (functions, statements) =
           | (Less | Leq | Greater | Geq) when same && t1 = Float -> Bool
           | (And | Or) when same && t1 = Bool -> Bool
           | Range when same && t1 = Int -> List Int
+          | Add when same && (match t1 with List _ -> true | _ -> false) -> t1
           | _ -> raise (E.InvalidBinaryOperation (t1, op, t2, e))
         in
         (ty, SBinop ((t1, e1'), op, (t2, e2')))

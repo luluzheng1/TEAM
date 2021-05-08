@@ -21,8 +21,7 @@ char* readline(FILE *fp)
   assert(fp != NULL);
   char *line_buf = NULL;
   size_t line_buf_size = 0;
-  ssize_t line_size;
-  line_size = getline(&line_buf, &line_buf_size, fp);
+  getline(&line_buf, &line_buf_size, fp);
 
   return line_buf;
 }

@@ -487,6 +487,14 @@ let translate (functions, statements) =
               let _ = L.build_store ((L.const_int i8_t) 0) nul builder in
               new_str
             | _ -> raise E.InvalidStringBinop
+          else if ((match t1 with A.List _ -> true | _ -> false)) then
+            let new_list = L.build_malloc list_struct_ptr "new_list" builder in
+            let _ = L.build_store (L.const_null list_struct_ptr) new_list builder in
+            let slice = SSlice((A.Int, SIntLit 0), (A.Int, SIntLit 0)) in
+            let ilst = get_list_inner_typ t1 in
+            let _ = build_asn_list sc builder ilst new_list slice (expr sc builder e2) in
+            let _ = build_asn_list sc builder ilst new_list slice (expr sc builder e1) in
+            new_list
           else (
             print_endline (A.string_of_typ t1) ;
             print_endline (A.string_of_typ t2) ;
@@ -1234,9 +1242,8 @@ let translate (functions, statements) =
       in
       let null_ptr = L.const_pointer_null list_struct_ptr in
       List.fold_left build_link null_ptr (List.rev lis)
-    in
     (* Statements *)
-    let rec build_stmt sc builder stmt loop =
+    and build_stmt sc builder stmt loop =
       match stmt with
       | SBlock sl ->
           let new_scope = ref {lvariables= StringMap.empty; parent= Some sc} in
