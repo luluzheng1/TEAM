@@ -106,36 +106,6 @@ def runFile(fileName, testMode, userInput=False):
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
 
-
-    # if testMode not in  ["codegen", "extended"]:
-    #     process = subprocess.Popen(command,
-    #                             stdout=subprocess.PIPE,
-    #                             stderr=subprocess.PIPE)
-    #     stdout, stderr = process.communicate()
-
-    # else:
-    #     if "bad" in fileName:
-    #         process = subprocess.Popen(command,
-    #                                 stdout=subprocess.PIPE,
-    #                                 stderr=subprocess.PIPE)
-    #         stdout, stderr = process.communicate()
-
-        # else:
-            # fileNamePrefix = fileName.split(".")[0]
-            # os.system("./team.native {fileName} > {fileNamePrefix}.ll".format(fileName=fileName, fileNamePrefix=fileNamePrefix))
-            # os.system("llc -relocation-model=pic {fileNamePrefix}.ll".format(fileNamePrefix=fileNamePrefix))
-            # compiledFiles = getCompiledFiles()
-            # os.system("gcc -o {fileNamePrefix} {fileNamePrefix}.s {compiledFiles}".format(fileNamePrefix=fileNamePrefix,
-            #                                                                               compiledFiles=compiledFiles))
-
-            # process = subprocess.Popen(["./{fileNamePrefix}".format(fileNamePrefix=fileNamePrefix)],
-            #                         stdout=subprocess.PIPE,
-            #                         stderr=subprocess.PIPE)
-
-            # stdout, stderr = process.communicate()
-            # os.system("rm {fileNamePrefix}.ll {fileNamePrefix}.s {fileNamePrefix}".format(fileNamePrefix=fileNamePrefix))
-
-
     if userInput:
         dir_prefix = "user_log"
     else:
