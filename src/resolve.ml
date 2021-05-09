@@ -48,7 +48,11 @@ let resolve (functions, statements) =
     | SCharLit c -> (t, SCharLit c)
     | SStringLit s -> (t, SStringLit s)
     | SId n -> (
-      try (type_of_identifier scope n, SId n) with _ -> (t, SId n) )
+      try
+        if (type_of_identifier scope n, SId n) = (List Unknown, SId n) then
+          (t, SId n)
+        else (type_of_identifier scope n, SId n)
+      with _ -> (t, SId n) )
     | SListLit l -> (t, SListLit l)
     | SSliceExpr (lexpr, slce) ->
         let lt, lexpr' = expr scope lexpr in
@@ -214,7 +218,7 @@ let resolve (functions, statements) =
             ; rparent= !scope.rparent }
         in
         sexpr
-    | SWhile (p, b) -> SWhile (p, b)
+    | SWhile (p, b) -> SWhile (p, stmt scope b)
     | SDeclaration (ty, s, e) ->
         let resolved_ty, e' = expr scope e in
         let ret =

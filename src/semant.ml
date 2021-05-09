@@ -187,7 +187,7 @@ let check (functions, statements) =
           | (Less | Leq | Greater | Geq) when same && t1 = Float -> Bool
           | (And | Or) when same && t1 = Bool -> Bool
           | Range when same && t1 = Int -> List Int
-          | Add when same && (match t1 with List _ -> true | _ -> false) -> t1
+          | Add when same && match t1 with List _ -> true | _ -> false -> t1
           | _ -> raise (E.InvalidBinaryOperation (t1, op, t2, e))
         in
         (ty, SBinop ((t1, e1'), op, (t2, e2')))
@@ -226,7 +226,7 @@ let check (functions, statements) =
           | _ -> (lrt, SAssign ((lt, s'), (rt, e')))
         in
         if is_slice && is_list then
-          let _ = update_var scope s_name (List lt) in
+          let _ = update_var scope s_name lt in
           (lt, SAssign ((lt, s'), (rt, e')))
         else non_slice
     | Call (fname, args) as call -> (
