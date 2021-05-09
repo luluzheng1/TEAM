@@ -18,7 +18,8 @@ Team uses PCRE2 (Perl Compatible Regular Expressions) library to support regular
 
 Ocamlbuild sometimes does not like .o files in the directory when trying to compile TEAM. If you encounter an issue with Ocamlbuild requiring sanitization, please do:
 
-      make clean && make
+      cd pcre2-10.36 && make clean
+      cd .. && make clean && make
 
 For more information on the PCRE2 API, please visit:
 
