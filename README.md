@@ -2,6 +2,8 @@
 
 Note: This file is best viewed in a Markdown reader.
 
+TEAM (Text Extraction And Manipulation) is a domain specific programming language designed for text processing, data extraction, and report generation. With its straightforward syntax and various built-in functions, TEAM offers a clean layer of abstraction for users to perform tasks that are often cumbersome to do in general purpose languages.
+
 ## Compilation
 
 To compile TEAM, do
@@ -26,11 +28,11 @@ https://www.pcre.org/current/doc/html/pcre2api.html
 
 To run all tests, do
 
-      python runtests.py -m all
+      python scripts/runtests.py -m all
 
 To run tests in a specific directory, do
 
-      python runtests.py -m <mode>
+      python scripts/runtests.py -m <mode>
 
 | Mode    | Description                                                                                                                                                                                                                           |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -46,7 +48,7 @@ The default mode is ast if none was provided.
 
 To execute a single TEAM file (file.tm), do
 
-      python runtests.py -t file.tm -r file.log -m <mode>
+      python scripts/runtests.py -t file.tm -r file.log -m <mode>
 
 - -t specifies the file to be executed
 
@@ -58,7 +60,7 @@ To execute a single TEAM file (file.tm), do
 
 To run the extended testsuite, do
 
-      python runtests.py -m extended
+      python scripts/runtests.py -m extended
 
 7 positive tests included in this testsuite are as follows:
 
