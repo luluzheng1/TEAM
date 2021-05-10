@@ -54,7 +54,7 @@ let resolve (functions, statements) =
         else (type_of_identifier scope n, SId n)
       with _ -> (t, SId n) )
     | SListLit l -> (t, SListLit l)
-    | SSliceExpr (lexpr, slce) ->
+    | SSliceExpr (lexpr, slce) as ex ->
         let lt, lexpr' = expr scope lexpr in
         let check_slice_expr =
           match slce with
