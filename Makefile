@@ -17,6 +17,7 @@ team.native : ./src/parser.mly ./src/scanner.mll ./src/codegen.ml ./src/semant.m
 	opam config exec -- \
 	ocamlbuild -use-ocamlfind ./src/team.native
 	@echo "$$HEADER"
+	
 # For built-in functions
 .PHONY: fileio
 fileio: ./c_library/fileio.c
