@@ -1,4 +1,4 @@
-(* Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. *)
+(* Authors: Lulu Z. *)
 open Ast
 open Sast
 module StringMap = Map.Make (String)
