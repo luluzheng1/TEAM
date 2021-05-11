@@ -30,6 +30,20 @@ let resolve (functions, statements) =
       | Some parent -> type_of_identifier (ref parent) id
       | _ -> raise (E.UndefinedId id) )
   in
+  (* Add the scope of list variable with name id *)
+  let add_list_scope id (scope : resolved_table ref) =
+    try
+      let _ = StringMap.find id !scope.rvariables in
+      raise (E.Duplicate id)
+    with Not_found ->
+      scope :=
+        { rvariables= !scope.rvariables
+        ; rfunctions= !scope.rfunctions
+        ; rlist_variables= StringMap.add id scope !scope.rlist_variables
+        ; rparent= !scope.rparent }
+  in
+  (* For finding a list outside of current scope that hasn't been type inferred *)
+  let get_list_scope id scope = StringMap.find_opt id !scope.rlist_variables in
   let look_up_func (funcs : sfunc_decl list) fname =
     List.find_opt (fun f -> f.sfname = fname) funcs
   in
@@ -87,10 +101,22 @@ let resolve (functions, statements) =
     | SAssign (le, re) ->
         let lt, le' = expr scope le in
         let rt, re' = expr scope re in
+        let s_name =
+          match le' with
+          | SId n -> n
+          | SSliceExpr ((_, SId n), _) -> n
+          | _ -> raise (Failure "Can't assign to a non variable")
+        in
         let ret =
           match (lt, le') with
           | List Unknown, SId s ->
               let _ = add_var scope s rt in
+              let _ =
+                (* update the list variable in the scope it is defined in *)
+                match get_list_scope s_name scope with
+                | Some sc -> add_var sc s_name rt
+                | None -> ()
+              in
               (rt, SAssign ((rt, le'), (rt, re')))
           | _ -> (t, SAssign (le, re))
         in
@@ -109,7 +135,6 @@ let resolve (functions, statements) =
       | _, SId "match" -> (t, SCall (f, args))
       | _, SId "replace" -> (t, SCall (f, args))
       | _, SId "replaceall" -> (t, SCall (f, args))
-      (* | _, SId "contains" -> (t, SCall (f, args)) *)
       | fty, SId fname ->
           let option_func = look_up_func functions fname in
           if Option.is_some option_func then
@@ -224,6 +249,9 @@ let resolve (functions, statements) =
         let ret =
           match (ty, resolved_ty) with
           (* update variable's type *)
+          | List Unknown, List Unknown ->
+              let _ = add_list_scope s scope in
+              SDeclaration (ty, s, e)
           | List Unknown, List _ ->
               let _ = add_var scope s resolved_ty in
               SDeclaration (resolved_ty, s, (resolved_ty, e'))

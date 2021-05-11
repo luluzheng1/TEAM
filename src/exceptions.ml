@@ -144,7 +144,7 @@ let handle_error (e : exn) =
       and s3 = string_of_stmt s in
       raise
         (TypeError
-           (Printf.sprintf "Error: Illegal assignment '%s' '%s' in '%s'" s1 s2
+           (Printf.sprintf "Error: Illegal declaration '%s' '%s' in '%s'" s1 s2
               s3 ) )
   | NonListAccess (t1, t2, e) ->
       let s1 = string_of_typ t1
