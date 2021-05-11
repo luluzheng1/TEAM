@@ -1,4 +1,5 @@
 (* Ocamllex scanner for TEAM *)
+(* Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. *)
 
 { 
   open Parser

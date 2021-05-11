@@ -1,3 +1,4 @@
+/* Author: Yingjie L. */
 list ASCII = [
                 'a', 'b', 'c', 'd', 'e',
                 'f', 'g', 'h', 'i', 'j',

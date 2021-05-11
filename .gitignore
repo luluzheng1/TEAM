@@ -45,7 +45,8 @@ fileio.dSYM/
 regex.dSYM/
 
 test.tm
-llvm
+*llvm*
 test.py
 .DS_Store
 *log/
+tex.sh

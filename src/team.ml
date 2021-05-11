@@ -1,6 +1,6 @@
 (* team.ml: scan & parse & sematically analyze the input, pretty-print AST and
    SAST *)
-
+(* Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. *)
 type action = Ast | Sast | Resolve | LLVM_IR
 
 let make_err err = raise (Failure err)

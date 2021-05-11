@@ -1,5 +1,5 @@
 (* Semantically-checked Abstract Syntax Tree and functions for printing it *)
-
+(* Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. *)
 open Ast
 module StringMap = Map.Make (String)
 
