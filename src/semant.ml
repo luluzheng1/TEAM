@@ -189,6 +189,9 @@ let check (functions, statements) =
           | (And | Or) when same && t1 = Bool -> Bool
           | Range when same && t1 = Int -> List Int
           | Add when same && match t1 with List _ -> true | _ -> false -> t1
+          | _ when t1 = Unknown && t2 <> Unknown -> t2
+          | _ when t1 <> Unknown && t2 = Unknown -> t1
+          | _ when same && t1 = Unknown -> t1
           | _ -> raise (E.InvalidBinaryOperation (t1, op, t2, e))
         in
         (ty, SBinop ((t1, e1'), op, (t2, e2')))
@@ -570,6 +573,9 @@ let check (functions, statements) =
           | _ -> false
         in
         if (same && not is_generic_list) || e' = SNoexpr then
+          let _ = add_var_to_scope scope s ty in
+          SDeclaration (ty, s, (expr_ty, e'))
+        else if expr_ty = Unknown then
           let _ = add_var_to_scope scope s ty in
           SDeclaration (ty, s, (expr_ty, e'))
           (* update type of list on LHS of assignment to the type of the LHS *)
