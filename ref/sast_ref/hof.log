@@ -354,7 +354,7 @@ list<char> ASCII = (list<char> : [(char : a),(char : b),(char : c),(char : d),(c
 (list<char> : ((list<char>,char,bool)->list<char> : remove_char_char_char_bool)((list<char> : [(char : a)]), (char : a), (bool : true)))
 (list<string> : ((list<string>,string,bool)->list<string> : remove_string_string_string_bool)((list<string> : [(string : "hello")]), (string : "what"), (bool : true)))
 list<int> arr = (list<int> : [(int : 1),(int : 2),(int : 3),(int : 4)])
-(list<int> : (list<int> : arr) = (list<?> : (((int)->int,list<int>)->list<?> : map_(int)->int_int)(((int)->int : addOne), (list<int> : arr))))
+(list<int> : (list<int> : arr) = (list<int> : (((int)->int,list<int>)->list<int> : map_(int)->int_int)(((int)->int : addOne), (list<int> : arr))))
 for i in (list<int> : arr):
  	(void : ((string)->void : print)((string : "%d
 	"), (int : i)))

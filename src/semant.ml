@@ -329,6 +329,17 @@ let check (functions, statements) =
               | _ -> raise (E.LengthWrongArgument et1)
             in
             (Int, SCall ((Func ([List Int], Int), SId "length"), args'))
+        | Id "split" ->
+            let args' = List.map (expr scope) args in
+            let et1, _ = hd args' in
+            let _ =
+              match et1 with
+              | String -> ()
+              | _ -> raise (Failure "Mismatched types")
+            in
+            ( List String
+            , SCall ((Func ([String; Char], List String), SId "split"), args')
+            )
         | _ ->
             let check_call ft e =
               let et, e' = expr scope e in
