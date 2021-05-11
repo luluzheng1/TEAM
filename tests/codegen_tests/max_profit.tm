@@ -5,7 +5,6 @@ int max_profit(list stock_prices):
     for i in 1..length(stock_prices)-1:
         int current_price = stock_prices[i];
         int next_price = stock_prices[i+1];
-        print("%d\n", next_price);
         if current_price > next_price:
             int potential_profit = current_price - min_price;
             max_profit += potential_profit;
