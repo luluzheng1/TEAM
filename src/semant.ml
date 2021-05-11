@@ -340,6 +340,17 @@ let check (functions, statements) =
             ( List String
             , SCall ((Func ([String; Char], List String), SId "split"), args')
             )
+        | Id "string_to_list" ->
+            let args' = List.map (expr scope) args in
+            let et1, _ = hd args' in
+            let _ =
+              match et1 with
+              | String -> ()
+              | _ -> raise (Failure "Mismatched types")
+            in
+            ( List Char
+            , SCall ((Func ([String], List Char), SId "string_to_list"), args')
+            )
         | _ ->
             let check_call ft e =
               let et, e' = expr scope e in
