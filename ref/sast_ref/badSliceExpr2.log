@@ -1,1 +1,1 @@
-Fatal error: exception Exceptions.TypeError("Error: Illegal assignment 'float' 'int' in 'float f = 5;\n'")
+Fatal error: exception Exceptions.TypeError("Error: Illegal declaration 'float' 'int' in 'float f = 5;\n'")
