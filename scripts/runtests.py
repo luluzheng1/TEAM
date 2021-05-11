@@ -48,9 +48,20 @@ def runTests(testMode):
         logFile = runFile(testFile, testMode)
         checkResults(logFile, refFile)
 
-def printFailedTestMessage(logFile):
-    tmFile = logFile.split("/")[-1].split(".")[0]
+def printFailedTestMessage(f_generated, f_reference):
+    tmFile = f_generated.split("/")[-1].split(".")[0]
     print(bcolors.FAIL +"{:20s} -- FAILED!\n".format(tmFile + ".tm") + bcolors.ENDC)
+    print("+" * 100)
+    print(bcolors.WARNING + bcolors.UNDERLINE + "Running diff...\n" + bcolors.ENDC)
+    process = subprocess.Popen(["diff", "-y", f_generated, f_reference],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    print(bcolors.WARNING +
+            "command: diff -y {} (output) {} (standard)\n".format(f_generated, f_reference) +
+            bcolors.ENDC)
+    print(bcolors.WARNING + stdout.decode("utf-8") + bcolors.ENDC)
+    print("+" * 100)
 
 def printSuccessTestMessage(logFile):
     tmFile = logFile.split("/")[-1].split(".")[0]
@@ -61,22 +72,11 @@ def checkResults(f_generated, f_reference):
     reference = [line for line in open(f_reference)]
 
     if len(generated) != len(reference):
-        printFailedTestMessage(f_generated)
+        printFailedTestMessage(f_generated, f_reference)
         return
     for index, astGenerateLine in enumerate(generated):
         if astGenerateLine != reference[index]:
-            printFailedTestMessage(f_generated)
-            print("+" * 100)
-            print(bcolors.WARNING + bcolors.UNDERLINE + "Running diff...\n" + bcolors.ENDC)
-            process = subprocess.Popen(["diff", "-y", f_generated, f_reference],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-            stdout, stderr = process.communicate()
-            print(bcolors.WARNING +
-                  "command: diff -y {} (output) {} (standard)\n".format(f_generated, f_reference) +
-                  bcolors.ENDC)
-            print(bcolors.WARNING + stdout.decode("utf-8") + bcolors.ENDC)
-            print("+" * 100)
+            printFailedTestMessage(f_generated, f_reference)
             return
     printSuccessTestMessage(f_generated)
 
