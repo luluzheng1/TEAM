@@ -1,1 +1,1 @@
-Fatal error: exception Scanner.Scan_error("\"")
+Fatal error: exception Failure("Illegal character at line 1, characters 33-34: \"\"\"")
