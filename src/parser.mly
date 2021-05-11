@@ -1,5 +1,5 @@
 /* Ocamlyacc parser for TEAM */
-
+/* Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. */
 %{
 open Ast
 %} 

@@ -1,7 +1,7 @@
 (* team.ml: scan & parse & sematically analyze the input, 
  * check the resulting AST and generate SAST from it,
- * generate LLVM IR, and dump the module *)
-
+ * generate LLVM IR, and dump the module
+   Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. *)
 type action = Ast | Sast | Resolve | LLVM_IR
 
 let make_err err = raise (Failure err)

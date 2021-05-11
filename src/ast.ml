@@ -1,5 +1,5 @@
 (* Abstract Syntax Tree and functions for printing it *)
-
+(* Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. *)
 type op =
   | Add
   | Sub
