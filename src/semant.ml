@@ -230,6 +230,12 @@ let check (functions, statements) =
         in
         if is_slice && is_list then
           let _ = update_var scope s_name lt in
+          let _ =
+            (* update the list variable in the scope it is defined in *)
+            match get_list_scope s_name scope with
+            | Some sc -> update_var sc s_name lrt
+            | None -> ()
+          in
           (lt, SAssign ((lt, s'), (rt, e')))
         else non_slice
     | Call (fname, args) as call -> (
@@ -326,6 +332,28 @@ let check (functions, statements) =
               | _ -> raise (E.LengthWrongArgument et1)
             in
             (Int, SCall ((Func ([List Int], Int), SId "length"), args'))
+        | Id "split" ->
+            let args' = List.map (expr scope) args in
+            let et1, _ = hd args' in
+            let _ =
+              match et1 with
+              | String -> ()
+              | _ -> raise (Failure "Mismatched types")
+            in
+            ( List String
+            , SCall ((Func ([String; Char], List String), SId "split"), args')
+            )
+        | Id "string_to_list" ->
+            let args' = List.map (expr scope) args in
+            let et1, _ = hd args' in
+            let _ =
+              match et1 with
+              | String -> ()
+              | _ -> raise (Failure "Mismatched types")
+            in
+            ( List Char
+            , SCall ((Func ([String], List Char), SId "string_to_list"), args')
+            )
         | _ ->
             let check_call ft e =
               let et, e' = expr scope e in
@@ -550,6 +578,9 @@ let check (functions, statements) =
           let _ = add_var_to_scope scope s ty in
           SDeclaration (ty, s, (expr_ty, e'))
           (* update type of list on LHS of assignment to the type of the LHS *)
+        else if expr_ty = Unknown then
+          let _ = add_var_to_scope scope s ty in
+          SDeclaration (ty, s, (expr_ty, e'))
         else if ty = List Unknown && not is_generic_list then
           let _ = add_var_to_scope scope s expr_ty in
           SDeclaration (expr_ty, s, (expr_ty, e'))

@@ -50,6 +50,8 @@ let () =
   let speclist =
     [ ("-a", Arg.Unit (set_action Ast), "Print the AST")
     ; ("-s", Arg.Unit (set_action Resolve), "Print the Resolved SAST")
+      (* ; ("-s", Arg.Unit (set_action Sast), "Print the SAST") *)
+      (* ; ("-r", Arg.Unit (set_action Resolve), "Print the Resolved SAST") *)
     ; ("-l", Arg.Unit (set_action LLVM_IR), "Print the generated LLVM IR") ]
   in
   let usage_msg = "usage: ./team.native [-a|-s|-l] [file.tm]" in
