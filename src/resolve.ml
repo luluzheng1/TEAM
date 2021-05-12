@@ -48,9 +48,6 @@ let resolve (functions, statements) =
     let param_types = List.map (fun (a, _) -> a) fd.sformals in
     Func (param_types, fd.styp)
   in
-  let rec innermost_ty ty =
-    match ty with List t -> innermost_ty t | nonlist_ty -> nonlist_ty
-  in
   let rec expr scope ((t, e) : sexpr) =
     match e with
     | SIntLit i -> (t, SIntLit i)
@@ -225,12 +222,18 @@ let resolve (functions, statements) =
         let t, e' = expr scope e in
         let list_name = match e' with SId s -> Some s | _ -> None in
         (* get resolved type if expr sl is a list *)
+        let inner_ty =
+          match t with
+          | List ty -> ty
+          | String -> Char
+          | _ -> raise E.IllegalFor
+        in
         let resolved_ty =
           if t = List Unknown && Option.is_some list_name then
             type_of_identifier scope (Option.get list_name)
           else t
         in
-        let _ = add_var scope s (innermost_ty resolved_ty) in
+        let _ = add_var scope s inner_ty in
         let sexpr = SFor (s, (resolved_ty, e'), stmt scope sl) in
         let _ =
           scope :=
