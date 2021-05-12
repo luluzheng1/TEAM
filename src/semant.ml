@@ -268,7 +268,7 @@ let check (functions, statements) =
             let et1, args1' = hd args' in
             let et2, args2' = hd (tl args') in
             let inner_ty =
-              match et1 with List ty -> ty | _ -> raise (E.AppendNonList et2)
+              match et1 with List ty -> ty | _ -> raise (E.AppendNonList et1)
             in
             let is_list et = match et with List _ -> true | _ -> false in
             let _ =
@@ -287,10 +287,10 @@ let check (functions, statements) =
                   ( (Func ([List et2; et2], List et2), SId "append")
                   , [(List et2, args1'); (et2, args2')] ) )
             else if is_list et2 && innermost_ty et2 = Unknown then
-              ( List et1
+              ( et1
               , SCall
-                  ( (Func ([List et1; et1], List et1), SId "append")
-                  , [(List et1, args1'); (et1, args2')] ) )
+                  ( (Func ([et1; et1], et1), SId "append")
+                  , [(et1, args1'); (et1, args2')] ) )
             else
               ( List et2
               , SCall ((Func ([List et2; et2], List et2), SId "append"), args')
@@ -305,24 +305,41 @@ let check (functions, statements) =
               | _ -> raise (E.LengthWrongArgument et1)
             in
             (et1, SCall ((Func ([et1], et1), SId "reverse"), args'))
+
         | Id "insert" ->
             let args' = List.map (expr scope) args in
-            let et1, _ = hd args' in
-            let et2, _ = hd (tl args') in
+            let et1, args1' = hd args' in
+            let et2, args2' = hd (tl args') in
+            let et3, args3' = hd (List.rev args') in 
             let inner_ty =
-              match et1 with List ty -> ty | _ -> raise (E.AppendNonList et2)
+              match et1 with List ty -> ty | _ -> raise (E.AppendNonList et1)
             in
-            let ret =
-              if inner_ty <> et2 then
-                raise (E.MismatchedTypes (inner_ty, et2, call))
-              else
-                ( et1
-                , SCall
-                    ( ( Func ([List inner_ty; inner_ty], List inner_ty)
-                      , SId "insert" )
-                    , args' ) )
+            let is_list et = match et with List _ -> true | _ -> false in
+            let _ =
+              if
+                is_list et2
+                && innermost_ty et2 = Unknown
+                && innermost_ty et1 <> Unknown
+              then ()
+              else if innermost_ty et1 <> et2 && innermost_ty et1 != Unknown
+              then raise (E.MismatchedTypes (inner_ty, et2, call))
+              else ()
             in
-            ret
+            if innermost_ty et1 = Unknown then
+              ( List et2
+              , SCall
+                  ( (Func ([List et2; et2], List et2), SId "insert")
+                  , [(List et2, args1'); (et2, args2'); (et3, args3')] ) )
+            else if is_list et2 && innermost_ty et2 = Unknown then
+              ( et1
+              , SCall
+                  ( (Func ([et1; et1], et1), SId "insert")
+                  , [(et1, args1'); (et1, args2'); (et3, args3')] ) )
+            else
+              ( List et2
+              , SCall ((Func ([List et2; et2], List et2), SId "insert"), args')
+              )
+
         | Id "length" ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in
