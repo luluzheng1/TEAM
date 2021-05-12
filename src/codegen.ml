@@ -10,7 +10,7 @@ type var_table =
   {lvariables: L.llvalue StringMap.t; parent: var_table ref option}
 
 let translate (functions, statements) =
-  (* defining main function *)
+  (* defining main function as the list of statements on the top level*)
   let main_func =
     {styp= A.Int; sfname= "main"; sformals= []; sbody= statements}
   in
@@ -1508,6 +1508,7 @@ let translate (functions, statements) =
                                         (index_expr, A.Add, (A.Int, SIntLit 1))
                                     ) ) )
                           ; sl ] ) ]
+            (* Using a similar  strategy to for loop for lists*)
             | A.String ->
                 let len_call =
                   ( A.Int
@@ -1547,6 +1548,7 @@ let translate (functions, statements) =
       | SDeclaration (t, n, e) ->
           let e =
             match e with
+            (* Handling case for declaration without initial value *)
             | A.Void, SNoexpr -> (
               match t with
               | A.List _ ->
@@ -1563,13 +1565,17 @@ let translate (functions, statements) =
           in
           let _ =
             match fdecl.sfname with
+            (* When Variable is declared on the top level *)
             | "main" ->
+                (* Allocate as global for variables on top level *)
                 let global =
                   L.define_global n (L.const_null (ltype_of_typ t)) the_module
                 in
                 let _ = L.build_store e global builder in
                 add_variable_to_scope sc n global
+            (* When the variable is declared inside a function *)
             | _ ->
+                (* Allocate space for variable on the top of function*)
                 let init_pos = L.instr_begin (L.entry_block the_function) in
                 let new_builder = L.builder_at context init_pos in
                 let local = L.build_alloca (ltype_of_typ t) n new_builder in
@@ -1578,10 +1584,12 @@ let translate (functions, statements) =
           in
           builder
       | SWhile (predicate, body) ->
+          (* Similar strategy as microc *)
           let pred_bb = L.append_block context "while" the_function in
           let _ = L.build_br pred_bb builder in
           let merge_bb = L.append_block context "merge" the_function in
           let body_bb = L.append_block context "while_body" the_function in
+          (* Pass the builder for break and continue statements to refer *)
           let while_builder =
             build_stmt sc
               (L.builder_at_end context body_bb)
@@ -1593,6 +1601,7 @@ let translate (functions, statements) =
           let bool_val = expr sc pred_builder predicate in
           let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
           L.builder_at_end context merge_bb
+      (* Add instruction to builders passed from a loop *)
       | SBreak ->
           let () = add_terminal builder (L.build_br (snd (List.hd loop))) in
           builder
@@ -1603,12 +1612,14 @@ let translate (functions, statements) =
     let builder =
       List.fold_left (fun b s -> build_stmt scope b s []) builder fdecl.sbody
     in
+    (* Function to add terminals to a basic block *)
     add_terminal builder
       ( match fdecl.styp with
       | A.Void -> L.build_ret_void
       | A.Float -> L.build_ret (L.const_float float_t 0.0)
       | t -> L.build_ret (L.const_int (ltype_of_typ t) 0) )
   in
+  (* Call buil_function_body on all functions *)
   let functions' =
     try List.iter (build_function_body globals) functions
     with e -> E.handle_error e
