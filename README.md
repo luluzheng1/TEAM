@@ -25,6 +25,10 @@ For more information on the PCRE2 API, please visit:
 
 https://www.pcre.org/current/doc/html/pcre2api.html
 
+If for some reason the PCRE2 library fails to install on your machine, please visit https://ftp.pcre.org/pub/pcre/ and manually download the zipped file named pcre2-10.36.zip. After downloading and extracting the zipped file, please cd into the extracted folder and run:
+
+      ./configure && make && make install
+
 ## Testing
 
 To run all tests, do
