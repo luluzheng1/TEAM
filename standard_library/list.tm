@@ -210,6 +210,22 @@ list remove_string(list l, string elem, bool all):
     return retlist; 
 end
 
+list reverse(list a):
+    list b = [];
+    int len = length(a);
+    for i in 0..len:
+        b[0:0] = [a[i]];
+    end
+    return b;
+end
+
+reverse([1]);
+reverse([[1]]);
+reverse(["t"]);
+reverse(['t']);
+reverse([1.1]);
+reverse([true]);
+
 remove_int([1], 1, true);
 remove_float([1.5], 1.5, false);
 remove_bool([true], true, true);

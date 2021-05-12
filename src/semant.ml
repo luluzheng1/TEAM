@@ -44,8 +44,7 @@ let check (functions, statements) =
       ; ( "insert"
         , [(List Unknown, "input_list"); (Unknown, "element"); (Int, "index")]
         , List Unknown )
-      ; ("length", [(Unknown, "input_list")], Int)
-      ; ("reverse", [(List Unknown, "input_list")], List Unknown) ]
+      ; ("length", [(Unknown, "input_list")], Int)]
   in
   (* fd.typ *)
   let add_func map fd =
@@ -294,16 +293,6 @@ let check (functions, statements) =
               ( List et2
               , SCall ((Func ([List et2; et2], List et2), SId "append"), args')
               )
-        | Id "reverse" ->
-            let args' = List.map (expr scope) args in
-            let et1, _ = hd args' in
-            let _ =
-              match et1 with
-              | List _ -> ()
-              (* | String -> () *)
-              | _ -> raise (E.LengthWrongArgument et1)
-            in
-            (et1, SCall ((Func ([et1], et1), SId "reverse"), args'))
         | Id "insert" ->
             let args' = List.map (expr scope) args in
             let et1, _ = hd args' in
