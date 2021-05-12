@@ -1,10 +1,12 @@
-(* team.ml: scan & parse & sematically analyze the input, pretty-print AST and
-   SAST *)
-
+(* team.ml: scan & parse & sematically analyze the input, 
+ * check the resulting AST and generate SAST from it,
+ * generate LLVM IR, and dump the module
+   Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. *)
 type action = Ast | Sast | Resolve | LLVM_IR
 
 let make_err err = raise (Failure err)
 
+(* Print the scanner error with the line and character number information *)
 let scan_error lexbuf ch =
   let start_p = Lexing.lexeme_start_p lexbuf in
   let end_p = Lexing.lexeme_end_p lexbuf in
@@ -17,6 +19,7 @@ let scan_error lexbuf ch =
     ( "Illegal character at line " ^ line ^ ", characters " ^ ch_start ^ "-"
     ^ ch_end ^ ": " ^ "\"" ^ ch ^ "\"" )
 
+(* Print the parser error with the line and character number information *)
 let parse_error lexbuf =
   let start_p = Lexing.lexeme_start_p lexbuf in
   let end_p = Lexing.lexeme_end_p lexbuf in
@@ -50,27 +53,24 @@ let () =
   let speclist =
     [ ("-a", Arg.Unit (set_action Ast), "Print the AST")
     ; ("-s", Arg.Unit (set_action Resolve), "Print the Resolved SAST")
-      (* ; ("-s", Arg.Unit (set_action Sast), "Print the SAST") *)
-      (* ; ("-r", Arg.Unit (set_action Resolve), "Print the Resolved SAST") *)
     ; ("-l", Arg.Unit (set_action LLVM_IR), "Print the generated LLVM IR") ]
   in
   let usage_msg = "usage: ./team.native [-a|-s|-l] [file.tm]" in
-  (* get buffers/channel for standard library *)
+  (* get buffers/channel for list and string standard library *)
   let string_channel = ref stdin in
   let list_channel = ref stdin in
   let channel = ref stdin in
   set_channel string_channel "standard_library/string.tm" ;
   set_channel list_channel "standard_library/list.tm" ;
-  (* parser program and standard library *)
+  (* parse program and standard library *)
   Arg.parse speclist (fun filename -> channel := open_in filename) usage_msg ;
   let lexbuf = Lexing.from_channel !channel
   and string_lexbuf = Lexing.from_channel !string_channel
   and list_lexbuf = Lexing.from_channel !list_channel in
-  let ast = Parser.program Scanner.token lexbuf in
+  let ast = parse lexbuf in
   let string_ast = parse string_lexbuf in
   let list_ast = parse list_lexbuf in
   (* prepend standard library to program *)
-  (* let ast = (fst ast, snd ast) in *)
   let ast =
     ( fst string_ast @ fst list_ast @ fst ast
     , snd string_ast @ snd list_ast @ snd ast )

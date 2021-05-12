@@ -1,3 +1,4 @@
+/* Author: Yingjie L., Lulu Z. */
 bool contains(list l, list items):
     list res = [];
     for item in items:

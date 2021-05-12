@@ -1,1 +1,1 @@
-Fatal error: exception Stdlib.Parsing.Parse_error
+Fatal error: exception Failure("Syntax error at line 1, characters 57-57: ")

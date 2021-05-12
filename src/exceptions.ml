@@ -1,3 +1,4 @@
+(* Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. *)
 open Ast
 
 exception NonUniformTypeContainer of typ * typ

@@ -14,7 +14,7 @@ To compile TEAM, do
 
 Team uses PCRE2 (Perl Compatible Regular Expressions) library to support regular expressions. To setup dependencies, do:
 
-      cd pcre2-10.36 && ./configure && make && make install
+      cd pcre2-10.36 && ./configure && make && make install && cd ..
 
 Ocamlbuild sometimes does not like .o files in the directory when trying to compile TEAM. If you encounter an issue with Ocamlbuild requiring sanitization, please do:
 
@@ -24,6 +24,10 @@ Ocamlbuild sometimes does not like .o files in the directory when trying to comp
 For more information on the PCRE2 API, please visit:
 
 https://www.pcre.org/current/doc/html/pcre2api.html
+
+If for some reason the PCRE2 library fails to install on your machine, please visit https://ftp.pcre.org/pub/pcre/ and manually download the zipped file named pcre2-10.36.zip. After downloading and extracting the zipped file, please cd into the extracted folder and run:
+
+      ./configure && make && make install
 
 ## Testing
 

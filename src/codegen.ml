@@ -1,3 +1,4 @@
+(* Authors: Naoki O., Yingjie L., Lulu Z., Saurav G. *)
 module L = Llvm
 module A = Ast
 open Sast
@@ -603,7 +604,7 @@ let translate (functions, statements) =
           in
           let arg_list = List.map eval_arg args in
           L.build_call printf_func (Array.of_list arg_list) "printf" builder
-      (* Declaring regex functions which are defined in c *)
+      (* Declaring regex functions which are defined in C *)
       | SCall ((_, SId "match"), [(A.String, st); (A.String, st2)]) ->
           L.build_call match_func
             [|expr sc builder (A.String, st); expr sc builder (A.String, st2)|]
@@ -753,6 +754,7 @@ let translate (functions, statements) =
       match L.lookup_function "strcmp_function" the_module with
       | Some func -> func
       | None -> 
+          (* returns 1 if the two strings are the same, 0 if otherwise *)
           let strcmp_func_t = 
             L.function_type i1_t [|string_t; string_t|]
           in
@@ -760,7 +762,7 @@ let translate (functions, statements) =
           let strcmp_builder = 
             L.builder_at_end context (L.entry_block strcmp_func)
           in
-
+          (* get the arguments *)
           let stringA = L.param strcmp_func 0 in
           let stringB = L.param strcmp_func 1 in
 
@@ -768,6 +770,7 @@ let translate (functions, statements) =
           let length1 = L.build_call sl_func [|stringA; L.const_int i32_t 0|] "length" strcmp_builder in
           let length2 = L.build_call sl_func [|stringB; L.const_int i32_t 0|] "length" strcmp_builder in
 
+          (* if lengths of the two strings are different, return false *)
           let bool_val = L.build_icmp L.Icmp.Ne length1 length2 "same_length" strcmp_builder in 
           let then_bb = L.append_block context "then" strcmp_func in 
           let _ = L.build_ret (L.const_int i1_t 0) (L.builder_at_end context then_bb) in
@@ -777,6 +780,7 @@ let translate (functions, statements) =
           let last_index =
             L.build_sub length1 (L.const_int i32_t 1) "last_index" else_builder
           in
+          (* call strcmp_helper_func and return its result *)
           let ret = 
             L.build_call strcmp_helper_func [|stringA; stringB; last_index; (L.const_int i32_t 0)|] 
             "res" else_builder
@@ -784,7 +788,8 @@ let translate (functions, statements) =
           let _ = L.build_ret ret else_builder in
           let _ = L.build_cond_br bool_val then_bb else_bb strcmp_builder in 
           strcmp_func
-
+      
+    (* helper function used by build_strcmp_function *)
     and build_strcmp_helper_function () = 
       match L.lookup_function "strcmp_helper_function" the_module with 
       | Some func -> func
@@ -796,22 +801,27 @@ let translate (functions, statements) =
           let strcmp_helper_builder = 
             L.builder_at_end context (L.entry_block strcmp_helper_func)
           in
+
+          (* get the arguments *)
           let stringA = L.param strcmp_helper_func 0 in
           let stringB = L.param strcmp_helper_func 1 in
           let last_index = L.param strcmp_helper_func 2 in
           let index = L.param strcmp_helper_func 3 in
 
+          (* load the character at index *)
           let charA_ptr = L.build_gep stringA [|index|] "charA_ptr" strcmp_helper_builder in
           let charA = L.build_load charA_ptr "charA" strcmp_helper_builder in
           let charB_ptr = L.build_gep stringB [|index|] "charB_ptr" strcmp_helper_builder in
           let charB = L.build_load charB_ptr "charB" strcmp_helper_builder in
 
-
+          (* if the character at index is not the same, return false *)
           let bool_not_same_val = L.build_icmp L.Icmp.Ne charA charB "not_same" strcmp_helper_builder in
           let then_not_same_bb = L.append_block context "then_not_same" strcmp_helper_func in
           let _ = L.build_ret (L.const_int i1_t 0) (L.builder_at_end context then_not_same_bb) in
           let else_same_bb = L.append_block context "else_same" strcmp_helper_func in
           let else_same_builder = L.builder_at_end context else_same_bb in
+
+          (* if already at the last character, return true *)
           let bool_at_end_val = L.build_icmp L.Icmp.Eq index last_index "last_char" else_same_builder in 
           let then_end_bb = L.append_block context "then_end" strcmp_helper_func in
           let _ = L.build_ret (L.const_int i1_t 1) (L.builder_at_end context then_end_bb) in 
@@ -820,6 +830,8 @@ let translate (functions, statements) =
           let next_index = 
             L.build_add (L.const_int i32_t 1) index "next_index" else_not_end_builder
           in
+
+          (* recursively call strcmp_helper_func to compare the rest of the string *)
           let ret = 
             L.build_call strcmp_helper_func [|stringA; stringB; last_index; next_index|]
             "res" else_not_end_builder
@@ -843,15 +855,21 @@ let translate (functions, statements) =
           let range_builder =
             L.builder_at_end context (L.entry_block range_func)
           in
+
+          (* get the arguments *)
           let s = L.param range_func 0 in
           let e = L.param range_func 1 in
           let head_ptr_ptr = L.param range_func 2 in
           let curr_length = L.param range_func 3 in
+
+          (* return the list generated if the last element is generated *)
           let bool_val = L.build_icmp L.Icmp.Eq s e "is_last" range_builder in
           let then_bb = L.append_block context "then" range_func in
           let _ = L.build_ret head_ptr_ptr (L.builder_at_end context then_bb) in
           let else_bb = L.append_block context "else" range_func in
           let else_builder = L.builder_at_end context else_bb in
+
+          (* call insert to append the next element *)
           let insert_func = build_insert_function (A.List A.Int) in
           let head_ptr_ptr =
             L.build_call insert_func
@@ -865,6 +883,8 @@ let translate (functions, statements) =
             L.build_add (L.const_int i32_t 1) curr_length "next_length"
               else_builder
           in
+
+          (* recursively call range_func to generate the rest of the elements *)
           let ret =
             L.build_call range_func
               [|next_s; e; head_ptr_ptr; next_length|]
@@ -974,6 +994,7 @@ let translate (functions, statements) =
           let _ = L.build_ret ret else_builder in
           let _ = L.build_cond_br bool_val then_bb else_bb lc_builder in
           lc_func
+
     and build_string_length_function () =
       match L.lookup_function "string_length" the_module with
       | Some func -> func
@@ -1013,9 +1034,11 @@ let translate (functions, statements) =
           let _ = L.build_ret ret else_builder in
           let _ = L.build_cond_br bool_val then_bb else_bb sl_builder in
           sl_func
-    (* Building insert function *)
+
+(* Building insert function *)
     and build_insert_function typ =
       let t = get_list_inner_typ typ in
+      (* insert function has to be defined for different types *)
       let func_name = "insert_" ^ A.string_of_typ t in
       match L.lookup_function func_name the_module with
       | Some func -> func
@@ -1032,10 +1055,14 @@ let translate (functions, statements) =
           let insert_builder =
             L.builder_at_end context (L.entry_block insert_func)
           in
+
+          (* get arguments *)
           let list_ptr_ptr = L.param insert_func 0 in
           let e' = L.param insert_func 1 in
           let i' = L.param insert_func 2 in
           let list_ptr = L.build_load list_ptr_ptr "list_ptr" insert_builder in
+
+          (* malloc space for a new list *)
           let new_list_ptr_ptr =
             L.build_malloc list_struct_ptr "new_list_ptr_ptr" insert_builder
           in
@@ -1044,7 +1071,11 @@ let translate (functions, statements) =
               (L.const_null list_struct_ptr)
               new_list_ptr_ptr insert_builder
           in
+
+          (* get the length of the function *)
           let lc_func = build_copy_function typ in
+
+          (* copy the list to a new one so that the old list is not mutated *)
           let _ =
             L.build_call lc_func
               [|list_ptr; L.const_int i32_t (-1); new_list_ptr_ptr|]
@@ -1057,11 +1088,17 @@ let translate (functions, statements) =
           let temp = L.build_alloca list_struct_type "temp" insert_builder in
           let next = L.build_struct_gep temp 1 "next" insert_builder in
           let _ = L.build_store new_list_ptr next insert_builder in
+
+          (* malloc space for the actual data *)
           let dat_struct =
             L.build_malloc list_struct_type "data_node" insert_builder
           in
+
+          (* malloc space for the pointer to the data *)
           let dat_ptr = L.build_malloc ltype "data" insert_builder in
           let _ = L.build_store e' dat_ptr insert_builder in
+
+          (* store the data pointer to the node struct *)
           let dat_ptr_ptr =
             L.build_struct_gep dat_struct 0 "dat" insert_builder
           in
@@ -1069,17 +1106,25 @@ let translate (functions, statements) =
             L.build_bitcast dat_ptr (L.pointer_type i8_t) "cast" insert_builder
           in
           let _ = L.build_store type_casted dat_ptr_ptr insert_builder in
+
+          (* get the node specified by the index *)
           let item_ptr =
             L.build_call la_func [|temp; i'|] "result" insert_builder
           in
           let cur_next = L.build_struct_gep item_ptr 1 "test" insert_builder in
+
+          (* keep a record of what next currently pointer to *)
           let _ =
             L.build_store
               (L.build_load cur_next "temp" insert_builder)
               (L.build_struct_gep dat_struct 1 "dat" insert_builder)
               insert_builder
           in
+
+          (* insertion happends here *)
           let _ = L.build_store dat_struct cur_next insert_builder in
+
+          (* connect old list to the new one *)
           let _ =
             L.build_store
               (L.build_load next "temp" insert_builder)
