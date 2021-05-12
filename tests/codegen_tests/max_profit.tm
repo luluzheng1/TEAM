@@ -1,3 +1,9 @@
+/* This program maximizes profit by choosing a single day to buy 
+ * one stock and choosing a different day in the future to sell
+ * that stock.
+ * Return the maximum profit one can achieve from this transaction. 
+ * If no profits can be achieved, return 0. */
+
 int max_profit(list stock_prices):
     int min_price = stock_prices[0];
     int max_profit = 0;

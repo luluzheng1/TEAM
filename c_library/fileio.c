@@ -1,9 +1,10 @@
+// Author: Naoki O.
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
 
-FILE* open(char* filename, char* mode)
+FILE *open(char *filename, char *mode)
 {
   FILE *fp;
   fp = fopen(filename, mode);
@@ -16,7 +17,7 @@ int close(FILE *fp)
   return fclose(fp);
 }
 
-char* readline(FILE *fp)
+char *readline(FILE *fp)
 {
   assert(fp != NULL);
   char *line_buf = NULL;
@@ -26,7 +27,7 @@ char* readline(FILE *fp)
   return line_buf;
 }
 
-void write(FILE *fp, char* text)
+void write(FILE *fp, char *text)
 {
   assert(fp != NULL);
   fputs(text, fp);

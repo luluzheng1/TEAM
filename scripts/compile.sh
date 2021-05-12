@@ -1,4 +1,5 @@
 #!/bin/bash
+# Authors: Lulu Z.
 export PATH=$PATH:/usr/local/opt/llvm/bin
 # needed for compilation
 CC="gcc"
